@@ -5,21 +5,69 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <functional>
 
-#include "Renderer.h"
-#include "VertexBuffer.h"
-#include "IndexBuffer.h"
-#include "VertexArray.h"
-#include "VertexBufferLayout.h"
+#include "Renderer/Renderer.h"
+#include "Renderer/VertexBuffer.h"
+#include "Renderer/IndexBuffer.h"
+#include "Renderer/VertexArray.h"
+#include "Renderer/VertexBufferLayout.h"
+#include "Renderer/Reactor.h"
 
-#include "Shader.h"
-#include "Texture.h"
+#include "Renderer/Entity.h"
+#include "Renderer/DirectionalLight.h"
 
-#include "glm/glm.hpp"
-#include "glm/gtc/matrix_transform.hpp"
+#include "Renderer/Shader.h"
+#include "Renderer/Texture.h"
+#include "Renderer/Camera.h"
 
-int main(void)
+#include "Renderer/Print.h"
+#include "Renderer/Log.h"
+
+
+const unsigned int WIDTH = 800;
+const unsigned int HEIGHT = 600;
+
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
+
+/* my renderer only have one camera ,maybe need more later , let it be */
+Camera camera(WIDTH, HEIGHT, Eigen::Vector3f(0.0f, 0.0f, 1.0f));
+
+
+// FPS output
+void CalculateFrameRate()
 {
+    static int framesPerSecond    = 0;       // This will store our fps
+    static float lastTime   = 0.0f;       // This will hold the time from the last frame
+    float currentTime = static_cast<float>(glfwGetTime());
+
+    ++framesPerSecond;
+    if( currentTime - lastTime > 1.0f )
+    {
+        lastTime = currentTime;
+       printf("FPS : %d\r\n", framesPerSecond);
+       printf("camera Position : %f %f %f\r\n", camera.Position.x(), camera.Position.y(), camera.Position.z());
+       printf("camera Front : %f %f %f\r\n", camera.Front.x(), camera.Front.y(), camera.Front.z());
+       printf("camera Up : %f %f %f\r\n", camera.Up.x(), camera.Up.y(), camera.Up.z());
+       printf("camera Right : %f %f %f\r\n", camera.Right.x(), camera.Right.y(), camera.Right.z());
+       printf("camera WorldUp : %f %f %f\r\n", camera.WorldUp.x(), camera.WorldUp.y(), camera.WorldUp.z());
+       printf("\033[1A");
+       printf("\033[1A");
+       printf("\033[1A");
+       printf("\033[1A");
+       printf("\033[1A");
+       printf("\033[1A");
+       framesPerSecond = 0;
+    }
+}
+
+
+
+
+int main(int argc, char **argv)
+ {
+    /* interesting things about glfw , it needs a brace to make it close normal */
     {
         GLFWwindow* window;
 
@@ -32,7 +80,16 @@ int main(void)
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
         /* Create a windowed mode window and its OpenGL context */
-        window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+        window = glfwCreateWindow(WIDTH, HEIGHT, "Hello World", NULL, NULL);
+
+        /* set user control */
+        glfwSetCursorPosCallback(window, mouse_callback);
+        glfwSetScrollCallback(window, scroll_callback);
+        glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+
+        
+
         if (!window)
         {
             glfwTerminate();
@@ -40,10 +97,15 @@ int main(void)
         }
 
         /* Make the window's context current */
+
+        /* disable cursor */
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); 
+
+        /* user operator */
         glfwMakeContextCurrent(window);
 
         /* v-Sync */
-        glfwSwapInterval(1);
+        //glfwSwapInterval(1);
 
         if (glewInit() != GLEW_OK) {
             std::cout << "Error" << std::endl;
@@ -51,92 +113,54 @@ int main(void)
 
         std::cout << glGetString(GL_VERSION) << std::endl;
 
-        float positions[] = {
-            -1.5f, -1.5f, 0.0f, 0.0f,//0
-             1.5f, -1.5f, 1.0f, 0.0f,//1
-             1.5f,  1.5f, 1.0f, 1.0f,//2
-            -1.5f,  1.5f, 0.0f, 1.0f//3
-        };
 
-        unsigned int indices[] = {
-             0, 1, 2,
-             2, 3, 0
-        };
+        Entity entity(Eigen::Vector3f(0,0,0),Eigen::Vector3f(0,0,0),Eigen::Vector3f(0.1,0.1,0.1),"res/shaders/Basic.shader");
+        entity.Load("res/models/nanosuit/nanosuit.obj");
 
-        unsigned int indices2[] = {
-             0, 1, 2,
-        };
-
-        GLCall(glEnable(GL_BLEND));
-        GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-
-        VertexArray va;
-        VertexBuffer vb(positions, 4 * 4 * sizeof(float));
-        VertexBufferLayout layout;
-        layout.Push<float>(2);
-        layout.Push<float>(2);
-        va.AddBuffer(vb, layout);
-
-        IndexBuffer ib(indices, 6);
+        Entity entity2(Eigen::Vector3f(0,0,5),Eigen::Vector3f(0,0,0),Eigen::Vector3f(1,1,1),"res/shaders/Basic.shader");
+        entity2.Load("res/models/bunny.obj");
 
 
-        glm::mat4 proj = glm::ortho(-2.0f, 2.0f, -1.5f, 1.5f, -1.0f, 1.0f);
+        DirectionalLight light(
+            Eigen::Vector3f(0.0f, -3.0f, 0.0f), //m_Direction
+            Eigen::Vector3f(0.2f, 0.2f, 0.2f),  //m_Ambient
+            Eigen::Vector3f(0.8f, 0.8f, 0.8f),  //m_Diffuse
+            Eigen::Vector3f(1.0f, 1.0f, 1.0f)   //m_Specular
+        );
+        
 
-        Shader shader("res/shaders/Basic.shader");
-        shader.Bind();
-        //shader.SetUniform4f("u_Color", 0.8f, 0.3f, 0.8f, 1.0f);
-        shader.SetUniformMat4f("u_MVP", proj);
+        Renderer renderer(&camera);
+        renderer.Insert_Entity(&entity);
+        renderer.Insert_Entity(&entity2);
+        renderer.Insert_Light(&light);
+        renderer.SetBackGroundColor(Eigen::Vector4f(1, 1, 1, 1));
 
-        Texture texture("res/textures/maz.png");
-        texture.Bind();
-		shader.SetUniform1i("u_Texture", 0);
-
-
-
-        va.Unbind();
-        vb.Unbind();
-        ib.Unbind();
-        shader.Unbind();
-
-        Renderer renderer;
-
-        float r = 0.0f;
-        float increment = 0.05f;
+        // only render line (just mesh)
+        //glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
 
         /* Loop until the user closes the window */
         while (!glfwWindowShouldClose(window))
         {
-            /* Render here */
-            renderer.Clear();
+            // depth test
+            glEnable(GL_DEPTH_TEST);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            shader.Bind();
-            shader.SetUniform4f("u_Color", r, 0.3f, 0.2f, 1.0f);
+            renderer.Draw();
 
-			renderer.Draw(va, ib, shader);
+            float currentFrame = static_cast<float>(glfwGetTime());
+            deltaTime = currentFrame - lastFrame;
+            lastFrame = currentFrame;
 
-            va.Bind();
-            ib.Bind();
-                
+            /*input*/
+            camera.processInput(window, deltaTime);
 
-            GLCall(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
-            //ib2.Unbind();
-            //ib.Bind();
-            //ib.Unbind();
-
-
-            if (r > 1.0f) {
-                increment = -0.05f;
-            }
-            else if (r < 0.0f) {
-                increment = 0.05f;
-            }
-            r += increment;
-            //ASSERT(GLLogCall());
             /* Swap front and back buffers */
             glfwSwapBuffers(window);
 
             /* Poll for and process events */
             glfwPollEvents();
+
+            CalculateFrameRate();
         }
     }
     glfwTerminate();

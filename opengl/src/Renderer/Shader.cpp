@@ -6,6 +6,7 @@
 #include <sstream>
 
 #include "Renderer.h"
+#include "Print.h"
 
 Shader::Shader(const std::string& filepath)
 	: m_FilePath(filepath), m_RendererId(0)
@@ -18,11 +19,6 @@ Shader::~Shader()
 {
     GLCall(glDeleteProgram(m_RendererId));
 }
-
-//bool Shader::CompileShader()
-//{
-//    
-//}
 
 
 
@@ -123,9 +119,24 @@ void Shader::SetUniform4f(const std::string& name, float v0, float v1, float v2,
     GLCall(glUniform4f(GetUniformLocation(name), v0, v1, v2, v3));
 }
 
-void Shader::SetUniformMat4f(const std::string& name, const glm::mat4& matrix)
+void Shader::SetUniform3f(const std::string& name, float v0, float v1, float v2)
 {
-    GLCall(glUniformMatrix4fv(GetUniformLocation(name), 1, GL_FALSE, &matrix[0][0]));
+    GLCall(glUniform3f(GetUniformLocation(name), v0, v1, v2));
+}
+
+void Shader::SetUniform3f(const std::string& name, Eigen::Vector3f v)
+{
+    GLCall(glUniform3fv(GetUniformLocation(name), 1, v.data()));
+}
+
+void Shader::SetUniformMat4f(const std::string& name, const Eigen::Matrix4f& matrix)
+{
+    GLCall(glUniformMatrix4fv(GetUniformLocation(name), 1, GL_FALSE, matrix.data()));
+}
+
+void Shader::SetUniformMat3f(const std::string& name, const Eigen::Matrix3f& matrix)
+{
+    GLCall(glUniformMatrix3fv(GetUniformLocation(name), 1, GL_FALSE, matrix.data()));
 }
 
 int Shader::GetUniformLocation(const std::string& name)
@@ -135,7 +146,7 @@ int Shader::GetUniformLocation(const std::string& name)
 
     GLCall(int location = glGetUniformLocation(m_RendererId, name.c_str()));
     if (location == -1)
-        std::cout << "warning: uniform'" << name << "' dosen't exist!" << std::endl;
+        std::cout << "warning: uniform'" << name << "' doesn't exist!" << std::endl;
 
     m_UniformLocationCache[name] = location;
     return location;
