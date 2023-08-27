@@ -114,10 +114,10 @@ int main(int argc, char **argv)
         std::cout << glGetString(GL_VERSION) << std::endl;
 
 
-        Entity entity(Eigen::Vector3f(0,0,0),Eigen::Vector3f(0,0,0),Eigen::Vector3f(0.1,0.1,0.1),"res/shaders/Basic.shader");
+        Entity entity(Eigen::Vector3f(0.f,0.f,0.f),Eigen::Vector3f(0.f,0.f,0.f),Eigen::Vector3f(0.1f,0.1f,0.1f),"res/shaders/Basic.shader");
         entity.Load("res/models/nanosuit/nanosuit.obj");
 
-        Entity entity2(Eigen::Vector3f(0,0,5),Eigen::Vector3f(0,0,0),Eigen::Vector3f(1,1,1),"res/shaders/Basic.shader");
+        Entity entity2(Eigen::Vector3f(0,0,5.f),Eigen::Vector3f(0,0,0),Eigen::Vector3f(1.f,1.f,1.f),"res/shaders/Basic.shader");
         entity2.Load("res/models/bunny.obj");
 
 
