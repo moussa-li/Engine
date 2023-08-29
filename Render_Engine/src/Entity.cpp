@@ -32,6 +32,14 @@ Entity::Entity(Eigen::Vector3f position, Eigen::Vector3f rotation, Eigen::Vector
 
 }
 
+Entity::Entity(Eigen::Vector3f position, Eigen::Vector3f rotation, Eigen::Vector3f scale, std::string ShaderPath)
+{
+    Transform transform(position,rotation,scale);
+    m_Transform = transform;
+    m_Shader = new Shader(ShaderPath);
+    m_Shader->Bind();
+}
+
 void Entity::Load(const std::string& fileDir)
 {
     Load_Model(fileDir);
@@ -47,6 +55,10 @@ void Entity::Draw()
     }
 }
 
+void Entity::Update()
+{
+}
+
 // load camera parameter to shader
 void Entity::Shader_Load_Camera(Eigen::Matrix4f &proj, Eigen::Matrix4f &view)
 {
@@ -58,6 +70,8 @@ void Entity::Shader_Load_Camera(Eigen::Matrix4f &proj, Eigen::Matrix4f &view)
     m_Shader->Unbind();
 
 }
+
+
 
 void Entity::Load_Model(const std::string& fileDir)
 {

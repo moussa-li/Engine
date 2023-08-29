@@ -15,7 +15,7 @@
 
 class DLLAPI Entity
 {
-private:
+protected:
     Transform m_Transform;
     std::vector<Mesh*> m_Meshes;
     std::string m_fileDir;
@@ -27,16 +27,19 @@ public:
     Entity(const std::string& filepath);
     
     Entity(Eigen::Vector3f position, Eigen::Vector3f rotation, Eigen::Vector3f scale);
+    Entity(Eigen::Vector3f position, Eigen::Vector3f rotation, Eigen::Vector3f scale, std::string ShaderPath);
 
 
     void Load(const std::string & fileDir);
 
-    void Draw();
+    virtual void Draw();
 
+    virtual void Update();
 
     void Shader_Load_Camera(Eigen::Matrix4f &proj, Eigen::Matrix4f &view);
 
     inline Shader *Get_Shader() { return m_Shader; } 
+
 
     ~Entity()
     {

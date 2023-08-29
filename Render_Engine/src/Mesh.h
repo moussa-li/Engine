@@ -53,6 +53,8 @@ public:
         Setup();
     }
 
+    void Insert_Texture(Texture* texture);
+
     virtual void Setup();
     virtual void Draw(Shader *shader, Transform transform);
 

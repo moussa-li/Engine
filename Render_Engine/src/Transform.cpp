@@ -19,3 +19,9 @@ Eigen::Matrix4f Transform::GetMatrix()
     
 }
 
+void Transform::SetPosition(Eigen::Vector3f position)
+{
+    Position = position;
+
+}
+

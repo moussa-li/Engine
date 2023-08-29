@@ -11,11 +11,11 @@ class PointLight : public Cube , public Light
 public:
     // TODO: maybe need more parameters
     PointLight(
-        Eigen::Vector3f position, Eigen::Vector3f rotation, Eigen::Vector3f scale, const std::string& Shader_filepath, float size,
+        Eigen::Vector3f position, Eigen::Vector3f rotation, Eigen::Vector3f scale, float size,
     Eigen::Vector3f ambient,
     Eigen::Vector3f diffuse,
     Eigen::Vector3f specular) 
-        :   Cube(position,rotation,scale,Shader_filepath,size),
+        :   Cube(position,rotation,scale,size),
             Light(ambient,diffuse,specular)
     {
         //m_Direction = direction;

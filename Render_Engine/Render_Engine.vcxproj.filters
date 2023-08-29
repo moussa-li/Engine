@@ -66,6 +66,15 @@
     <ClCompile Include="src\RenderLib.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="src\Plane.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Cube.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\SkyBox.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\Basic.shader" />
@@ -477,6 +486,7 @@
     <None Include="src\Vendor\glm\gtx\wrap.inl">
       <Filter>头文件</Filter>
     </None>
+    <None Include="res\shaders\SkyBox.shader" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Renderer.h">
@@ -1389,6 +1399,12 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\libexport.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Plane.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SkyBox.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

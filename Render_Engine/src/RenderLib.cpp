@@ -90,6 +90,8 @@ void Windows_Start(Renderer* renderer)
        glEnable(GL_DEPTH_TEST);
        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+       renderer->Update();
+
        renderer->Draw();
 
        float currentFrame = static_cast<float>(glfwGetTime());

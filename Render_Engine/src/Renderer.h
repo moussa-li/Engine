@@ -12,6 +12,7 @@
 #include "Shader.h"
 #include "Entity.h"
 #include "PointLight.h"
+#include "SkyBox.h"
 
 #include "libexport.h"
 
@@ -31,6 +32,8 @@ public:
 
     void SetBackGroundColor(Eigen::Vector4f backgroundcolor);
 
+    void Update();
+
     Renderer(Camera *camera);
 
 private:
@@ -40,6 +43,8 @@ private:
     std::vector<Light*> m_Light;
 
     Camera *m_Camera;
+
+    SkyBox *m_SkyBox;
 
     Eigen::Vector4f m_BackgroundColor;
 

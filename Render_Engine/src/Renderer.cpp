@@ -13,10 +13,7 @@ void Renderer::Clear()
 /// </summary>
 void Renderer::Draw() const
 {
-    for (size_t i = 0; i < m_Entities.size(); ++i)
-    {
-        m_Entities[i]->Draw();
-    }
+    
     for (size_t i = 0; i < m_Entities.size(); ++i)
     {
         Eigen::Matrix4f proj = Eigen::Matrix4f::Identity();
@@ -32,6 +29,10 @@ void Renderer::Draw() const
         m_Entities[i]->Get_Shader()->Bind();
         m_Entities[i]->Get_Shader()->SetUniform3f("viewPos", m_Camera->Position);
         m_Entities[i]->Get_Shader()->Unbind();
+    }
+    for (size_t i = 0; i < m_Entities.size(); ++i)
+    {
+        m_Entities[i]->Draw();
     }
 
 
@@ -62,7 +63,17 @@ void Renderer::SetBackGroundColor(Eigen::Vector4f BackgroundColor)
 
 }
 
+void Renderer::Update()
+{
+    for (size_t i = 0; i < m_Entities.size(); i++)
+    {
+        m_Entities[i]->Update();
+    }
+}
+
 Renderer::Renderer(Camera* camera)
 {
     m_Camera = camera;
+    m_SkyBox = new SkyBox(camera);
+    m_Entities.push_back(m_SkyBox);
 }

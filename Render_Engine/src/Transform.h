@@ -27,4 +27,6 @@ public:
     inline Eigen::Vector3f GetScale() const{ return Scale; }
 
     Eigen::Matrix4f GetMatrix();
+
+    void SetPosition(Eigen::Vector3f position);
 };

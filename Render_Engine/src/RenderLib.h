@@ -12,6 +12,7 @@
 #include "Reactor.h"
 
 #include "Entity.h"
+#include "Plane.h"
 #include "DirectionalLight.h"
 
 #include "Shader.h"
