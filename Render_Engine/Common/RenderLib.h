@@ -13,6 +13,7 @@
 
 #include "Entity.h"
 #include "Plane.h"
+#include "RigidBody.h"
 #include "DirectionalLight.h"
 
 #include "Shader.h"

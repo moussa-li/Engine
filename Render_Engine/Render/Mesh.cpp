@@ -50,7 +50,10 @@ void Mesh::Draw(Shader *shader,Transform transform)
             glDepthMask(GL_FALSE);
         }
         if (number != "")
+        {
+            shader->SetUniform1i("isPureColor", 0);
             shader->SetUniform1i(("material." + type + number).c_str(), i);
+        }
     }
 
     // TODO: set mesh color (i don,t know where to put)
@@ -58,10 +61,6 @@ void Mesh::Draw(Shader *shader,Transform transform)
     {
         shader->SetUniform1i("isPureColor", 1);
         shader->SetUniform4f("u_Color", 0.8369918f,  1.f,  0.8381667f,  1.f);
-    }
-    else
-    {
-        shader->SetUniform1i("isPureColor", 0);
     }
 
     VAO->Bind();

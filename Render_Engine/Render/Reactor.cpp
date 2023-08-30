@@ -38,6 +38,8 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 
 	CAMERA->lastX = xpos;
 	CAMERA->lastY = ypos;
+
+    //Log::Log(Log::Debug, "xoffset : " + std::to_string(xoffset) + " yoffset: " + std::to_string(yoffset));
     
 	CAMERA->ProcessMouseMovement(xoffset, yoffset, true);
 }

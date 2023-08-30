@@ -8,12 +8,14 @@ SkyBox::SkyBox(Camera *camera, std::string ShaderPath, std::string TexturePath)
       Cube(camera->Position, Eigen::Vector3f(0,0,0), Eigen::Vector3f(1,1,1),1),
       m_Camera(camera)
 {
+
     Texture* texture = new Texture(TexturePath, "skybox");
     m_Meshes[0]->Insert_Texture(texture);
 }
 
 void SkyBox::Draw()
 {
+
     m_Transform.SetPosition(m_Camera->Position);
     for (size_t i = 0; i < m_Meshes.size(); i++)
     {

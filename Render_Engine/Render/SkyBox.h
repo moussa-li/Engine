@@ -11,6 +11,7 @@ public:
     SkyBox(Camera * camera, std::string ShaderPath = "res/shaders/SkyBox.shader", std::string TexturePath = "res/textures/skybox");
     virtual void Draw();
     virtual void Calc_Vertex(std::vector<Vertex>& vertex, std::vector<size_t>& indices);
+    inline std::string Get_Type() { return "SkyBox"; }
 private:
     Camera* m_Camera;
     

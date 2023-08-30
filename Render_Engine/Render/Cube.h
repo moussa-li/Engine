@@ -18,4 +18,6 @@ public:
         m_Meshes.push_back(mesh);
 	}
     virtual void Calc_Vertex(std::vector<Vertex> &vertex, std::vector<size_t> &indices);
+    virtual inline std::string Get_Type() { return "Cube"; }
+
 };

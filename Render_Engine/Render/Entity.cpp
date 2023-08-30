@@ -43,6 +43,8 @@ Entity::Entity(Eigen::Vector3f position, Eigen::Vector3f rotation, Eigen::Vector
 void Entity::Load(const std::string& fileDir)
 {
     Load_Model(fileDir);
+    if(m_Behaviour)
+        m_Behaviour->Load_Mesh(m_Meshes);
 }
 
 
@@ -55,8 +57,23 @@ void Entity::Draw()
     }
 }
 
-void Entity::Update()
+void Entity::Start()
 {
+    if(m_Behaviour)
+        m_Behaviour->Start();
+}
+
+void Entity::Update(float deltaTime)
+{
+    if(m_Behaviour)
+        m_Behaviour->Update(deltaTime);
+}
+
+void Entity::Set_Window(GLFWwindow* window)
+{
+    m_Window = window;
+    if(m_Behaviour)
+        m_Behaviour->Set_Window(window);
 }
 
 // load camera parameter to shader

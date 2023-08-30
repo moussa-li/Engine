@@ -5,7 +5,7 @@
 
 class Transform
 {
-private:
+public:
     Eigen::Vector3f Position;
     Eigen::Vector3f Rotation;
     Eigen::Vector3f Scale;
@@ -22,11 +22,12 @@ public:
         ) : Position(position),Rotation(rotation),Scale(scale)
     {}
 
-    inline Eigen::Vector3f GetPosition() const{ return Position; }
+    /*inline Eigen::Vector3f GetPosition() const{ return Position; }
     inline Eigen::Vector3f GetRotation() const{ return Rotation; }
-    inline Eigen::Vector3f GetScale() const{ return Scale; }
+    inline Eigen::Vector3f GetScale() const{ return Scale; }*/
 
     Eigen::Matrix4f GetMatrix();
+    Eigen::Matrix4f Get_Rotation_Matrix();
 
     void SetPosition(Eigen::Vector3f position);
 };

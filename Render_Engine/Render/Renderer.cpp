@@ -22,6 +22,10 @@ void Renderer::Draw() const
         view = m_Camera->View();
 
         m_Entities[i]->Shader_Load_Camera(proj, view);
+
+        if (m_Entities[i]->Get_Type() == "SkyBox")
+            continue;
+
         for (size_t j = 0; j < m_Light.size(); ++j)
         {
              m_Light[j]->SetShader(m_Entities[i]);
@@ -63,11 +67,26 @@ void Renderer::SetBackGroundColor(Eigen::Vector4f BackgroundColor)
 
 }
 
-void Renderer::Update()
+void Renderer::Start()
+{
+    for (size_t i = 0; i < m_Entities.size(); ++i)
+        m_Entities[i]->Start();
+}
+
+void Renderer::Update(float deltaTime)
 {
     for (size_t i = 0; i < m_Entities.size(); i++)
     {
-        m_Entities[i]->Update();
+        m_Entities[i]->Update(deltaTime);
+    }
+}
+
+void Renderer::Set_Window(GLFWwindow* window)
+{
+    m_Window = window;
+    for (size_t i = 0; i < m_Entities.size(); i++)
+    {
+        m_Entities[i]->Set_Window(window);
     }
 }
 

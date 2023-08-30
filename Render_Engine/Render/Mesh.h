@@ -22,11 +22,12 @@ enum MeshType {
 
 class DLLAPI Mesh
 {
-private:
+public:
     std::vector<Vertex>  m_Vertices;
     std::vector<size_t>  m_indices;
     std::vector<Texture*> m_Texture;
     
+private:
     VertexArray  *VAO;
     VertexArray  *Normal_VAO;
     VertexArray  *Texture_VAO;

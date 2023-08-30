@@ -83,6 +83,8 @@ void CalculateFrameRate()
 
 void Windows_Start(Renderer* renderer)
 {
+    renderer->Start();
+    renderer->Set_Window(window);
 /* Loop until the user closes the window */
    while (!glfwWindowShouldClose(window))
    {
@@ -90,13 +92,15 @@ void Windows_Start(Renderer* renderer)
        glEnable(GL_DEPTH_TEST);
        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-       renderer->Update();
-
-       renderer->Draw();
-
        float currentFrame = static_cast<float>(glfwGetTime());
        deltaTime = currentFrame - lastFrame;
        lastFrame = currentFrame;
+
+       renderer->Update(deltaTime);
+
+       renderer->Draw();
+
+       
 
        /*input*/
        CAMERA->processInput(window, deltaTime);

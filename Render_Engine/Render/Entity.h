@@ -1,5 +1,8 @@
 #pragma once
 
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+
 #include <eigen3/Eigen/Eigen>
 
 #include <assimp/Importer.hpp>
@@ -10,6 +13,8 @@
 #include "Mesh.h"
 #include "Texture.h"
 #include "Shader.h"
+
+#include "Behaviour.h"
 
 #include "libexport.h"
 
@@ -22,6 +27,12 @@ protected:
     std::vector<Texture*> textures_loaded;
     Shader *m_Shader;
 
+    PhyE::Behaviour *m_Behaviour;
+
+    Eigen::Vector3f v;
+
+    GLFWwindow* m_Window;
+
 public:
     Entity() {}
     Entity(const std::string& filepath);
@@ -30,18 +41,24 @@ public:
     Entity(Eigen::Vector3f position, Eigen::Vector3f rotation, Eigen::Vector3f scale, std::string ShaderPath);
 
 
-    void Load(const std::string & fileDir);
+    virtual void Load(const std::string & fileDir);
 
     virtual void Draw();
 
-    virtual void Update();
+    virtual void Start();
+
+    virtual void Update(float deltaTime);
+
+    void Set_Window(GLFWwindow* window);
 
     void Shader_Load_Camera(Eigen::Matrix4f &proj, Eigen::Matrix4f &view);
 
     inline Shader *Get_Shader() { return m_Shader; } 
 
+    virtual inline std::string Get_Type() { return "Entity"; }
 
-    ~Entity()
+
+    virtual ~Entity()
     {
         if (m_Shader)
             delete m_Shader;
@@ -49,6 +66,8 @@ public:
             delete m_Meshes[i];
         for (size_t i = 0; i < textures_loaded.size(); ++i)
             delete textures_loaded[i];
+        //if (m_Behaviour)
+            //delete m_Behaviour;
     }
 
 private:

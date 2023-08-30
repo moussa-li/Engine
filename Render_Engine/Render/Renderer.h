@@ -32,7 +32,12 @@ public:
 
     void SetBackGroundColor(Eigen::Vector4f backgroundcolor);
 
-    void Update();
+    void Start();
+
+    void Update(float deltaTime);
+
+    void Set_Window(GLFWwindow* window);
+
 
     Renderer(Camera *camera);
 
@@ -48,4 +53,5 @@ private:
 
     Eigen::Vector4f m_BackgroundColor;
 
+    GLFWwindow* m_Window;
 };
