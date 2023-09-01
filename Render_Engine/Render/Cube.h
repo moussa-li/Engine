@@ -11,13 +11,15 @@ public:
         : Entity(position, rotation, scale),
         Size(size) 
     {
-        std::vector<Vertex> vertex;
+        std::vector<Eigen::Vector3f> vertices;
+        std::vector<Eigen::Vector3f> normals;
+        std::vector<Eigen::Vector2f> texcoords;
         std::vector<size_t> indices;
-        Calc_Vertex(vertex, indices);
-        Mesh* mesh = new Mesh(vertex, indices, {});
+        Calc_Vertex(vertices, normals, texcoords, indices);
+        Mesh* mesh = new Mesh(vertices, normals, texcoords, indices, {});
         m_Meshes.push_back(mesh);
 	}
-    virtual void Calc_Vertex(std::vector<Vertex> &vertex, std::vector<size_t> &indices);
+    virtual void Calc_Vertex(std::vector<Eigen::Vector3f> &vertices, std::vector<Eigen::Vector3f> &normals, std::vector<Eigen::Vector2f> &texcoords, std::vector<size_t> &indices);
     virtual inline std::string Get_Type() { return "Cube"; }
 
 };

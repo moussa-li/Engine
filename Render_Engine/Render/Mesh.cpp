@@ -9,15 +9,27 @@ void Mesh::Insert_Texture(Texture* texture)
 void Mesh::Setup()
 {
     VAO = new VertexArray();
-    VBO = new VertexBuffer(m_Vertices);
-    VertexBufferLayout layout;
-    layout.Push<float>(3);
-    layout.Push<float>(3);
-    layout.Push<float>(2);
-    VAO->AddBuffer(*VBO, layout);
-    EBO = new IndexBuffer(m_indices);
 
+    /* vertices  layout */
+    VertexBufferLayout layout;
+
+    /* vertices coordinates vbo */
+    VBO = new VertexBuffer(&m_Vertices);
+    layout.Push<float>(3, VBO);
+
+    /* vertices normal vbo */
+    Normal_VBO = new VertexBuffer(&m_Normals);
+    layout.Push<float>(3, Normal_VBO);
+
+    /* vertices texture coordinates vbo */
+    Texture_VBO = new VertexBuffer(&m_TexCoords);
+    layout.Push<float>(2, Texture_VBO);
+
+    VAO->AddBuffer(layout);
+
+    EBO = new IndexBuffer(m_indices);
     VAO->Unbind();
+
 
 }
 

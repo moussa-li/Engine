@@ -77,7 +77,9 @@ private:
     void Process_Node(aiNode* node, const aiScene* scene);
 
     void Process_Mesh(aiMesh* mesh, const aiScene* scene,
-        std::vector<Vertex> &vertices,
+        std::vector<Eigen::Vector3f> &vertices,
+        std::vector<Eigen::Vector3f> &normals,
+        std::vector<Eigen::Vector2f> &texcoords,
         std::vector<size_t> &indices,
         std::vector<Texture*> &textures);
 

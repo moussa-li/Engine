@@ -112,12 +112,14 @@ void Entity::Process_Node(aiNode* node, const aiScene* scene)
     {
         aiMesh* aimesh = scene->mMeshes[node->mMeshes[i]];
 
-        std::vector<Vertex> vertices;
+        std::vector<Eigen::Vector3f> vertices;
+        std::vector<Eigen::Vector3f> normals;
+        std::vector<Eigen::Vector2f> texcoords;
         std::vector<size_t> indices;
         std::vector<Texture*> textures;
-        Process_Mesh(aimesh, scene, vertices, indices, textures);
+        Process_Mesh(aimesh, scene, vertices, normals, texcoords, indices, textures);
 
-        Mesh* mesh = new Mesh(vertices, indices, textures);
+        Mesh* mesh = new Mesh(vertices, normals, texcoords, indices, textures);
 
         m_Meshes.emplace_back(mesh);
     }
@@ -128,7 +130,9 @@ void Entity::Process_Node(aiNode* node, const aiScene* scene)
 }
 
 void Entity::Process_Mesh(aiMesh* mesh, const aiScene* scene,
-    std::vector<Vertex> &vertices,
+    std::vector<Eigen::Vector3f> &vertices,
+    std::vector<Eigen::Vector3f> &normals,
+    std::vector<Eigen::Vector2f> &texcoords,
     std::vector<size_t> &indices,
     std::vector<Texture*> &textures
     )
@@ -136,33 +140,32 @@ void Entity::Process_Mesh(aiMesh* mesh, const aiScene* scene,
     
     for (size_t i = 0; i < mesh->mNumVertices; ++i)
     {
-        Vertex vertex;
+        //Vertex vertex;
 
         // TODO: process position\normal\texture
         Eigen::Vector3f vector;
         vector.x() = mesh->mVertices[i].x;
         vector.y() = mesh->mVertices[i].y;
         vector.z() = mesh->mVertices[i].z;
-        vertex.Position = vector;
+        vertices.push_back(vector);
 
         vector.x() = mesh->mNormals[i].x;
         vector.y() = mesh->mNormals[i].y;
         vector.z() = mesh->mNormals[i].z;
-        vertex.Normal = vector;
+        normals.push_back(vector);;
 
         if (mesh->mTextureCoords[0])
         {
             Eigen::Vector2f vec;
             vec.x() = mesh->mTextureCoords[0][i].x;
             vec.y() = mesh->mTextureCoords[0][i].y;
-            vertex.TexCoords = vec;
+            texcoords.push_back(vec);
         }
         else
         {
-            vertex.TexCoords = Eigen::Vector2f(0.0f, 0.0f);
+            texcoords.push_back(Eigen::Vector2f(0.0f, 0.0f));
         }
 
-        vertices.push_back(vertex);
     }
 
     // TODO: process index

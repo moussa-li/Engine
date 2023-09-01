@@ -11,8 +11,8 @@
 Shader::Shader(const std::string& filepath)
 	: m_FilePath(filepath), m_RendererId(0)
 {
-    ShaderProgramSource source = ParseShader(m_FilePath);
-    m_RendererId = CreateShader(source.VertexSource, source.FragmentSource);
+    //ShaderProgramSource source = ParseShader(m_FilePath);
+    m_RendererId = CreateShader(ParseShader(m_FilePath));
 }
 
 Shader::~Shader()
@@ -26,11 +26,11 @@ ShaderProgramSource Shader::ParseShader(const std::string& filepath) {
     std::ifstream stream(filepath);
 
     enum class ShaderType {
-        NONE = -1, VERTEX = 0, FRAGMENT = 1
+        NONE = -1, VERTEX = 0, FRAGMENT = 1, COMPUTE = 2
     };
 
     std::string line;
-    std::stringstream ss[2];
+    std::stringstream ss[3];
     ShaderType type;
     while (getline(stream, line)) {
         if (line.find("#shader") != std::string::npos)
@@ -45,13 +45,18 @@ ShaderProgramSource Shader::ParseShader(const std::string& filepath) {
             {
                 type = ShaderType::FRAGMENT;
             }
+            else if (line.find("compute") != std::string::npos)
+                // set mode to compute
+            {
+                type = ShaderType::COMPUTE;
+            }
         }
         else
         {
             ss[(int)type] << line << '\n';
         }
     }
-    return { ss[0].str(), ss[1].str() };
+    return { ss[0].str(), ss[1].str(), ss[2].str() };
 }
 unsigned int Shader::CompileShader(unsigned int type, const std::string& source) {
 
@@ -79,19 +84,31 @@ unsigned int Shader::CompileShader(unsigned int type, const std::string& source)
     return id;
 }
 
-int Shader::CreateShader(const std::string& vertexShader, const std::string& fragmentShader) {
+//int Shader::CreateShader(const std::string& vertexShader, const std::string& fragmentShader) {
+int Shader::CreateShader(ShaderProgramSource source) {
     unsigned int program = glCreateProgram();
-    unsigned int vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
-    unsigned int fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
+    if (source.VertexSource != "")
+    {
+        unsigned int vs = CompileShader(GL_VERTEX_SHADER, source.VertexSource);
+        glAttachShader(program, vs);
+        glDeleteShader(vs);
+    }
+    if (source.FragmentSource != "")
+    {
+        unsigned int fs = CompileShader(GL_FRAGMENT_SHADER, source.FragmentSource);
+        glAttachShader(program, fs);
+        glDeleteShader(fs);
+    }
+    if (source.ComputeSource != "")
+    {
+        unsigned int cs = CompileShader(GL_COMPUTE_SHADER, source.ComputeSource);
+        glAttachShader(program, cs);
+        glDeleteShader(cs);
 
-
-    glAttachShader(program, vs);
-    glAttachShader(program, fs);
+    }
     glLinkProgram(program);
     glValidateProgram(program);
 
-    glDeleteShader(vs);
-    glDeleteShader(fs);
 
     return program;
 }

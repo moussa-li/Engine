@@ -4,6 +4,8 @@
 
 #include <cstdio>
 
+#include <eigen3/Eigen/Eigen>
+
 #define __DLL_EXPORTS__
 #ifdef __DLL_EXPORTS__
 #define DLLAPI  __declspec(dllexport)
@@ -34,6 +36,8 @@ namespace Log{
     };
     
     static LogLevel Level = Debug;
+    void Log(LogLevel l, Eigen::Vector3f v);
+    void Log(LogLevel l, Eigen::Quaternion<float> q);
     void Log(LogLevel l, std::string message);
     void Log(LogLevel l, const char* function, const char* file, int line, std::string message);
 

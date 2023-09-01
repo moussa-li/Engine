@@ -1,5 +1,8 @@
+//#include <eigen3/Eigen/Eigen>
+
 #include "Log.h"
 #include <GL/glew.h>
+
 
 
 namespace Log{
@@ -47,6 +50,28 @@ namespace Log{
         "Info",
         "Debug"
     };
+
+    void Log(LogLevel l, Eigen::Vector3f v)
+    {
+        if (l <= Level)
+        {
+            std::string EchoLevel =  LevelItem[Level];
+
+            printf("%s[ %s ]%s : Eigen::Vector3f is %f %f %f \n", LIGHT_BLUE,EchoLevel.c_str(),END, v.x(), v.y(), v.z());
+
+        }
+    }
+
+    void Log(LogLevel l, Eigen::Quaternion<float> q)
+    {
+        if (l <= Level)
+        {
+            std::string EchoLevel =  LevelItem[Level];
+
+            printf("%s[ %s ]%s : Eigen::Quaternion<float> is %f %f %f %f\n", LIGHT_BLUE,EchoLevel.c_str(),END, q.x(), q.y(), q.z(), q.w());
+
+        }
+    }
     
     void Log(LogLevel l, std::string message)
     {

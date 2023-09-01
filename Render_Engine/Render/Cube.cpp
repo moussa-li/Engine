@@ -1,11 +1,13 @@
 #include "Cube.h"
 
 
-void Cube::Calc_Vertex(std::vector<Vertex>& vertex, std::vector<size_t>& indices)
+void Cube::Calc_Vertex(std::vector<Eigen::Vector3f> &vertices, std::vector<Eigen::Vector3f> &normals, std::vector<Eigen::Vector2f> &texcoords, std::vector<size_t> &indices)
 {
-    vertex = {};
+    vertices = {};
+    normals = {};
+    texcoords = {};
     indices = {};
-    Vertex v;
+    //Vertex v;
 
     float n[][3] = { {1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1}, {0,0,-1} };
     std::vector<std::vector<float>> p = { {-1,-1},{-1,1},{1,-1},{1,1} };
@@ -24,10 +26,13 @@ void Cube::Calc_Vertex(std::vector<Vertex>& vertex, std::vector<size_t>& indices
                     break;
                 }
             }
-            v.Position =  Size / 2 * Eigen::Vector3f(tmpP[0], tmpP[1], tmpP[2]);
-            v.Normal = Eigen::Vector3f(n[i][0],n[i][1],n[i][2]);
-            v.TexCoords = t[j];
-            vertex.push_back(v);
+            Eigen::Vector3f Position =  Size / 2 * Eigen::Vector3f(tmpP[0], tmpP[1], tmpP[2]);
+            Eigen::Vector3f Normal = Eigen::Vector3f(n[i][0],n[i][1],n[i][2]);
+            Eigen::Vector2f TexCoord = t[j];
+            vertices.push_back(Position);
+            normals.push_back(Normal);
+            texcoords.push_back(TexCoord);
+            //vertex.push_back(v);
         }
         indices.push_back(0 + i * 4);
         indices.push_back(1 + i * 4);

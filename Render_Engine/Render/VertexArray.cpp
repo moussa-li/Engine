@@ -13,18 +13,16 @@ VertexArray::~VertexArray()
     GLCall(glDeleteVertexArrays(1, &m_RendererId));
 }
 
-void VertexArray::AddBuffer(const VertexBuffer& vb, const VertexBufferLayout& layout) 
+void VertexArray::AddBuffer(const VertexBufferLayout& layout) 
 {
     Bind();
-	vb.Bind();
     const auto& elements = layout.GetElement();
-    unsigned int offset = 0;
     for (size_t i = 0; i < elements.size(); i++)
     {
         const auto& element = elements[i];
+        element.VBO->Bind();
         GLCall(glEnableVertexAttribArray(i));
-        GLCall(glVertexAttribPointer(i, element.count, element.type, element.normalized, layout.GetStride() , (const void*)offset));
-        offset += element.count * VertexBufferElement::GetSizeOfType(element.type);
+        GLCall(glVertexAttribPointer(i, element.count, element.type, element.normalized, 0 , NULL));
     }
 
 }

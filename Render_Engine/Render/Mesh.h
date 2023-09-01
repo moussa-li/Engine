@@ -23,9 +23,11 @@ enum MeshType {
 class DLLAPI Mesh
 {
 public:
-    std::vector<Vertex>  m_Vertices;
-    std::vector<size_t>  m_indices;
-    std::vector<Texture*> m_Texture;
+    std::vector<Eigen::Vector3f>  m_Vertices; // vertices coordinates
+    std::vector<Eigen::Vector3f>  m_Normals; // vertices normal
+    std::vector<Eigen::Vector2f>  m_TexCoords; // vertices textures coordinates
+    std::vector<size_t>  m_indices; // element index array
+    std::vector<Texture*> m_Texture; // element texture array
     
 private:
     VertexArray  *VAO;
@@ -44,10 +46,12 @@ public:
         m_MeshType = MeshType::Tet;
     }
 
-    Mesh(std::vector<Vertex> vertex, std::vector<size_t> indices, std::vector<Texture*> texture)
+    Mesh(std::vector<Eigen::Vector3f> vertices, std::vector<Eigen::Vector3f> normals, std::vector<Eigen::Vector2f> texcoords, std::vector<size_t> indices, std::vector<Texture*> texture)
     {
         m_MeshType = Tet;
-        m_Vertices = vertex;
+        m_Vertices = vertices;
+        m_Normals = normals;
+        m_TexCoords = texcoords;
         m_indices = indices;
         m_Texture = texture;
 
@@ -64,10 +68,28 @@ public:
         {
             delete VAO;
         }
+        if (Normal_VAO)
+        {
+            delete Normal_VAO;
+        }
+        if (Texture_VAO)
+        {
+            delete Texture_VAO;
+        }
+
         if (VBO)
         {
             delete VBO;
         }
+        if (Normal_VBO)
+        {
+            delete Normal_VBO;
+        }
+        if (Texture_VBO)
+        {
+            delete Texture_VBO;
+        }
+
         if (EBO)
         {
             delete EBO;

@@ -5,6 +5,7 @@
 
 #include <eigen3/Eigen/Eigen>
 
-using namespace std;
 
 void Print(Eigen::Matrix4f mat);
+
+void Print(Eigen::Vector3f v);
