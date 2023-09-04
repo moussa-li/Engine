@@ -88,7 +88,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Debug\include\Phycics;$(SolutionDir)Debug\include\Render;$(SolutionDir)Debug\include\Common;$(SolutionDir)\part3rd\Eigen\include;$(SolutionDir)\part3rd\GLFW\include;$(SolutionDir)\part3rd\GLEW\include;$(SolutionDir)\part3rd\Assimp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Debug\include\Phycics;$(SolutionDir)Debug\include\Render;$(SolutionDir)Debug\include\Common;$(SolutionDir)\part3rd\Eigen\include;$(SolutionDir)\part3rd\GLFW\include;$(SolutionDir)\part3rd\GLEW\include;$(SolutionDir)\part3rd\Assimp\include;D:\OCL_SDK_Light\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4251;4819</DisableSpecificWarnings>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <OpenMPSupport>true</OpenMPSupport>
@@ -96,8 +96,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)Debug;$(SolutionDir)part3rd\GLEW\lib;$(SolutionDir)part3rd\GLFW\lib;$(SolutionDir)part3rd\Assimp\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Render_Engine.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)Debug;$(SolutionDir)part3rd\GLEW\lib;$(SolutionDir)part3rd\GLFW\lib;D:\OCL_SDK_Light\lib\x86;$(SolutionDir)part3rd\Assimp\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Render_Engine.lib;opencl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -147,9 +147,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="test.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\SkyBox.shader" />
+    <None Include="vecAdd.cl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

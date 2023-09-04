@@ -62,6 +62,7 @@ void Camera::lookAt(Eigen::Vector3f const& position, Eigen::Vector3f const& fron
     Position = position;
     Front = front;
     Up = up;
+    updateCameraVectors();
 }
 
 Eigen::Matrix4f Camera::View()

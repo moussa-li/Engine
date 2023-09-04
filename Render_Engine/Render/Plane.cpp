@@ -15,28 +15,28 @@ void Plane::Calc_Vertex(std::vector<Eigen::Vector3f> &vertices, std::vector<Eige
     Eigen::Vector3f vertex;
     Eigen::Vector3f normal;
     Eigen::Vector2f texcoord;
-    vertex = m_Transform.Position + (m_Width * m_Right) + (m_Height * Front);
+    vertex = (m_Width * m_Right) + (m_Height * Front);
     normal = m_Normal;
     texcoord = Eigen::Vector2f(1.f, 0.f);
     vertices.push_back(vertex);
     normals.push_back(normal);
     texcoords.push_back(texcoord);
 
-    vertex = m_Transform.Position + (m_Width * m_Right) - (m_Height * Front);
+    vertex = (m_Width * m_Right) - (m_Height * Front);
     normal = m_Normal;
     texcoord = Eigen::Vector2f(1.f, 1.f);
     vertices.push_back(vertex);
     normals.push_back(normal);
     texcoords.push_back(texcoord);
 
-    vertex = m_Transform.Position - (m_Width * m_Right) + (m_Height * Front);
+    vertex = -(m_Width * m_Right) + (m_Height * Front);
     normal = m_Normal;
     texcoord = Eigen::Vector2f(0.f, 0.f);
     vertices.push_back(vertex);
     normals.push_back(normal);
     texcoords.push_back(texcoord);
 
-    vertex = m_Transform.Position - (m_Width * m_Right) - (m_Height * Front);
+    vertex = - (m_Width * m_Right) - (m_Height * Front);
     normal = m_Normal;
     texcoord = Eigen::Vector2f(0.f, 1.f);
     vertices.push_back(vertex);

@@ -17,6 +17,26 @@ void Mesh::Setup()
     VBO = new VertexBuffer(&m_Vertices);
     layout.Push<float>(3, VBO);
 
+    std::unordered_set<Eigen::Vector3f, Vector3fHash, Vector3fEqual> hash_Vertices;
+    for (int i = 0; i < m_Vertices.size(); ++i)
+        hash_Vertices.insert(m_Vertices[i]);
+    if (Vertices)
+        delete[] Vertices;
+    Vertices = new float[hash_Vertices.size() * 3];
+    //std::vector<Eigen::Vector3f> vertices;
+    size_t index = 0;
+    for (const auto& vec : hash_Vertices)
+    {
+        Vertices[index++] = vec.x();
+        Vertices[index++] = vec.y();
+        Vertices[index++] = vec.z();
+        //vertices.push_back(vec);
+    }
+    Vertices_Length = index;
+    /*std::sort(vertices.begin(), vertices.end(), [](const Eigen::Vector3f& a, const Eigen::Vector3f& b) {
+        return a.norm() < b.norm();
+    });*/
+
     /* vertices normal vbo */
     Normal_VBO = new VertexBuffer(&m_Normals);
     layout.Push<float>(3, Normal_VBO);

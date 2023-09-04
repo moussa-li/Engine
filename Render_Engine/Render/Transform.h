@@ -14,7 +14,7 @@ public:
     Transform()
     {
         Position << 0, 0, 0;
-        Rotation = Eigen::Quaternion<float>(0, 0, 0, 0);
+        Rotation = Eigen::Quaternion<float>(1, 0, 0, 0);
         Scale    << 1, 1, 1;
     }
     Transform(Eigen::Vector3f position,

@@ -27,8 +27,8 @@ namespace PhyE
 
         float m_LinearDecay = 0.999f;				// for velocity decay
         float m_AngularDecay = 0.98f;
-        float m_Restitution;					// for collision
-        float m_Friction;
+        float m_Restitution = 0.5f;					// for collision
+        float m_Friction = 0.2f;
         float m_Gravity;
 
         float m_Mass;
@@ -42,7 +42,7 @@ namespace PhyE
 
     public:
         Behaviour( void *transform, float restitution, float friction, float gravity = -9.8f);
-        ~Behaviour(){
+        virtual ~Behaviour(){
         }
         virtual void Start();
         virtual void Update(float deltaTime);
