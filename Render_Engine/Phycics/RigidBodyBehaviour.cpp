@@ -90,24 +90,24 @@ void PhyE::RigidBodyBehaviour::Update(float deltaTime)
     }
     if (glfwGetKey(m_Window, GLFW_KEY_L) == GLFW_PRESS)
     {
-        V = Eigen::Vector3f(5, 1, 0);
+        V = Eigen::Vector3f(0, 0, 0);
         launched = true;
     }
     if (launched)
     {
         // STEP1: if we don't have any collision how speed change
-        V += Eigen::Vector3f(0, m_Gravity * dt, 0);
+        V += Eigen::Vector3f(0, m_Gravity * deltaTime, 0);
 
         // STEP2: certainly we don't always miss anything ,So collision detection and get new velocity
-        Collision_Impulse(Eigen::Vector3f(0, -0.9f, 0),Eigen::Vector3f(0, 1.f, 0));
-        Collision_Impulse(Eigen::Vector3f(1.9f, 0, 0),Eigen::Vector3f(-1.f, 0, 0));
+        Collision_Impulse(Eigen::Vector3f(0, -0.99f, 0),Eigen::Vector3f(0, 1.f, 0));
+        Collision_Impulse(Eigen::Vector3f(1.99f, 0, 0),Eigen::Vector3f(-1.f, 0, 0));
 
         // STEP3: we got new linear velocity and angular velocity , so what position we will get next time
         V *= m_LinearDecay;
-        Eigen::Vector3f x = transform->Position + V * dt;
+        Eigen::Vector3f x = transform->Position + V * deltaTime;
 
         W *= m_AngularDecay;
-        Eigen::Vector3f dw = 0.5f * dt * W;
+        Eigen::Vector3f dw = 0.5f * deltaTime * W;
         Eigen::Quaternion q = Add(transform->Rotation , Eigen::Quaternion<float>(0.f,dw.x(), dw.y(), dw.z()) * transform->Rotation);
 
         transform->Position = x;
@@ -196,7 +196,7 @@ void PhyE::RigidBodyBehaviour::Collision_Impulse(Eigen::Vector3f P, Eigen::Vecto
     W += (I_inverse * Rr_collisionxJ).head<3>();
     
     /* we need to reduce the restitution in order to reduce the jitter */
-    m_Restitution *= 0.5f;
+    m_Restitution *= 0.9f;
 }
 
 // there are interesting that vec(a) cross vec(b) could convert to matrix(a) dot vec(b)
