@@ -90,6 +90,12 @@
     <ClCompile Include="Phycics\Collision.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="Common\ShaderStorageBuffer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\UniformBuffer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\Basic.shader" />
@@ -1436,6 +1442,12 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Phycics\Collision.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\ShaderStorageBuffer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\UniformBuffer.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

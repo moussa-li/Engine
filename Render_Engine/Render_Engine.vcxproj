@@ -19,6 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Common\ShaderStorageBuffer.cpp" />
+    <ClCompile Include="Common\UniformBuffer.cpp" />
     <ClCompile Include="Phycics\Behaviour.cpp" />
     <ClCompile Include="Phycics\Collision.cpp" />
     <ClCompile Include="Phycics\RigidBodyBehaviour.cpp" />
@@ -187,6 +189,8 @@
     <None Include="Render\Vendor\glm\gtx\wrap.inl" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Common\ShaderStorageBuffer.h" />
+    <ClInclude Include="Common\UniformBuffer.h" />
     <ClInclude Include="Phycics\Behaviour.h" />
     <ClInclude Include="Phycics\Collision.h" />
     <ClInclude Include="Phycics\RigidBodyBehaviour.h" />

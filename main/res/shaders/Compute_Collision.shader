@@ -22,8 +22,6 @@ layout(std430, binding = 3) coherent buffer  Input_param
     vec3 V;
     vec3 W;
     vec3 N;
-    //mat4 R;
-
 } input_param;
 
 layout(std430, binding = 4) coherent buffer Vertices
@@ -38,9 +36,7 @@ layout(std430, binding = 5) buffer R_Matrix
 
 layout(std430, binding = 6) buffer Debug
 {
-    vec4 index[177152];
-    //uint global_index[1024];
-    //float phi_x[1024];
+    float data[];
 } debug;
 
 shared int sharedData[1024];

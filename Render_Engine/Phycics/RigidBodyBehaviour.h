@@ -5,6 +5,8 @@
 #include "libexport.h"
 
 #include "Behaviour.h"
+#include "UniformBuffer.h"
+#include "ShaderStorageBuffer.h"
 
 
 namespace PhyE
@@ -15,20 +17,26 @@ namespace PhyE
     private:
         Shader* m_ComputeCollisionShader;
 
-        Eigen::Matrix4f I_ref;
-        Eigen::Matrix4f R;
+        Eigen::Matrix4f I_ref; // the reference to the moment of inertia
+        Eigen::Matrix4f R; // entity's rotation
 
-        bool launched = false;
+        bool launched = false; // shell we begin to simulate?
 
-        //int collision_number = 0;
-        GLuint ssbo;
-        GLuint ssbo2;
-        GLuint ssbo3;
-        GLuint ssbo4;
-        GLuint ssbo5;
-        GLuint ssbo6;
+        ShaderStorageBuffer* OutputCollisionNumber; // binging id = 1
+        ShaderStorageBuffer* OutputSumVec; // binding id = 2
+        ShaderStorageBuffer* InputParamBuffer; // binding id = 3 
+        ShaderStorageBuffer* VerticesBuffer; // point to the GPU buffer store the vertices ,binding id = 4
+        ShaderStorageBuffer* InputR; // binding id = 5
 
-        size_t total_Length = 0;
+        size_t total_Length = 0; // the number of entity's vertices
+
+        struct InputParam {
+        Eigen::Vector4f position;
+        Eigen::Vector4f P;
+        Eigen::Vector4f V;
+        Eigen::Vector4f W;
+        Eigen::Vector4f N;
+        } InputParam;
 
     public:
         RigidBodyBehaviour(void* transform, float restitution, float friction, float gravity = -9.8f);
@@ -39,6 +47,16 @@ namespace PhyE
         ~RigidBodyBehaviour() {
             if (m_ComputeCollisionShader)
                 delete m_ComputeCollisionShader;
+            if (VerticesBuffer)
+                delete VerticesBuffer;
+            if (InputParamBuffer)
+                delete InputParamBuffer;
+            if (InputR)
+                delete InputR;
+            if (OutputCollisionNumber)
+                delete OutputCollisionNumber;
+            if (OutputSumVec)
+                delete OutputSumVec;
         }
 
     private:
