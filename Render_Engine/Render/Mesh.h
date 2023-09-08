@@ -81,7 +81,9 @@ public:
     void Insert_Texture(Texture* texture);
 
     virtual void Setup();
+    void Clear();
     virtual void Draw(Shader *shader, Transform transform);
+    void Update();
 
     ~Mesh() {
         if (VAO)

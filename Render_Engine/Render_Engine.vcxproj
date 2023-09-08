@@ -22,10 +22,12 @@
     <ClCompile Include="Common\ShaderStorageBuffer.cpp" />
     <ClCompile Include="Common\UniformBuffer.cpp" />
     <ClCompile Include="Phycics\Behaviour.cpp" />
+    <ClCompile Include="Phycics\ClothBehaviour.cpp" />
     <ClCompile Include="Phycics\Collision.cpp" />
     <ClCompile Include="Phycics\RigidBodyBehaviour.cpp" />
     <ClCompile Include="Phycics\Scene.cpp" />
     <ClCompile Include="Render\Camera.cpp" />
+    <ClCompile Include="Render\Cloth.cpp" />
     <ClCompile Include="Render\Cube.cpp" />
     <ClCompile Include="Render\Entity.cpp" />
     <ClCompile Include="Render\IndexBuffer.cpp" />
@@ -50,6 +52,7 @@
   <ItemGroup>
     <None Include="res\shaders\Basic.shader" />
     <None Include="res\shaders\Compute_Collision.shader" />
+    <None Include="res\shaders\PBDStatistics.shader" />
     <None Include="res\shaders\SkyBox.shader" />
     <None Include="Render\Vendor\glm\detail\func_common.inl" />
     <None Include="Render\Vendor\glm\detail\func_common_simd.inl" />
@@ -192,10 +195,12 @@
     <ClInclude Include="Common\ShaderStorageBuffer.h" />
     <ClInclude Include="Common\UniformBuffer.h" />
     <ClInclude Include="Phycics\Behaviour.h" />
+    <ClInclude Include="Phycics\ClothBehaviour.h" />
     <ClInclude Include="Phycics\Collision.h" />
     <ClInclude Include="Phycics\RigidBodyBehaviour.h" />
     <ClInclude Include="Phycics\Scene.h" />
     <ClInclude Include="Render\Camera.h" />
+    <ClInclude Include="Render\Cloth.h" />
     <ClInclude Include="Render\Cube.h" />
     <ClInclude Include="Render\DirectionalLight.h" />
     <ClInclude Include="Render\Entity.h" />

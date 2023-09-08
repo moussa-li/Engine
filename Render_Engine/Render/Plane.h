@@ -33,6 +33,7 @@ public:
     void Calc_Vertex(std::vector<Eigen::Vector3f> &vertices, std::vector<Eigen::Vector3f> &normals, std::vector<Eigen::Vector2f> &texcoords, std::vector<size_t> &indices);
 
 private:
+    // Load what ? why you are here?
     void Load(const std::string & fileDir){}
 
 };

@@ -8,6 +8,12 @@ Behaviour::Behaviour( void *transform, float restitution, float friction, float 
     m_Meshes = {};
 }
 
+Behaviour::Behaviour(void* transform, float gravity /*= -9.8*/)
+    : m_Transform(transform), m_Gravity(gravity)
+{
+    m_Meshes = {};
+}
+
 void Behaviour::Start()
 {
     

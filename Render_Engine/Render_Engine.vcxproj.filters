@@ -96,6 +96,12 @@
     <ClCompile Include="Common\UniformBuffer.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="Render\Cloth.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Phycics\ClothBehaviour.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\Basic.shader" />
@@ -509,6 +515,7 @@
     </None>
     <None Include="res\shaders\SkyBox.shader" />
     <None Include="res\shaders\Compute_Collision.shader" />
+    <None Include="res\shaders\PBDStatistics.shader" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Render\Renderer.h">
@@ -1448,6 +1455,12 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Common\UniformBuffer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\Cloth.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Phycics\ClothBehaviour.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

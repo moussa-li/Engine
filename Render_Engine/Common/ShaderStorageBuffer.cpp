@@ -10,7 +10,7 @@ ShaderStorageBuffer::ShaderStorageBuffer(unsigned int size, unsigned int binding
     GLCall(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindingId, m_RendererId));
     m_BindingId = bindingId;
     m_Size = size;
-    m_Stride = 0;
+    m_Stride = size;
     UnBind();
 }
 
@@ -64,8 +64,6 @@ void ShaderStorageBuffer::OutputData(void *point)
     memcpy(point, bufferMap, m_Stride);
     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
     UnBind();
-
-    
 }
 
 void ShaderStorageBuffer::Bind()

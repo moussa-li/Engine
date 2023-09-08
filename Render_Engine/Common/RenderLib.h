@@ -15,6 +15,7 @@
 #include "Plane.h"
 #include "RigidBody.h"
 #include "DirectionalLight.h"
+#include "Cloth.h"
 
 #include "Shader.h"
 #include "Texture.h"

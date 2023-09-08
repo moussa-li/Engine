@@ -42,6 +42,7 @@ namespace PhyE
 
     public:
         Behaviour( void *transform, float restitution, float friction, float gravity = -9.8f);
+        Behaviour(void* transform, float gravity = -9.8);
         virtual ~Behaviour(){
         }
         virtual void Start();

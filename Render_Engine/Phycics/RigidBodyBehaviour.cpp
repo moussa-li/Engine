@@ -82,7 +82,7 @@ void PhyE::RigidBodyBehaviour::Update(float deltaTime)
     Transform* transform = (Transform*)m_Transform;
     if (glfwGetKey(m_Window, GLFW_KEY_R) == GLFW_PRESS)
     {
-        transform->SetPosition(Eigen::Vector3f(0, 0, 0));
+        transform->SetPosition(Eigen::Vector3f(0, 3.f, 0));
         m_Restitution = 0.5f;
         V = Eigen::Vector3f(0, 0, 0);
         W = Eigen::Vector3f(0, 0, 0);

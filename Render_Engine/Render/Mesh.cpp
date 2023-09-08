@@ -50,7 +50,52 @@ void Mesh::Setup()
     EBO = new IndexBuffer(m_indices);
     VAO->Unbind();
 
+}
 
+void Mesh::Clear()
+{
+    if (VAO)
+    {
+        delete VAO;
+        VAO = nullptr;
+    }
+    if (Normal_VAO)
+    {
+        delete Normal_VAO;
+        Normal_VAO = nullptr;
+    }
+    if (Texture_VAO)
+    {
+        delete Texture_VAO;
+        Texture_VAO = nullptr;
+    }
+
+    if (VBO)
+    {
+        delete VBO;
+        VBO = nullptr;
+    }
+    if (Normal_VBO)
+    {
+        delete Normal_VBO;
+        Normal_VBO = nullptr;
+    }
+    if (Texture_VBO)
+    {
+        delete Texture_VBO;
+        Texture_VBO = nullptr;
+    }
+
+    if (EBO)
+    {
+        delete EBO;
+        EBO = nullptr;
+    }
+    if (Vertices)
+    {
+        delete[] Vertices;
+        Vertices = nullptr;
+    }
 }
 
 void Mesh::Draw(Shader *shader,Transform transform)
@@ -102,4 +147,11 @@ void Mesh::Draw(Shader *shader,Transform transform)
     VAO->Unbind();
     EBO->Unbind();
     shader->Unbind();
+}
+
+void Mesh::Update()
+{
+    Clear();
+    // TODO : calculate the normals
+    Setup();
 }
