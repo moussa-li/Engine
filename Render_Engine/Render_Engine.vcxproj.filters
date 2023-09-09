@@ -516,6 +516,7 @@
     <None Include="res\shaders\SkyBox.shader" />
     <None Include="res\shaders\Compute_Collision.shader" />
     <None Include="res\shaders\PBDStatistics.shader" />
+    <None Include="res\shaders\PBDCompute.shader" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Render\Renderer.h">

@@ -37,7 +37,7 @@ void main()
 {
     uint index = gl_LocalInvocationID.x;
     uint global_index = gl_GlobalInvocationID.x;
-    if (global_index > max)return;
+    if (global_index >= max)return;
     outputSumX.SumX[global_index*2+0] = 0;
     outputSumX.SumX[global_index*2+1] = 0;
     outputSumN.SumN[global_index*2+0] = 0;

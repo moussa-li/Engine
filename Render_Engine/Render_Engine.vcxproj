@@ -52,6 +52,7 @@
   <ItemGroup>
     <None Include="res\shaders\Basic.shader" />
     <None Include="res\shaders\Compute_Collision.shader" />
+    <None Include="res\shaders\PBDCompute.shader" />
     <None Include="res\shaders\PBDStatistics.shader" />
     <None Include="res\shaders\SkyBox.shader" />
     <None Include="Render\Vendor\glm\detail\func_common.inl" />

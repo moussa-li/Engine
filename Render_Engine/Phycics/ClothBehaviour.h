@@ -38,6 +38,14 @@ namespace PhyE
         ShaderStorageBuffer* InputEdgesL;
         ShaderStorageBuffer* OutputSumX;
         ShaderStorageBuffer* OutputSumN;
+
+
+        Shader* m_PBDCompute;
+        ShaderStorageBuffer* OutputVertices;
+        ShaderStorageBuffer* InputSumX;
+        ShaderStorageBuffer* InputSumN;
+        ShaderStorageBuffer* OutputVerticesV;
+
     public:
         ClothBehaviour(void* transform, float gravity = -9.8f);
 
@@ -47,6 +55,8 @@ namespace PhyE
         ~ClothBehaviour() {
             if (m_PBDStatices)
                 delete m_PBDStatices;
+            if (m_PBDCompute)
+                delete m_PBDCompute;
         }
     
     private:

@@ -17,7 +17,7 @@ const unsigned int height = 600;
 
 
 
-#ifdef CLOTH
+#ifdef FINITE
 int main(int argc, char **argv)
  {
     /* interesting things about glfw , it needs a brace to make it close normal */
@@ -29,14 +29,6 @@ int main(int argc, char **argv)
         Bind_Camera(&camera);
 
         
-        Cloth cloth(Eigen::Vector3f(0,0,-10),Eigen::Vector3f(0,0,0),Eigen::Vector3f(.5,.5,.5));
-        cloth.Load_Texture("res/textures/cloth.jpg");
-
-
-        // TODO : multi-cloth have some bugs , maybe error by one binding id buffer binded multi-cloth;
-        /*Cloth cloth1(Eigen::Vector3f(0,0,-5),Eigen::Vector3f(0,0,0),Eigen::Vector3f(.5,.5,.5));
-        cloth1.Load_Texture("res/textures/cloth.jpg");*/
-
 
         DirectionalLight light(
             Eigen::Vector3f(0.0f, -3.0f, 1.0f), //m_Direction
@@ -48,8 +40,6 @@ int main(int argc, char **argv)
 
 
         Renderer renderer(&camera);
-        //renderer.Insert_Entity(&cloth1);
-        renderer.Insert_Entity(&cloth);
         renderer.Insert_Light(&light);
         renderer.SetBackGroundColor(Eigen::Vector4f(1, 1, 1, 1));
 
