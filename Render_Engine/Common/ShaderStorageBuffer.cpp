@@ -69,6 +69,7 @@ void ShaderStorageBuffer::OutputData(void *point)
 void ShaderStorageBuffer::Bind()
 {
     GLCall(glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_RendererId));
+    //GLCall(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, m_BindingId, m_RendererId));
 }
 
 void ShaderStorageBuffer::UnBind()

@@ -102,6 +102,12 @@
     <ClCompile Include="Phycics\ClothBehaviour.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="Render\Water.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Phycics\WaterBehaviour.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\Basic.shader" />
@@ -517,6 +523,9 @@
     <None Include="res\shaders\Compute_Collision.shader" />
     <None Include="res\shaders\PBDStatistics.shader" />
     <None Include="res\shaders\PBDCompute.shader" />
+    <None Include="res\shaders\Light.shader" />
+    <None Include="res\shaders\RecalculateNormals.shader" />
+    <None Include="res\shaders\WaterWave.shader" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Render\Renderer.h">
@@ -1462,6 +1471,12 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Phycics\ClothBehaviour.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\Water.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Phycics\WaterBehaviour.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

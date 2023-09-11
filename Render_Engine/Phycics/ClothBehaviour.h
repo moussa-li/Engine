@@ -31,20 +31,22 @@ namespace PhyE
 
         std::vector<Eigen::Vector3f> VerticesV;
 
-        Shader* m_PBDStatices;
+        static int* a;
 
-        ShaderStorageBuffer* InputEdges;
-        ShaderStorageBuffer* InputVertices;
-        ShaderStorageBuffer* InputEdgesL;
-        ShaderStorageBuffer* OutputSumX;
-        ShaderStorageBuffer* OutputSumN;
+        static Shader* m_PBDStatices;
+
+        static ShaderStorageBuffer* InputEdges;
+        static ShaderStorageBuffer* InputVertices;
+        static ShaderStorageBuffer* InputEdgesL;
+        static ShaderStorageBuffer* OutputSumX;
+        static ShaderStorageBuffer* OutputSumN;
 
 
-        Shader* m_PBDCompute;
-        ShaderStorageBuffer* OutputVertices;
-        ShaderStorageBuffer* InputSumX;
-        ShaderStorageBuffer* InputSumN;
-        ShaderStorageBuffer* OutputVerticesV;
+        static Shader* m_PBDCompute;
+        static ShaderStorageBuffer* OutputVertices;
+        static ShaderStorageBuffer* InputSumX;
+        static ShaderStorageBuffer* InputSumN;
+        static ShaderStorageBuffer* OutputVerticesV;
 
     public:
         ClothBehaviour(void* transform, float gravity = -9.8f);
@@ -52,13 +54,7 @@ namespace PhyE
         void Start();
         void Update(float deltaTime);
 
-        ~ClothBehaviour() {
-            if (m_PBDStatices)
-                delete m_PBDStatices;
-            if (m_PBDCompute)
-                delete m_PBDCompute;
-        }
-    
+        ~ClothBehaviour();
     private:
         void Strain_Limiting();
         void Collision_Handling();

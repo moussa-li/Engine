@@ -86,7 +86,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>FINITE;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BUNNY;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)Debug\include\Phycics;$(SolutionDir)Debug\include\Render;$(SolutionDir)Debug\include\Common;$(SolutionDir)\part3rd\Eigen\include;$(SolutionDir)\part3rd\GLFW\include;$(SolutionDir)\part3rd\GLEW\include;$(SolutionDir)\part3rd\Assimp\include;D:\OCL_SDK_Light\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4251;4819</DisableSpecificWarnings>
@@ -150,6 +150,7 @@
     <ClCompile Include="Cloth_Flow.cpp" />
     <ClCompile Include="Finite_Jump.cpp" />
     <ClCompile Include="test.cpp" />
+    <ClCompile Include="Water_wave.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\SkyBox.shader" />

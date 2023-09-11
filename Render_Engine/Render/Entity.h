@@ -34,7 +34,7 @@ protected:
     GLFWwindow* m_Window;
 
 public:
-    Entity() {}
+    //Entity() {}
     Entity(const std::string& filepath);
     
     Entity(Eigen::Vector3f position, Eigen::Vector3f rotation, Eigen::Vector3f scale);

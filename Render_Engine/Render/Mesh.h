@@ -12,6 +12,7 @@
 #include "VertexBufferLayout.h"
 #include "Texture.h"
 #include "Shader.h"
+#include "ShaderStorageBuffer.h"
 
 #include "Transform.h"
 
@@ -49,7 +50,7 @@ public:
     float* Vertices;
     size_t Vertices_Length;
     
-private:
+public:
     VertexArray  *VAO;
     VertexArray  *Normal_VAO;
     VertexArray  *Texture_VAO;
@@ -57,6 +58,11 @@ private:
     VertexBuffer *Normal_VBO;
     VertexBuffer *Texture_VBO;
     IndexBuffer  *EBO;
+
+    static Shader* RecalculateNormalsShader;
+    static ShaderStorageBuffer* VerticesBuffer;
+    static ShaderStorageBuffer* IndicesBuffer;
+    static ShaderStorageBuffer* NormalsBuffer;
 
 
     MeshType m_MeshType;
@@ -75,6 +81,7 @@ public:
         m_indices = indices;
         m_Texture = texture;
 
+
         Setup();
     }
 
@@ -84,42 +91,8 @@ public:
     void Clear();
     virtual void Draw(Shader *shader, Transform transform);
     void Update();
+    void RecalculateNormals();
 
-    ~Mesh() {
-        if (VAO)
-        {
-            delete VAO;
-        }
-        if (Normal_VAO)
-        {
-            delete Normal_VAO;
-        }
-        if (Texture_VAO)
-        {
-            delete Texture_VAO;
-        }
-
-        if (VBO)
-        {
-            delete VBO;
-        }
-        if (Normal_VBO)
-        {
-            delete Normal_VBO;
-        }
-        if (Texture_VBO)
-        {
-            delete Texture_VBO;
-        }
-
-        if (EBO)
-        {
-            delete EBO;
-        }
-        if (Vertices)
-        {
-            delete[] Vertices;
-        }
-    }
+    ~Mesh();
 
 };

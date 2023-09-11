@@ -17,7 +17,7 @@ const unsigned int height = 600;
 
 
 
-#ifdef CLOTH
+#ifdef WATER
 int main(int argc, char **argv)
  {
     /* interesting things about glfw , it needs a brace to make it close normal */
@@ -29,14 +29,6 @@ int main(int argc, char **argv)
         Bind_Camera(&camera);
 
         
-        Cloth cloth(Eigen::Vector3f(0,0,-10),Eigen::Vector3f(0,0,0),Eigen::Vector3f(.5,.5,.5));
-        cloth.Load_Texture("res/textures/cloth.jpg");
-
-
-        // TODO : multi-cloth have some bugs , maybe error by one binding id buffer binded multi-cloth;
-        Cloth cloth1(Eigen::Vector3f(0,0,-5),Eigen::Vector3f(0,0,0),Eigen::Vector3f(.5,.5,.5));
-        cloth1.Load_Texture("res/textures/cloth.jpg");
-
 
         DirectionalLight light(
             Eigen::Vector3f(0.0f, -3.0f, 1.0f), //m_Direction
@@ -44,7 +36,6 @@ int main(int argc, char **argv)
             Eigen::Vector3f(0.8f, 0.8f, 0.8f),  //m_Diffuse
             Eigen::Vector3f(1.0f, 1.0f, 1.0f)   //m_Specular
         );
-
         PointLight pointlight(
             Eigen::Vector3f(0.f, 3.f, 0.f),
             1.0f, 0.09f, 0.032f,
@@ -53,13 +44,15 @@ int main(int argc, char **argv)
             Eigen::Vector3f(1.f, 1.f, 1.f)
         );
         
+        Water water(Eigen::Vector3f(0,0,-5),Eigen::Vector3f(0,0,0),Eigen::Vector3f(.5,.5,.5));
+        water.Load_Texture("res/textures/water.png");
 
 
         Renderer renderer(&camera);
-        //renderer.Insert_Entity(&cloth1);
-        renderer.Insert_Entity(&cloth);
         renderer.Insert_Light(&light);
         renderer.Insert_Light(&pointlight);
+        renderer.Insert_Entity(&water);
+        //renderer.Insert_Entity(&pointlight);
         renderer.SetBackGroundColor(Eigen::Vector4f(1, 1, 1, 1));
 
         Windows_Start(&renderer);

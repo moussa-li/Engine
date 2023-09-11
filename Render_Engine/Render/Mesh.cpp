@@ -1,12 +1,17 @@
 #include "Mesh.h"
 
+DLLAPI Shader * Mesh::RecalculateNormalsShader = nullptr;
+
+DLLAPI ShaderStorageBuffer* Mesh::VerticesBuffer = nullptr;
+DLLAPI ShaderStorageBuffer* Mesh::IndicesBuffer = nullptr;
+DLLAPI ShaderStorageBuffer* Mesh::NormalsBuffer = nullptr;
 
 void Mesh::Insert_Texture(Texture* texture)
 {
     m_Texture.push_back(texture);
 }
 
-void Mesh::Setup()
+DLLAPI void Mesh::Setup()
 {
     VAO = new VertexArray();
 
@@ -50,9 +55,27 @@ void Mesh::Setup()
     EBO = new IndexBuffer(m_indices);
     VAO->Unbind();
 
+    if(!RecalculateNormalsShader)
+        RecalculateNormalsShader = new Shader("res/shaders/RecalculateNormals.shader");
+
+    if(!IndicesBuffer)
+        IndicesBuffer = new ShaderStorageBuffer(m_indices.size() * sizeof(unsigned int), 21);
+    if(!VerticesBuffer)
+        VerticesBuffer = new ShaderStorageBuffer(m_Vertices.size() * 3 * sizeof(float), 22);
+    if(!NormalsBuffer)
+        NormalsBuffer = new ShaderStorageBuffer(m_Vertices.size() * 3 * sizeof(float), 23);
+
+    /*if(!IndicesBuffer)
+        IndicesBuffer = new ShaderStorageBuffer(m_indices.size() * sizeof(unsigned int), 21);
+    if(!VerticesBuffer)
+        VerticesBuffer = new ShaderStorageBuffer(m_Vertices.size() * 3 * sizeof(float), 22);
+    if(!NormalsBuffer)
+        NormalsBuffer = new ShaderStorageBuffer(m_Vertices.size() * 3 * sizeof(float), 23);*/
+    
+
 }
 
-void Mesh::Clear()
+DLLAPI void Mesh::Clear()
 {
     if (VAO)
     {
@@ -153,5 +176,127 @@ void Mesh::Update()
 {
     Clear();
     // TODO : calculate the normals
-    Setup();
+    //Setup();
+
+
+    VAO = new VertexArray();
+
+    /* vertices  layout */
+    VertexBufferLayout layout;
+
+    /* vertices coordinates vbo */
+    VBO = new VertexBuffer(&m_Vertices);
+    layout.Push<float>(3, VBO);
+
+    if (Vertices)
+        delete[] Vertices;
+    Vertices = new float[m_Vertices.size() * 3];
+    //std::vector<Eigen::Vector3f> vertices;
+    memcpy(Vertices, m_Vertices.data(), m_Vertices.size() * 3 * sizeof(float));
+    size_t index = 0;
+    Vertices_Length = m_Vertices.size() * 3;
+    /*std::sort(vertices.begin(), vertices.end(), [](const Eigen::Vector3f& a, const Eigen::Vector3f& b) {
+        return a.norm() < b.norm();
+    });*/
+
+    /* vertices normal vbo */
+    Normal_VBO = new VertexBuffer(&m_Normals);
+    layout.Push<float>(3, Normal_VBO);
+
+    /* vertices texture coordinates vbo */
+    Texture_VBO = new VertexBuffer(&m_TexCoords);
+    layout.Push<float>(2, Texture_VBO);
+
+    VAO->AddBuffer(layout);
+
+    EBO = new IndexBuffer(m_indices);
+    VAO->Unbind();
+
 }
+
+DLLAPI void Mesh::RecalculateNormals()
+{
+    
+    
+    VerticesBuffer->InputData(m_Vertices.data(), m_Vertices.size() * 3 * sizeof(float));
+    NormalsBuffer->InputData(m_Normals.data(), m_Normals.size() * 3 * sizeof(float));
+    IndicesBuffer->InputData(m_indices.data(), m_indices.size() * sizeof(unsigned int));
+    RecalculateNormalsShader->Bind();
+    int group_x = (m_indices.size()/3 + 1024) / 1024;
+    RecalculateNormalsShader->SetUniform1i("max", m_indices.size()/3);
+    GLCall(glDispatchCompute(group_x, 1, 1));
+    GLCall(glMemoryBarrier(GL_SHADER_STORAGE_BUFFER));
+    NormalsBuffer->OutputData(m_Normals.data());
+
+    RecalculateNormalsShader->Unbind();
+
+    /*for (int i = 0; i < m_indices.size(); i+=3)
+    {
+        Eigen::Vector3f p1 = m_Vertices[m_indices[i+0]];
+        Eigen::Vector3f p2 = m_Vertices[m_indices[i+1]];
+        Eigen::Vector3f p3 = m_Vertices[m_indices[i+2]];
+
+        Eigen::Vector3f normal = (p3 - p1).cross(p2 - p1);
+        m_Normals[m_indices[i + 0]] = normal;
+        m_Normals[m_indices[i + 1]] = normal;
+        m_Normals[m_indices[i + 2]] = normal;
+    }*/
+}
+
+Mesh::~Mesh()
+{
+        if (VAO)
+        {
+            delete VAO;
+        }
+        if (Normal_VAO)
+        {
+            delete Normal_VAO;
+        }
+        if (Texture_VAO)
+        {
+            delete Texture_VAO;
+        }
+
+        if (VBO)
+        {
+            delete VBO;
+        }
+        if (Normal_VBO)
+        {
+            delete Normal_VBO;
+        }
+        if (Texture_VBO)
+        {
+            delete Texture_VBO;
+        }
+
+        if (EBO)
+        {
+            delete EBO;
+        }
+        if (Vertices)
+        {
+            delete[] Vertices;
+        }
+        if (RecalculateNormalsShader)
+        {
+            delete RecalculateNormalsShader;
+            RecalculateNormalsShader = nullptr;
+        }
+        if (IndicesBuffer)
+        {
+            delete IndicesBuffer;
+            IndicesBuffer = nullptr;
+        }
+        if (VerticesBuffer)
+        {
+            delete VerticesBuffer;
+            VerticesBuffer = nullptr;
+        }
+        if (NormalsBuffer)
+        {
+            delete NormalsBuffer;
+            NormalsBuffer = nullptr;
+        }
+    }

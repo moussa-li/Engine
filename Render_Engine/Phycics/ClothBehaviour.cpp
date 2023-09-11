@@ -1,6 +1,28 @@
-#include <omp.h>
-
 #include "ClothBehaviour.h"
+
+
+DLLAPI Shader* PhyE::ClothBehaviour::m_PBDStatices;
+
+DLLAPI ShaderStorageBuffer* PhyE::ClothBehaviour::InputEdges;
+
+DLLAPI ShaderStorageBuffer* PhyE::ClothBehaviour::InputVertices ;
+
+DLLAPI ShaderStorageBuffer* PhyE::ClothBehaviour::InputEdgesL;
+
+DLLAPI ShaderStorageBuffer* PhyE::ClothBehaviour::OutputSumX;
+
+DLLAPI ShaderStorageBuffer* PhyE::ClothBehaviour::OutputSumN;
+
+DLLAPI Shader* PhyE::ClothBehaviour::m_PBDCompute;
+
+DLLAPI ShaderStorageBuffer* PhyE::ClothBehaviour::OutputVertices;
+
+DLLAPI ShaderStorageBuffer* PhyE::ClothBehaviour::InputSumX;
+
+DLLAPI ShaderStorageBuffer* PhyE::ClothBehaviour::InputSumN;
+
+DLLAPI ShaderStorageBuffer* PhyE::ClothBehaviour::OutputVerticesV;
+
 
 
 PhyE::ClothBehaviour::ClothBehaviour(void* transform, float gravity /*= -9.8f*/)
@@ -9,16 +31,18 @@ PhyE::ClothBehaviour::ClothBehaviour(void* transform, float gravity /*= -9.8f*/)
 
 }
 
-void PhyE::ClothBehaviour::Start()
+DLLAPI void PhyE::ClothBehaviour::Start()
 {
-    m_PBDStatices = new Shader("res/shaders/PBDStatistics.shader");
-    m_PBDCompute = new Shader("res/shaders/PBDCompute.shader");
+    if(!m_PBDStatices)
+        m_PBDStatices = new Shader("res/shaders/PBDStatistics.shader");
+    if(!m_PBDCompute)
+        m_PBDCompute = new Shader("res/shaders/PBDCompute.shader");
     Mesh* mesh = (Mesh*)m_Meshes[0];
     auto vertices = mesh->m_Vertices;
 
     VerticesV.resize(mesh->m_Vertices.size(),Eigen::Vector3f(0,0,0));
     
-    for (int i = 0; i < (mesh->m_indices).size(); i += 3)
+    for (size_t i = 0; i < (mesh->m_indices).size(); i += 3)
     {
         size_t index1 = mesh->m_indices[i + 0], index2 = mesh->m_indices[i + 1];
         if (index1 > index2)std::swap(index1, index2);
@@ -42,19 +66,29 @@ void PhyE::ClothBehaviour::Start()
     }
 
     /* apply for stroage buffer */
-    InputEdges = new ShaderStorageBuffer(m_Edges.size() * sizeof(size_t),1);
-    InputEdges->InputData(m_Edges.data(), m_Edges.size() * sizeof(size_t));
+    if (!InputEdges)
+    {
+        InputEdges = new ShaderStorageBuffer(m_Edges.size() * sizeof(size_t),1);
+        InputEdges->InputData(m_Edges.data(), m_Edges.size() * sizeof(size_t));
+    }
 
-    InputVertices = new ShaderStorageBuffer(mesh->Vertices_Length * sizeof(float) * 3, 2);
+    if(!InputVertices)
+        InputVertices = new ShaderStorageBuffer(mesh->Vertices_Length * sizeof(float) * 3, 2);
 
-    InputEdgesL = new ShaderStorageBuffer(m_Edges.size() / 2 * sizeof(float), 3);
-    InputEdgesL->InputData(m_EdgesLength.data(), m_EdgesLength.size() * sizeof(float));
+    if (!InputEdgesL)
+    {
+        InputEdgesL = new ShaderStorageBuffer(m_Edges.size() / 2 * sizeof(float), 3);
+        InputEdgesL->InputData(m_EdgesLength.data(), m_EdgesLength.size() * sizeof(float));
+    }
 
-    OutputSumX = new ShaderStorageBuffer(mesh->Vertices_Length * sizeof(int), 4);
+    if(!OutputSumX)
+        OutputSumX = new ShaderStorageBuffer(mesh->Vertices_Length * sizeof(int), 4);
 
-    OutputSumN = new ShaderStorageBuffer(mesh->m_Vertices.size() * sizeof(unsigned int), 5);
+    if(!OutputSumN)
+        OutputSumN = new ShaderStorageBuffer(mesh->m_Vertices.size() * sizeof(unsigned int), 5);
 
-    OutputVerticesV = new ShaderStorageBuffer(mesh->Vertices_Length * sizeof(float) * 3, 6);
+    if(!OutputVerticesV)
+        OutputVerticesV = new ShaderStorageBuffer(mesh->Vertices_Length * sizeof(float) * 3, 6);
     
 }
 
@@ -86,6 +120,7 @@ void PhyE::ClothBehaviour::Update(float deltaTime)
     // TODO : collision with ball
     Collision_Handling();
 
+
     // TODO : re-calculate the normal
     
     mesh->Update();
@@ -104,6 +139,7 @@ void PhyE::ClothBehaviour::Strain_Limiting()
     m_PBDStatices->Bind();
 
     m_PBDStatices->SetUniform1i("max", m_Edges.size()/2);
+    //m_PBDStatices->SetUniform1i("offset", 0);
 
     int group_x = (m_Edges.size()/2  + 1024) / 1024;
     GLCall(glDispatchCompute(group_x, 1, 1));
@@ -124,6 +160,7 @@ void PhyE::ClothBehaviour::Strain_Limiting()
     
     m_PBDCompute->Unbind();
     
+    mesh->RecalculateNormals();
     //mesh->m_Vertices = vertices;
 
 }
@@ -132,3 +169,33 @@ void PhyE::ClothBehaviour::Collision_Handling()
 {
 
 }
+
+
+PhyE::ClothBehaviour::~ClothBehaviour()
+{
+            if (m_PBDStatices)
+                delete m_PBDStatices;
+            if (m_PBDCompute)
+                delete m_PBDCompute;
+            if(InputEdges)
+                delete InputEdges;
+            if(InputVertices)
+                delete InputVertices;
+            if(InputEdgesL)
+                delete InputEdgesL;
+            if(OutputSumX)
+                delete OutputSumX;
+            if(OutputSumN)
+                delete OutputSumN;
+
+
+            if(OutputVertices)
+                delete OutputVertices;
+            if(InputSumX)
+                delete InputSumX;
+            if(InputSumN)
+                delete InputSumN;
+            if(OutputVerticesV)
+                delete OutputVerticesV;
+        }
+

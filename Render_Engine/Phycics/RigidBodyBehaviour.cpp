@@ -90,7 +90,7 @@ void PhyE::RigidBodyBehaviour::Update(float deltaTime)
     }
     if (glfwGetKey(m_Window, GLFW_KEY_L) == GLFW_PRESS)
     {
-        V = Eigen::Vector3f(0, 0, 0);
+        V = Eigen::Vector3f(5, 1, 0);
         launched = true;
     }
     if (launched)

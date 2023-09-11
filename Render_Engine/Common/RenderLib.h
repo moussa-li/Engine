@@ -16,6 +16,7 @@
 #include "RigidBody.h"
 #include "DirectionalLight.h"
 #include "Cloth.h"
+#include "water.h"
 
 #include "Shader.h"
 #include "Texture.h"

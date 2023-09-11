@@ -26,6 +26,7 @@
     <ClCompile Include="Phycics\Collision.cpp" />
     <ClCompile Include="Phycics\RigidBodyBehaviour.cpp" />
     <ClCompile Include="Phycics\Scene.cpp" />
+    <ClCompile Include="Phycics\WaterBehaviour.cpp" />
     <ClCompile Include="Render\Camera.cpp" />
     <ClCompile Include="Render\Cloth.cpp" />
     <ClCompile Include="Render\Cube.cpp" />
@@ -48,12 +49,15 @@
     <ClCompile Include="Render\Vendor\stb_image\stb_image.cpp" />
     <ClCompile Include="Render\VertexArray.cpp" />
     <ClCompile Include="Render\VertexBuffer.cpp" />
+    <ClCompile Include="Render\Water.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\Basic.shader" />
     <None Include="res\shaders\Compute_Collision.shader" />
+    <None Include="res\shaders\Light.shader" />
     <None Include="res\shaders\PBDCompute.shader" />
     <None Include="res\shaders\PBDStatistics.shader" />
+    <None Include="res\shaders\RecalculateNormals.shader" />
     <None Include="res\shaders\SkyBox.shader" />
     <None Include="Render\Vendor\glm\detail\func_common.inl" />
     <None Include="Render\Vendor\glm\detail\func_common_simd.inl" />
@@ -191,6 +195,7 @@
     <None Include="Render\Vendor\glm\gtx\vector_angle.inl" />
     <None Include="Render\Vendor\glm\gtx\vector_query.inl" />
     <None Include="Render\Vendor\glm\gtx\wrap.inl" />
+    <None Include="res\shaders\WaterWave.shader" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common\ShaderStorageBuffer.h" />
@@ -200,6 +205,7 @@
     <ClInclude Include="Phycics\Collision.h" />
     <ClInclude Include="Phycics\RigidBodyBehaviour.h" />
     <ClInclude Include="Phycics\Scene.h" />
+    <ClInclude Include="Phycics\WaterBehaviour.h" />
     <ClInclude Include="Render\Camera.h" />
     <ClInclude Include="Render\Cloth.h" />
     <ClInclude Include="Render\Cube.h" />
@@ -508,6 +514,7 @@
     <ClInclude Include="Render\VertexBuffer.h" />
     <ClInclude Include="Render\VertexArray.h" />
     <ClInclude Include="Render\VertexBufferLayout.h" />
+    <ClInclude Include="Render\Water.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="C:\Users\moussa\Pictures\Camera Roll\WIN_20220401_19_54_01_Pro.jpg" />

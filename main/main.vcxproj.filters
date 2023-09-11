@@ -27,6 +27,9 @@
     <ClCompile Include="Finite_Jump.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="Water_wave.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\SkyBox.shader" />

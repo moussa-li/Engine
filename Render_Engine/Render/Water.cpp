@@ -1,6 +1,7 @@
-#include "Cloth.h"
+#include "Water.h"
+#include "WaterBehaviour.h"
 
-Cloth::Cloth(Eigen::Vector3f position, Eigen::Vector3f rotation, Eigen::Vector3f scale)
+Water::Water(Eigen::Vector3f position, Eigen::Vector3f rotation, Eigen::Vector3f scale)
     : Entity(position,rotation,scale)
 {
     std::vector<Eigen::Vector3f> vertices;
@@ -11,28 +12,45 @@ Cloth::Cloth(Eigen::Vector3f position, Eigen::Vector3f rotation, Eigen::Vector3f
     Mesh* mesh = new Mesh(vertices, normals, texcoords, indices, {});
     m_Meshes.push_back(mesh);
 
-
-    m_Behaviour = new PhyE::ClothBehaviour(&m_Transform);
+    m_Behaviour = new PhyE::WaterBehaviour(&m_Transform, m_Size);
     m_Behaviour->Load_Mesh(m_Meshes);
     if (m_Window)
         m_Behaviour->Set_Window(m_Window);
 }
 
-void Cloth::Load_Texture(std::string filePath)
+Water::Water(Eigen::Vector3f position, Eigen::Vector3f rotation, Eigen::Vector3f scale, int size)
+    : Entity(position,rotation,scale), m_Size(size)
+{
+    std::vector<Eigen::Vector3f> vertices;
+    std::vector<Eigen::Vector3f> normals;
+    std::vector<Eigen::Vector2f> texcoords;
+    std::vector<size_t> indices;
+    Calc_Vertex(vertices, normals, texcoords, indices);
+    Mesh* mesh = new Mesh(vertices, normals, texcoords, indices, {});
+    m_Meshes.push_back(mesh);
+
+    m_Behaviour = new PhyE::WaterBehaviour(&m_Transform, m_Size);
+    m_Behaviour->Load_Mesh(m_Meshes);
+    if (m_Window)
+        m_Behaviour->Set_Window(m_Window);
+}
+
+void Water::Load_Texture(std::string filePath)
 {
     Texture* texture = new Texture(filePath, "texture_diffuse");
     //m_Meshed[0]->Clear_Texture();
     m_Meshes[0]->Insert_Texture(texture);
+
 }
 
-void Cloth::Update(float deltaTime)
+void Water::Update(float deltaTime)
 {
     m_Behaviour->Update(0.015f);
 }
 
-void Cloth::Calc_Vertex(std::vector<Eigen::Vector3f>& vertices, std::vector<Eigen::Vector3f>& normals, std::vector<Eigen::Vector2f>& texcoords, std::vector<size_t>& indices)
+void Water::Calc_Vertex(std::vector<Eigen::Vector3f>& vertices, std::vector<Eigen::Vector3f>& normals, std::vector<Eigen::Vector2f>& texcoords, std::vector<size_t>& indices)
 {
-    int n = 21;
+    int n = m_Size;
     vertices.resize(n * n);
     texcoords.resize(n * n);
     normals.resize(n * n);
@@ -61,5 +79,4 @@ void Cloth::Calc_Vertex(std::vector<Eigen::Vector3f>& vertices, std::vector<Eige
             indices[t * 6 + 5] = (i+1) * n + j;
         }
     }
-
 }
