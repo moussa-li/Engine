@@ -4,7 +4,6 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/3rd/gtest ${CMAKE_BINARY_DIR}/3rd/gtest_bui
 set_common_variable()
 
 add_executable(engine_tests
-    ${MY_LIST}
     test_main.cpp
     test_normal.cpp
     test_common.cpp

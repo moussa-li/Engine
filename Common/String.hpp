@@ -9,8 +9,8 @@
 
 
 #include "Common/CommonAPI.hpp"
+#include <cstddef>
 
-#include <iostream>
 
 namespace EgLab 
 {
@@ -30,13 +30,15 @@ namespace EgLab
 
         String(String&&);
 
+        String(const unsigned char str[], const unsigned long size);
+
         size_t size() const;
 
         const char* c_str() const;
 
         void append(const char* str);
 
-        String operator = (const String& other);
+        String& operator = (const String& other);
 
         String operator +(const String& other)const;
 

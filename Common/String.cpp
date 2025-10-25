@@ -51,9 +51,40 @@ namespace EgLab
         }
     }
 
-    String String::operator = (const String& other)
+    String::String(const unsigned char str[], const unsigned long size)
     {
-        return String(other);
+        size_t len = size / sizeof(str[0]) + 1;
+        if(is_sso && len < sizeof(sso_buffer)) {
+            memcpy(sso_buffer, str, len);
+            sso_buffer[len] = '\0';
+        }
+        else {
+            heap._data = new char[len+1];
+            memcpy(heap._data, str, len);
+            heap._data[len] = '\0';
+            heap.length = len;
+            heap.capacity = len * expansionCoefficient;
+            is_sso = false;
+
+        }
+
+    }
+
+    String& String::operator = (const String& other)
+    {
+        is_sso = other.is_sso;
+        if(other.is_sso)
+        {
+            strcpy(sso_buffer, other.sso_buffer);
+        }
+        else
+        {
+            heap.capacity = other.heap.capacity;
+            heap.length = other.heap.length;
+            heap._data = new char[other.heap.capacity];
+            memcpy(heap._data, other.heap._data, other.heap.length);
+        }
+        return *this;
     }
 
     size_t String::size() const

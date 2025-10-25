@@ -52,6 +52,8 @@ add_custom_target(
 include_directories(${GEN_EMBED_OUTPUT_HDR_DIR})
 set(MY_LIST ${GEN_EMBED_FILES} CACHE STRING "test")
 
+add_library(Assets STATIC ${GEN_EMBED_FILES})
+
 endfunction()
 
 macro(set_common_variable)

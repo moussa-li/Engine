@@ -1,3 +1,11 @@
+/**
+ * @file Singleton.hpp
+ * @author Moussa-Li
+ * @brief the singleton base, which derive this class could 
+ *        implacement the simple singleton, not thread safely.
+ * @date 2025-10-26
+ */
+
 #pragma once
 
 namespace EgLab

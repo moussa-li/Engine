@@ -9,6 +9,10 @@ else()
     set(LIB_TYPE STATIC)
 endif()
 
+if(WIN32)
+add_definitions(-DWNT)
+endif()
+
 file(GLOB_RECURSE  SRC_FILES CONFIGURE_DEPENDS
     "${PROJECT_SOURCE_DIR}/*.cpp"
     "${PROJECT_SOURCE_DIR}/*.h"
@@ -27,7 +31,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}
 )
 
-target_link_libraries(${PROJECT_NAME} PUBLIC pthread)
+target_link_libraries(${PROJECT_NAME} PUBLIC pthread Assets)
 
 if(WIN32 AND BUILD_COMMON_SHARED)
     target_compile_definitions(${PROJECT_NAME} PRIVATE EgLabCommon)

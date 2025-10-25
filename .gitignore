@@ -457,3 +457,14 @@ build/win-clangd-debug/test/cmake_install.cmake
 build/win-clangd-debug/test/CTestTestfile.cmake
 .vscode/launch.json
 .vscode/settings.json
+build/win-clangd-debug/libAssets.a
+build/win-clangd-debug/.cmake/api/v1/reply/cache-v2-c98eee8bb557183c930d.json
+build/win-clangd-debug/.cmake/api/v1/reply/cmakeFiles-v1-1c87678da215f8f609d2.json
+build/win-clangd-debug/.cmake/api/v1/reply/codemodel-v2-335b169e396905ca6f91.json
+build/win-clangd-debug/.cmake/api/v1/reply/directory-3rd.gtest_build.googlemock-Debug-e0cc2ee41b310d39b6a8.json
+build/win-clangd-debug/.cmake/api/v1/reply/directory-3rd.gtest_build.googletest-Debug-f4d87b194f6b799c55b7.json
+build/win-clangd-debug/.cmake/api/v1/reply/index-2025-10-25T18-30-12-0036.json
+build/win-clangd-debug/.cmake/api/v1/reply/target-Assets-Debug-04ad93a81ca5ebfd1754.json
+build/win-clangd-debug/.cmake/api/v1/reply/target-Common-Debug-3f1e895d9701149b85f6.json
+build/win-clangd-debug/.cmake/api/v1/reply/target-engine_tests-Debug-a248cf3990b358c46148.json
+build/win-clangd-debug/Testing/Temporary/CTestCostData.txt

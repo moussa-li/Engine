@@ -6,6 +6,9 @@
  * @date 2025-10-02
  */
 
+#include <cstddef>
+ #include <string.h>
+ #include <assert.h>
 
 namespace EgLab
 {

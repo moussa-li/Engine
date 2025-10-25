@@ -4,6 +4,7 @@
 #include "Common/Log.hpp"
 #include "Common/String.hpp"
 #include "Common/MemAllocator.hpp"
+#include "Common/Assets.hpp"
 
 
 TEST_F(TestCommon,testSingle)
@@ -103,6 +104,13 @@ TEST_F(TestCommon, anyTest)
     cout << "void* cost: " << duration_void << " ms, sum = " << sum_void << endl;
 
 
+}
+
+TEST_F(TestCommon, Global)
+{
+    EgLab::String buffer;
+    EgLab::getAssets<EgLab::AssetId::Basic>(buffer);
+    LOG(INFO) << buffer.c_str();
 }
 
 TEST_F(TestCommon, MemAllocateTest)

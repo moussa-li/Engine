@@ -2,9 +2,9 @@
 
 #ifdef WNT
 #include <windows.h>
+#include <string>
 #endif
 
-#include <string>
 
 namespace EgLab
 {

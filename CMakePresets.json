@@ -14,5 +14,29 @@
                 "CMAKE_BUILD_TYPE": "Debug"
             }
         }
+    ],
+    "buildPresets": [
+        {
+            "name": "win-clangd-debug",
+            "description": "",
+            "displayName": "",
+            "configurePreset": "win-clangd-debug"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "win-clangd-debug-test",
+            "description": "",
+            "displayName": "",
+            "configurePreset": "win-clangd-debug"
+        }
+    ],
+    "packagePresets": [
+        {
+            "name": "win-clangd-debug-install",
+            "description": "",
+            "displayName": "",
+            "configurePreset": "win-clangd-debug"
+        }
     ]
 }
