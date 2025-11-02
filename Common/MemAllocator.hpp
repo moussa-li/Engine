@@ -7,13 +7,16 @@
  */
 
 #include <cstddef>
- #include <string.h>
- #include <assert.h>
+#include <assert.h>
+
+#include "Log.hpp"
 
 namespace EgLab
 {
     class PushStrategy;
     class PopStrategy;
+    class BlockPushStrategy;
+    class BlockPopStrategy;
     class ConstExtStrategy;
     class CurrentRecycleStrategy;
 
@@ -24,6 +27,7 @@ namespace EgLab
         virtual void *alloc() {
             return pushStrategy.push_back(sizeof(T));
         }
+
 
         virtual void free(void* data) {
             popStrategy.pop(data, sizeof(T));
@@ -97,7 +101,6 @@ namespace EgLab
     public:
         virtual void *push_back(size_t length) = 0;
 
-        virtual void getPos(const void* ptr, Block* b, size_t &pos) = 0;
         
 
         void setPopStrategy(PopStrategy* popStrategy)
@@ -108,19 +111,37 @@ namespace EgLab
     protected:
 
         friend class PopStrategy;
-        friend class CurrentRecycleStrategy;
 
-        Block *headBlock{nullptr};
-
-        Block *currentBlock{nullptr};
+        
 
         PopStrategy *_popStrategy;
 
     };
 
+    class BlockPushStrategy : public PushStrategy
+    {
+    public:
+        virtual void getPos(const void* ptr, Block** b, size_t &pos) = 0;
+
+        void setPopStrategy(BlockPopStrategy* popStrategy) 
+        {
+            _popStrategy = (PopStrategy*)popStrategy;
+
+        }
+
+    protected:
+        friend class BlockPopStrategy;
+
+        Block *headBlock{nullptr};
+
+        Block *currentBlock{nullptr};
+    private:
+        using PushStrategy::setPopStrategy;
+    };
+
     
 
-    class ConstExtStrategy : public PushStrategy
+    class ConstExtStrategy : public BlockPushStrategy
     {
     public:
         virtual void *push_back(size_t length)override {
@@ -130,6 +151,7 @@ namespace EgLab
             }
             if(currentBlock == nullptr)
             {
+                LOG(INFO) << "new BLock";
                 currentBlock = new Block(blockSize);
                 headBlock = currentBlock;
                 currentBlock->tail += length;
@@ -138,12 +160,14 @@ namespace EgLab
             }
             if(currentBlock->tail + length > blockSize)
             {
+                LOG(INFO) << "append BLock";
                 Block *prevBlock = currentBlock;
                 currentBlock = new Block(blockSize);
                 currentBlock->prevBlock = prevBlock;
                 prevBlock->nextBlock = currentBlock;
                 currentBlock->tail += length;
                 memset(currentBlock->isValid, true, length * sizeof(bool));
+                //LOG(INFO) <<(void*)(&currentBlock->data[0]);
                 return (void*)(&currentBlock->data[0]);
             }
             size_t tail = currentBlock->tail;
@@ -152,26 +176,25 @@ namespace EgLab
             return (void*)(&currentBlock->data[tail]);
         }
 
-        virtual void getPos(const void* ptr, Block* b, size_t &pos) override {
+        virtual void getPos(const void* ptr, Block** b, size_t &pos) override {
             if(headBlock == nullptr)
                 return;
-            size_t blockDis = reinterpret_cast<uintptr_t>(ptr) - reinterpret_cast<uintptr_t>(headBlock->data);
-            size_t blockNum = blockDis / blockSize;
-            pos = blockDis % blockSize;
-            b = headBlock;
-            for(int i = 0 ; i < blockNum; i++)
-            {
-                b = b->nextBlock;
+            *b = headBlock;
+            while(1){
+                size_t blockDis = reinterpret_cast<uintptr_t>(ptr) - reinterpret_cast<uintptr_t>((*b)->data);
+                if(blockDis < blockSize) {
+                    pos = blockDis % blockSize;
+                    return;
+                }
+
+                *b = (*b)->nextBlock;
             }
 
         } 
 
     private:
-        static constexpr size_t blockSize = 1000000;
-
+        static constexpr size_t blockSize = 100000;
         
-
-
     };
 
     class PopStrategy
@@ -192,44 +215,94 @@ namespace EgLab
 
     };
 
-    class CurrentRecycleStrategy : public PopStrategy
+    class BlockPopStrategy : public PopStrategy
+    {
+    public:
+        void setPushStrategy(BlockPushStrategy* pushStrategy)
+        {
+            _pushStrategy = pushStrategy;
+        }
+
+    protected:
+        inline Block* getHeadBlock()const {
+            return getBlockPushStrategy()->headBlock;
+        };
+
+        inline Block* getCurrentBlock() const {
+            return getBlockPushStrategy()->currentBlock;
+        }
+
+
+        BlockPushStrategy* getBlockPushStrategy() const
+        {
+            if(_pushStrategy == nullptr)
+                return nullptr;
+            return static_cast<BlockPushStrategy*>(_pushStrategy);
+        }
+
+    private:
+        using PopStrategy::setPushStrategy;
+
+    };
+
+    class CurrentRecycleStrategy : public BlockPopStrategy
     {
     public:
         virtual void pop(void* ptr, size_t length) {
             assert(_pushStrategy != nullptr);
             size_t pos;
             Block* b;
-            _pushStrategy->getPos(ptr, b, pos);
+            BlockPushStrategy* pushStrategy = getBlockPushStrategy();
+            pushStrategy->getPos(ptr, &b, pos);
 
-            memset(b->isValid + pos*sizeof(bool), false, length * sizeof(bool));
-            size_t idx = b->tail - 1;
+            memset(b->isValid + (pos)*sizeof(bool), false, length * sizeof(bool));
+            int idx = b->tail - 1;
             for(; idx >= 0; idx--)
             {
                 if(b->isValid[idx])
+                {
+                    b->tail = idx+1;
                     break;
+                }
             }
-            if(idx == 0)
+            if(idx == -1)
             { //recycle
                 Block* next = b->nextBlock;
                 Block* prev = b->prevBlock;
+
+                Block* headBlock = getHeadBlock();
+                Block* currentBlock = getCurrentBlock();
                 if(prev == nullptr)
                 {
-                    _pushStrategy->headBlock = nullptr;
-                    _pushStrategy->currentBlock = nullptr;
+                    if(next == nullptr)
+                    {
+                        headBlock = nullptr;
+                        currentBlock = nullptr;
+                        LOG(INFO) << "Delete All Block";
+                        delete b;
+                        return;
+                    }
+
+                    headBlock = next;
+                    headBlock->prevBlock = nullptr;
+                    LOG(INFO) << "Delete First Block";
                     delete b;
                     return;
+                    //currentBlock
                 }
 
                 if(next == nullptr)
                 {
-                    _pushStrategy->currentBlock = b->prevBlock;
+                    currentBlock = b->prevBlock;
                     b->prevBlock->nextBlock = nullptr;
+                    LOG(INFO) << "Delete Last Block";
                     delete b;
                     return;
                 }
 
                 b->prevBlock->nextBlock = b->nextBlock;
                 b->nextBlock->prevBlock = b->prevBlock;
+                LOG(INFO) << "Delete Block";
                 delete b;
                 return;
             }

@@ -468,3 +468,6 @@ build/win-clangd-debug/.cmake/api/v1/reply/target-Assets-Debug-04ad93a81ca5ebfd1
 build/win-clangd-debug/.cmake/api/v1/reply/target-Common-Debug-3f1e895d9701149b85f6.json
 build/win-clangd-debug/.cmake/api/v1/reply/target-engine_tests-Debug-a248cf3990b358c46148.json
 build/win-clangd-debug/Testing/Temporary/CTestCostData.txt
+build/win-clangd-debug/.cmake/api/v1/reply/cache-v2-aed9fe0e0da833cfaca9.json
+build/win-clangd-debug/.cmake/api/v1/reply/index-2025-10-26T03-31-29-0016.json
+build/win-clangd-debug/Testing/20251026-0331/Test.xml

@@ -115,25 +115,23 @@ TEST_F(TestCommon, Global)
 
 TEST_F(TestCommon, MemAllocateTest)
 {
-    return; // the case cannot pass beacuse of the complier changed 
+    //return; // the case cannot pass beacuse of the complier changed 
     EgLab::StaticSizeAllocator<int> allocator;
     int* b = static_cast<int*>(allocator.alloc());
-    LOG(INFO) << b;
-    std::vector<int*> p(10000);
-    for(int i = 0 ; i < 10000; i++)
+    size_t testNum = 100000;
+    std::vector<int*> p(testNum);
+    for(int i = 0 ; i < testNum; i++)
     {
         int* a = static_cast<int*>(allocator.alloc());
-        LOG(INFO) << a;
         p[i] = a;
     }
 
-     for(int i = 0 ; i < 10000; i++)
+    for(int i = 0 ; i < testNum; i++)
     {
         allocator.free(p[i]);
     } 
+    allocator.free(b);
 
-    int bbb;
-    std::cin >> bbb;
 }
 
 #if 0
