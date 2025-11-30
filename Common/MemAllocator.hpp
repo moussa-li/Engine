@@ -28,6 +28,10 @@ namespace EgLab
             return pushStrategy.push_back(sizeof(T));
         }
 
+        virtual void *alloc(size_t len) {
+            return pushStrategy.push_back(sizeof(T) * len);
+        }
+
 
         virtual void free(void* data) {
             popStrategy.pop(data, sizeof(T));
@@ -37,6 +41,11 @@ namespace EgLab
         {
             pushStrategy.setPopStrategy(&popStrategy);
             popStrategy.setPushStrategy(&pushStrategy);
+        }
+
+        ~MemAllocatorBase()
+        {
+            
         }
 
     private:
@@ -96,6 +105,47 @@ namespace EgLab
         }
     };
 
+    class BlockPrinter
+    {
+    public:
+        BlockPrinter(Block* b) {
+            _b = b;
+        };
+
+        void print() {
+            int count = 0;
+            Block* temp = _b;
+            while(temp)
+            {
+                count++;
+                temp = temp->nextBlock;
+            }
+            int size = count;
+            LOG(INFO) << "Block Number : " << size;
+
+            temp = _b;
+            count = 0;
+
+            LOG(INFO) << "------------------------";
+            while(temp)
+            {
+                LOG(INFO) << "Block tail : " << temp->tail;
+                LOG(INFO) << "Block size : " << temp->blockSize;
+                LOG(INFO) << "Block prevBlock : " << temp->prevBlock;
+                LOG(INFO) << "Block nextBlock : " << temp->nextBlock;
+                count++;
+                if(count == size)
+                    LOG(INFO) << "------------------------";
+                else
+                    LOG(INFO) << "-----------¡ý------------";
+                temp = temp->nextBlock;
+            }
+
+        }
+    private:
+        Block* _b;
+    };
+
     class PushStrategy
     {
     public:
@@ -122,6 +172,18 @@ namespace EgLab
     {
     public:
         virtual void getPos(const void* ptr, Block** b, size_t &pos) = 0;
+
+        virtual ~BlockPushStrategy() {
+            Block* b = headBlock;
+            headBlock = nullptr;
+            currentBlock = nullptr;
+            while(b) {
+                Block* delBlock = b;
+                b = b->nextBlock;
+                delete delBlock;
+            }
+
+        }
 
         void setPopStrategy(BlockPopStrategy* popStrategy) 
         {
@@ -194,6 +256,8 @@ namespace EgLab
 
     private:
         static constexpr size_t blockSize = 100000;
+
+        friend class CurrentRecycleStrategy;
         
     };
 
@@ -201,6 +265,10 @@ namespace EgLab
     {
     public:
         virtual void pop(void* ptr, size_t length) = 0;
+
+        virtual ~PopStrategy() {
+
+        }
 
 
         void setPushStrategy(PushStrategy* pushStrategy)
@@ -223,13 +291,26 @@ namespace EgLab
             _pushStrategy = pushStrategy;
         }
 
+        virtual ~BlockPopStrategy() {
+
+        }
+
     protected:
         inline Block* getHeadBlock()const {
             return getBlockPushStrategy()->headBlock;
         };
 
+        inline void getHeadBlock(Block** &b) const {
+            b =  &(getBlockPushStrategy()->headBlock);
+        }
+
         inline Block* getCurrentBlock() const {
             return getBlockPushStrategy()->currentBlock;
+        }
+
+        inline void getCurrentBlock(Block** &b) const {
+            
+            b =  &(getBlockPushStrategy()->currentBlock);
         }
 
 
@@ -252,8 +333,11 @@ namespace EgLab
             assert(_pushStrategy != nullptr);
             size_t pos;
             Block* b;
-            BlockPushStrategy* pushStrategy = getBlockPushStrategy();
+            ConstExtStrategy* pushStrategy = static_cast<ConstExtStrategy*>(getBlockPushStrategy());
             pushStrategy->getPos(ptr, &b, pos);
+            
+            Block** headBlock;
+            getHeadBlock(headBlock);
 
             memset(b->isValid + (pos)*sizeof(bool), false, length * sizeof(bool));
             int idx = b->tail - 1;
@@ -270,21 +354,25 @@ namespace EgLab
                 Block* next = b->nextBlock;
                 Block* prev = b->prevBlock;
 
-                Block* headBlock = getHeadBlock();
-                Block* currentBlock = getCurrentBlock();
+                Block** headBlock;
+                getHeadBlock(headBlock);
+                BlockPrinter printer2(*headBlock);
+                printer2.print();
+                Block** currentBlock;
+                getCurrentBlock(currentBlock);
                 if(prev == nullptr)
                 {
                     if(next == nullptr)
                     {
-                        headBlock = nullptr;
-                        currentBlock = nullptr;
+                        *headBlock = nullptr;
+                        *currentBlock = nullptr;
                         LOG(INFO) << "Delete All Block";
                         delete b;
                         return;
                     }
 
-                    headBlock = next;
-                    headBlock->prevBlock = nullptr;
+                    *headBlock = next;
+                    (*headBlock)->prevBlock = nullptr;
                     LOG(INFO) << "Delete First Block";
                     delete b;
                     return;
@@ -293,7 +381,7 @@ namespace EgLab
 
                 if(next == nullptr)
                 {
-                    currentBlock = b->prevBlock;
+                    *currentBlock = b->prevBlock;
                     b->prevBlock->nextBlock = nullptr;
                     LOG(INFO) << "Delete Last Block";
                     delete b;
