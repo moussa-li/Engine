@@ -4,6 +4,7 @@
 #include "Common/Log.hpp"
 #include "Common/String.hpp"
 #include "Common/MemAllocator.hpp"
+#include "Common/DynamicArray.hpp"
 #include "Common/Assets.hpp"
 
 
@@ -132,6 +133,36 @@ TEST_F(TestCommon, MemAllocateTest)
     } 
     allocator.free(b);
 
+}
+
+TEST_F(TestCommon, DynamicArrayTest)
+{
+    EgLab::DynamicArray<int> arr;
+    EXPECT_EQ(arr.size(), 0);
+    EXPECT_EQ(arr.capacity(), 0);
+    EXPECT_TRUE(arr.empty());
+
+    int a = 1;
+    arr.pushBack(a);
+    EXPECT_EQ(arr.size(), 1);
+    EXPECT_EQ(arr.capacity(), 2); // 默认初始容量为0，增加到2
+
+    int b = 2;
+    arr.pushBack(b);
+    EXPECT_EQ(arr.size(), 2);
+    EXPECT_EQ(arr.capacity(), 2); // 容量不变
+
+    int c = 3;
+    arr.pushBack(c);
+    EXPECT_EQ(arr.size(), 3);
+    EXPECT_GT(arr.capacity(), 2); // 容量应该增加
+
+    EXPECT_EQ(arr[2],3);
+
+    for(int i = 0; i < arr.size(); i++)
+    {
+        LOG(INFO) << arr[i];
+    }
 }
 
 #if 0

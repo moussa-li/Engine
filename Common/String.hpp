@@ -44,6 +44,7 @@ namespace EgLab
 
         String &operator +=(const String& other);
 
+        bool operator==(const String& other) const;
 
 
     private:
@@ -60,6 +61,22 @@ namespace EgLab
     };
 
     String operator+(const char* left, String right);
-    
 
+}
+
+#include <functional>
+
+namespace std {
+    template<>
+    struct hash<EgLab::String> {
+        size_t operator()(const EgLab::String& s) const {
+            const char* str = s.c_str();
+            size_t hash = 14695981039346656037ull; // offset basis
+            for(size_t i = 0; i < s.size(); i++) {
+                hash ^= static_cast<size_t>(str[i]);
+                hash *= 1099511628211ull; // FNV prime
+            }
+            return hash;
+        }
+    };
 }
