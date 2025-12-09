@@ -38,6 +38,49 @@ namespace EgLab
             return _capacity;
         }
 
+        void resize(size_t size){
+            if(size > _capacity) {
+                size_t newCapacity = _capacity ? _capacity : 1;
+                while(newCapacity < size) {
+                    newCapacity *= _incraseFactor;
+                }
+                ValuePtr newDatas = static_cast<ValuePtr>(allocator.alloc(newCapacity));
+                for(size_t i = 0 ; i < _size; i++) {
+                    new (newDatas + i) T(std::move(*(_start + i)));
+                    (_start + i)->~T();
+                }
+                if(_datas != nullptr)
+                    allocator.free(_datas);
+                _datas = newDatas;
+                _capacity = newCapacity;
+                _start = _datas;
+                _tail = _start + _capacity;
+                _end = _start + _size;
+            }
+            _size = size;
+            _end = _start + _size;
+        }
+
+        void reserve(size_t size) {
+            if(size > _capacity) {
+                size_t newCapacity = _capacity;
+                while(newCapacity < size) {
+                    newCapacity *= _incraseFactor;
+                }
+                ValuePtr newDatas = static_cast<ValuePtr>(allocator.alloc(newCapacity));
+                for(size_t i = 0 ; i < _size; i++) {
+                    new (newDatas + i) T(std::move(*(_start + i)));
+                    (_start + i)->~T();
+                }
+                allocator.free(_datas);
+                _datas = newDatas;
+                _capacity = newCapacity;
+                _start = _datas;
+                _tail = _start + _capacity;
+                _end = _start + _size;
+            }
+        }
+
         void pushBack(T &data) {
             if(_datas == nullptr) {
                 _capacity = 2;

@@ -163,6 +163,28 @@ TEST_F(TestCommon, DynamicArrayTest)
     {
         LOG(INFO) << arr[i];
     }
+
+    class AAA{
+    public:
+        int x;
+        int y;
+        int z;
+    };
+
+    EgLab::DynamicArray<AAA> arr2;
+    arr2.resize(1000);
+
+    for(int i = 0 ; i < arr2.size(); i++)
+    {
+        arr2[i].x = i;
+        arr2[i].y = i*2;
+        arr2[i].z = i*3;
+    }
+
+    for(int i = 0 ; i < arr2.size(); i++)
+    {
+        LOG(INFO) << "index :" << i << " x : " << arr2[i].x << " y : " << arr2[i].y << " z : " << arr2[i].z;
+    }
 }
 
 #if 0
