@@ -18,7 +18,6 @@ namespace EgLab
         : _data(new Impl)
     {
         _data->BasicBuffer = String(BASIC_SHADER__DATA,BASIC_SHADER__SIZE);
-
     }
 
     Assets::~Assets()

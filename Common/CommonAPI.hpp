@@ -8,6 +8,6 @@
         #define CommonAPI __declspec(dllimport)
     #endif
 #else //Linux
-        #define CommonAPI __attribute__((visibility("default")))
+    #define CommonAPI __attribute__((visibility("default")))
 #endif
 

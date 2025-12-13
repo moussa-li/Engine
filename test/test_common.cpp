@@ -1,20 +1,27 @@
 #include "test_common.h"
 
-#include "Common/Singleton.hpp"
-#include "Common/Log.hpp"
-#include "Common/String.hpp"
-#include "Common/MemAllocator.hpp"
-#include "Common/DynamicArray.hpp"
 #include "Common/Assets.hpp"
+#include "Common/DynamicArray.hpp"
+#include "Common/Log.hpp"
+#include "Common/Matrix.hpp"
+#include "Common/MemAllocator.hpp"
+#include "Common/Singleton.hpp"
+#include "Common/String.hpp"
 
-
-TEST_F(TestCommon,testSingle)
+TEST_F(TestCommon, testSingle)
 {
     class ClassA : public EgLab::Singleton<ClassA>
     {
     public:
-        void setA(int _a) {a = _a;}
-        int getA() {return a;}
+        void setA(int _a)
+        {
+            a = _a;
+        }
+        int getA()
+        {
+            return a;
+        }
+
     private:
         int a;
     };
@@ -44,58 +51,63 @@ TEST_F(TestCommon, String)
     str.append("abcdefghijklmn");
     EXPECT_EQ(str.c_str()[0], "test"[0]);
     std::string cppstr = "testabcdefghijklmn";
-    for(int i = 0 ; i < cppstr.size(); i++)
+    for (int i = 0; i < cppstr.size(); i++)
     {
         EXPECT_EQ(cppstr.c_str()[i], str.c_str()[i]);
     }
 
     EgLab::String a("a");
     EgLab::String b("b");
-    auto c = a+b;
+    auto c = a + b;
     EXPECT_EQ(c.c_str()[0], 'a');
     EXPECT_EQ(c.c_str()[1], 'b');
 }
 
-#include <vector>
 #include <any>
 #include <chrono>
+#include <vector>
 
 TEST_F(TestCommon, anyTest)
 {
     return; // just for test
     using namespace std;
     using namespace std::chrono;
-    const int N = 10000000; // 测试次数
+    const int N = 10000000; // 娴嬭瘯娆℃暟
 
-    // 准备数据
+    // 鍑嗗?囨暟鎹?
     std::vector<int> data(N);
-    for (int i = 0; i < N; ++i) {
+    for (int i = 0; i < N; ++i)
+    {
         data[i] = i;
     }
 
-    // 测试 std::any 转换
+    // 娴嬭瘯 std::any 杞?鎹?
     vector<any> anys(N);
-    for (int i = 0; i < N; ++i) {
+    for (int i = 0; i < N; ++i)
+    {
         anys[i] = data[i];
     }
 
-    volatile int sum_any = 0; // 防止优化
+    volatile int sum_any = 0; // 闃叉??浼樺寲
     auto start_any = high_resolution_clock::now();
-    for (int i = 0; i < N; ++i) {
+    for (int i = 0; i < N; ++i)
+    {
         sum_any += any_cast<int>(anys[i]);
     }
     auto end_any = high_resolution_clock::now();
     auto duration_any = duration_cast<milliseconds>(end_any - start_any).count();
 
-    // 测试 void* 转换
+    // 娴嬭瘯 void* 杞?鎹?
     vector<void*> void_ptrs(N);
-    for (int i = 0; i < N; ++i) {
+    for (int i = 0; i < N; ++i)
+    {
         void_ptrs[i] = &data[i];
     }
 
-    volatile int sum_void = 0; // 防止优化
+    volatile int sum_void = 0; // 闃叉??浼樺寲
     auto start_void = high_resolution_clock::now();
-    for (int i = 0; i < N; ++i) {
+    for (int i = 0; i < N; ++i)
+    {
         sum_void += *(static_cast<int*>(void_ptrs[i]));
     }
     auto end_void = high_resolution_clock::now();
@@ -103,8 +115,6 @@ TEST_F(TestCommon, anyTest)
 
     cout << "std::any cost: " << duration_any << " ms, sum = " << sum_any << endl;
     cout << "void* cost: " << duration_void << " ms, sum = " << sum_void << endl;
-
-
 }
 
 TEST_F(TestCommon, Global)
@@ -116,23 +126,22 @@ TEST_F(TestCommon, Global)
 
 TEST_F(TestCommon, MemAllocateTest)
 {
-    //return; // the case cannot pass beacuse of the complier changed 
+    // return; // the case cannot pass beacuse of the complier changed
     EgLab::StaticSizeAllocator<int> allocator;
     int* b = static_cast<int*>(allocator.alloc());
     size_t testNum = 100000;
     std::vector<int*> p(testNum);
-    for(int i = 0 ; i < testNum; i++)
+    for (int i = 0; i < testNum; i++)
     {
         int* a = static_cast<int*>(allocator.alloc());
         p[i] = a;
     }
 
-    for(int i = 0 ; i < testNum; i++)
+    for (int i = 0; i < testNum; i++)
     {
         allocator.free(p[i]);
-    } 
+    }
     allocator.free(b);
-
 }
 
 TEST_F(TestCommon, DynamicArrayTest)
@@ -145,26 +154,27 @@ TEST_F(TestCommon, DynamicArrayTest)
     int a = 1;
     arr.pushBack(a);
     EXPECT_EQ(arr.size(), 1);
-    EXPECT_EQ(arr.capacity(), 2); // 默认初始容量为0，增加到2
+    EXPECT_EQ(arr.capacity(), 2); // 榛樿?ゅ垵濮嬪?归噺涓?0锛屽?炲姞鍒?2
 
     int b = 2;
     arr.pushBack(b);
     EXPECT_EQ(arr.size(), 2);
-    EXPECT_EQ(arr.capacity(), 2); // 容量不变
+    EXPECT_EQ(arr.capacity(), 2); // 瀹归噺涓嶅彉
 
     int c = 3;
     arr.pushBack(c);
     EXPECT_EQ(arr.size(), 3);
-    EXPECT_GT(arr.capacity(), 2); // 容量应该增加
+    EXPECT_GT(arr.capacity(), 2); // 瀹归噺搴旇?ュ?炲姞
 
-    EXPECT_EQ(arr[2],3);
+    EXPECT_EQ(arr[2], 3);
 
-    for(int i = 0; i < arr.size(); i++)
+    for (int i = 0; i < arr.size(); i++)
     {
         LOG(INFO) << arr[i];
     }
 
-    class AAA{
+    class AAA
+    {
     public:
         int x;
         int y;
@@ -174,16 +184,29 @@ TEST_F(TestCommon, DynamicArrayTest)
     EgLab::DynamicArray<AAA> arr2;
     arr2.resize(1000);
 
-    for(int i = 0 ; i < arr2.size(); i++)
+    for (int i = 0; i < arr2.size(); i++)
     {
         arr2[i].x = i;
-        arr2[i].y = i*2;
-        arr2[i].z = i*3;
+        arr2[i].y = i * 2;
+        arr2[i].z = i * 3;
     }
 
-    for(int i = 0 ; i < arr2.size(); i++)
+    for (int i = 0; i < arr2.size(); i++)
     {
-        LOG(INFO) << "index :" << i << " x : " << arr2[i].x << " y : " << arr2[i].y << " z : " << arr2[i].z;
+        LOG(INFO) << "index :" << i << " x : " << arr2[i].x << " y : " << arr2[i].y
+                  << " z : " << arr2[i].z;
+    }
+}
+
+TEST_F(TestCommon, MatrixTest)
+{
+    EgLab::Matrix<double, 4, 4> m4(3, 4, 1, 2, 3, 4, 5, 4, 7, 1, 5, 4, 1, 6, 5.25, 76);
+    for (int i = 0; i < 4; ++i)
+    {
+        for (int j = 0; j < 4; ++j)
+        {
+            LOG(INFO) << m4[i][j];
+        }
     }
 }
 
@@ -198,16 +221,16 @@ TEST_F(TestCommon, DynamicArrayTest)
 
 void printCacheSize() {
 #if defined(_WIN32)
-    // Windows平台使用Windows API查询缓存信息
+    // Windows骞冲彴浣跨敤Windows API鏌ヨ?㈢紦瀛樹俊鎭?
     DWORD bufferSize = 0;
     GetLogicalProcessorInformation(nullptr, &bufferSize);
     SYSTEM_LOGICAL_PROCESSOR_INFORMATION* buffer = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION*)malloc(bufferSize);
     if (!buffer) {
-        std::cerr << "内存分配失败\n";
+        std::cerr << "鍐呭瓨鍒嗛厤澶辫触\n";
         return;
     }
     if (!GetLogicalProcessorInformation(buffer, &bufferSize)) {
-        std::cerr << "获取处理器信息失败\n";
+        std::cerr << "鑾峰彇澶勭悊鍣ㄤ俊鎭?澶辫触\n";
         free(buffer);
         return;
     }
@@ -230,7 +253,7 @@ void printCacheSize() {
     free(buffer);
 
 #elif defined(__linux__)
-    // Linux平台读取/sys/devices/system/cpu/cpu0/cache/index*/size
+    // Linux骞冲彴璇诲彇/sys/devices/system/cpu/cpu0/cache/index*/size
     for (int i = 0; i < 4; ++i) {
         std::string path = "/sys/devices/system/cpu/cpu0/cache/index" + std::to_string(i) + "/size";
         std::ifstream file(path);
@@ -241,7 +264,7 @@ void printCacheSize() {
         }
     }
 #else
-    std::cout << "当前平台暂不支持自动检测缓存大小\n";
+    std::cout << "褰撳墠骞冲彴鏆備笉鏀?鎸佽嚜鍔ㄦ?�娴嬬紦瀛樺ぇ灏廫n";
 #endif
 }
 

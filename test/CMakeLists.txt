@@ -7,7 +7,14 @@ add_executable(engine_tests
     test_main.cpp
     test_normal.cpp
     test_common.cpp
+    test_render.cpp
 )
+
+if(MSVC)
+    set_target_properties(engine_tests PROPERTIES
+        LINK_FLAGS "/SUBSYSTEM:CONSOLE"
+    )
+endif()
 
 if(WIN32)
     message(STATUS "Configuring for Windows")
@@ -27,6 +34,7 @@ target_link_libraries(engine_tests PRIVATE
     gtest
     gtest_main
     Common
+    RenderEngine
 )
 
 
