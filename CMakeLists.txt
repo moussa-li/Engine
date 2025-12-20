@@ -8,7 +8,8 @@ set(CMAKE_BUILD_TYPE "Debug")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(BUILD_TESTS "build tests" ON)
-option(BUILD_COMMON_SHARED "build the common libaray dynamic or static " ON)
+option(BUILD_COMMON_SHARED "build the common library dynamic or static " ON)
+option(BUILD_RENDER_SHARED "build the RenderEngine library dynamic or static" ON)
 
 
 include(cmake/common.cmake)
@@ -23,4 +24,7 @@ if(BUILD_TESTS)
     add_subdirectory(test)
 endif()
 
+add_subdirectory(3rd/glfw-3.4)
+
 add_subdirectory(Common)
+add_subdirectory(RenderEngine)

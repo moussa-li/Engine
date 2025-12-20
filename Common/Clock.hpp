@@ -29,7 +29,7 @@ namespace EgLab
         static std::chrono::system_clock::time_point now();
 
         /**
-         * 当前时间
+         * current time
          */
         static void time(int &hour, int &minute);
         static void time(int &hour, int &minute, int &second);

@@ -26,19 +26,7 @@ namespace EgLab
             return _data[i];
         }
 
-    private:
-        template <typename T, typename... Rest>
-        void assignData(size_t index, T value, Rest... rest)
-        {
-            _data[index / Row][index % Row] = value;
-            assignData(index + 1, rest...);
-        }
-
-        void assignData(size_t)
-        {
-        }
-
-    private:
+    protected:
         Scalar _data[Col][Row];
     };
 } // namespace EgLab
