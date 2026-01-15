@@ -29,4 +29,9 @@ namespace EgLab
     protected:
         Scalar _data[Col][Row];
     };
+
+    typedef Matrix<float, 4, 4> Matrix4f;
+    typedef Matrix<float, 3, 3> Matrix3f;
+    typedef Matrix<double, 4, 4> Matrix4d;
+    typedef Matrix<double, 3, 3> Matrix3d;
 } // namespace EgLab

@@ -1,26 +1,24 @@
 #pragma once
 
-#include <vector>
-
+#include "Common/Container.hpp"
+#include "Common/Exception.hpp"
+#include "Common/MacroUtils.hpp"
 #include "Common/MemAllocator.hpp"
 
 namespace EgLab
 {
-    template <typename T>
-    struct TypeTrait
-    {
-    };
-
     template <class T, class Allocator = StaticSizeAllocator<T>>
-    class DynamicArray
+    class DynamicArray : public Container<DynamicArray<T>>
     {
-        using ValueType = T;
+    public:
         using ValuePtr = T *;
         using ValueCPtr = const T *;
         using ValueCPtrC = const T *const;
         using ValueRef = T &;
-        using ValutCRef = const T &;
+        using ValueCRef = const T &;
+        using ValueType = T;
 
+        // VALUE_ALIAS(T)
     public:
         DynamicArray() : _size(0), _capacity(0) {};
 
@@ -162,6 +160,68 @@ namespace EgLab
         {
             return *(_start + index);
         }
+
+        Iterator<DynamicArray<T>> *begin() override
+        {
+            return new DynamicArrayIterator(*this);
+        }
+
+        Iterator<DynamicArray<T>> *end() override
+        {
+            DynamicArrayIterator *it = new DynamicArrayIterator(*this);
+            it->current = _end;
+            return it;
+        }
+
+        class DynamicArrayIterator : public Iterator<DynamicArray<T>>
+        {
+        public:
+            bool hasNext() const override
+            {
+                return current < array._end;
+            }
+
+            ValueRef next() override
+            {
+                if (!hasNext())
+                {
+                    throw OutOfMemoryException("DynamicArray iterator reached the end");
+                }
+                return *(current++);
+            }
+
+            ValueCRef operator*() const override
+            {
+                if (!hasNext())
+                {
+                    throw OutOfMemoryException("DynamicArray iterator reached the end");
+                }
+                return *current;
+            }
+
+            ValueRef operator*() override
+            {
+                if (!hasNext())
+                {
+                    throw OutOfMemoryException("No current element in DynamicArray iterator");
+                }
+                return *current;
+            }
+
+            DynamicArrayIterator(DynamicArray<T> &arr) : array(arr), current(arr._start)
+            {
+            }
+
+            DynamicArrayIterator(const DynamicArrayIterator &other)
+                : array(other.array), current(other.current)
+            {
+            }
+
+        private:
+            friend class DynamicArray<T>;
+            ValuePtr current;
+            DynamicArray<T> &array;
+        };
 
     private:
         ValuePtr _datas{nullptr};

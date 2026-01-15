@@ -2,6 +2,8 @@
 
 #include "Common/Assets.hpp"
 #include "Common/DynamicArray.hpp"
+#include "Common/HashTable.hpp"
+#include "Common/List.hpp"
 #include "Common/Log.hpp"
 #include "Common/Matrix.hpp"
 #include "Common/MemAllocator.hpp"
@@ -74,21 +76,21 @@ TEST_F(TestCommon, anyTest)
     using namespace std::chrono;
     const int N = 10000000; // 测试次数
 
-    // 准�?�数�?
+    // 准�?�数�?
     std::vector<int> data(N);
     for (int i = 0; i < N; ++i)
     {
         data[i] = i;
     }
 
-    // 测试 std::any �?�?
+    // 测试 std::any �?�?
     vector<any> anys(N);
     for (int i = 0; i < N; ++i)
     {
         anys[i] = data[i];
     }
 
-    volatile int sum_any = 0; // 防�??优化
+    volatile int sum_any = 0; // 防�??优化
     auto start_any = high_resolution_clock::now();
     for (int i = 0; i < N; ++i)
     {
@@ -97,14 +99,14 @@ TEST_F(TestCommon, anyTest)
     auto end_any = high_resolution_clock::now();
     auto duration_any = duration_cast<milliseconds>(end_any - start_any).count();
 
-    // 测试 void* �?�?
+    // 测试 void* �?�?
     vector<void*> void_ptrs(N);
     for (int i = 0; i < N; ++i)
     {
         void_ptrs[i] = &data[i];
     }
 
-    volatile int sum_void = 0; // 防�??优化
+    volatile int sum_void = 0; // 防�??优化
     auto start_void = high_resolution_clock::now();
     for (int i = 0; i < N; ++i)
     {
@@ -154,7 +156,7 @@ TEST_F(TestCommon, DynamicArrayTest)
     int a = 1;
     arr.pushBack(a);
     EXPECT_EQ(arr.size(), 1);
-    EXPECT_EQ(arr.capacity(), 2); // 默�?�初始�?�量�?0，�?�加�?2
+    EXPECT_EQ(arr.capacity(), 2); // 默�?�初始�?�量�?0，�?�加�?2
 
     int b = 2;
     arr.pushBack(b);
@@ -164,7 +166,7 @@ TEST_F(TestCommon, DynamicArrayTest)
     int c = 3;
     arr.pushBack(c);
     EXPECT_EQ(arr.size(), 3);
-    EXPECT_GT(arr.capacity(), 2); // 容量应�?��?�加
+    EXPECT_GT(arr.capacity(), 2); // 容量应�?��?�加
 
     EXPECT_EQ(arr[2], 3);
 
@@ -210,6 +212,58 @@ TEST_F(TestCommon, MatrixTest)
     }
 }
 
+TEST_F(TestCommon, ListTest)
+{
+    EgLab::List<int> list;
+    list.pushBack(1);
+    list.pushBack(2);
+    list.pushBack(3);
+    list.pushBack(4);
+
+    list.popBack();
+    list.popBack();
+
+    EgLab::List<int>::Node* current = list.getHead();
+    while (current != nullptr)
+    {
+        LOG(INFO) << current->data;
+        current = current->next;
+    }
+}
+
+TEST_F(TestCommon, ListItTest)
+{
+    EgLab::List<int> list;
+    list.pushBack(1);
+    list.pushBack(2);
+    list.pushBack(3);
+    list.pushBack(4);
+
+    EgLab::Iterator<EgLab::List<int>>* it = list.begin();
+    int i = 1;
+    while (it->hasNext())
+    {
+        int& value = it->next();
+        EXPECT_EQ(value, i);
+        i++;
+    }
+
+    i = 1;
+    for (auto it = list.begin(); it->hasNext(); it->next())
+    {
+        int& value = **it;
+        EXPECT_EQ(value, i);
+        i++;
+    }
+
+    delete it;
+}
+
+// TEST_F(TestCommon, HashTable)
+// {
+//     EgLab::HashTable<int>
+// }
+
 #if 0
 #include <iostream>
 #if defined(_WIN32)
@@ -221,7 +275,7 @@ TEST_F(TestCommon, MatrixTest)
 
 void printCacheSize() {
 #if defined(_WIN32)
-    // Windows平台使用Windows API查�?�缓存信�?
+    // Windows平台使用Windows API查�?�缓存信�?
     DWORD bufferSize = 0;
     GetLogicalProcessorInformation(nullptr, &bufferSize);
     SYSTEM_LOGICAL_PROCESSOR_INFORMATION* buffer = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION*)malloc(bufferSize);
@@ -230,7 +284,7 @@ void printCacheSize() {
         return;
     }
     if (!GetLogicalProcessorInformation(buffer, &bufferSize)) {
-        std::cerr << "获取处理器信�?失败\n";
+        std::cerr << "获取处理器信�?失败\n";
         free(buffer);
         return;
     }
@@ -264,7 +318,7 @@ void printCacheSize() {
         }
     }
 #else
-    std::cout << "当前平台暂不�?持自动�?�测缓存大小\n";
+    std::cout << "当前平台暂不�?持自动�?�测缓存大小\n";
 #endif
 }
 

@@ -10,6 +10,11 @@ add_executable(engine_tests
     test_render.cpp
 )
 
+add_executable(common_test
+    test_common.cpp
+    test_main.cpp
+)
+
 if(MSVC)
     set_target_properties(engine_tests PROPERTIES
         LINK_FLAGS "/SUBSYSTEM:CONSOLE"
@@ -30,6 +35,11 @@ target_include_directories(engine_tests PRIVATE
     ${CMAKE_SOURCE_DIR}
 )
 
+target_include_directories(common_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/3rd/gtest/googletest/include
+    ${CMAKE_SOURCE_DIR}
+)
+
 target_link_libraries(engine_tests PRIVATE
     gtest
     gtest_main
@@ -37,7 +47,14 @@ target_link_libraries(engine_tests PRIVATE
     RenderEngine
 )
 
+target_link_libraries(common_test PRIVATE
+    gtest
+    gtest_main
+    Common
+)
 
 #add_dependencies(engine_tests embed_gen_files)
 
 add_test(NAME engine_tests COMMAND engine_tests)
+
+add_test(NAME common_test COMMAND common_test)

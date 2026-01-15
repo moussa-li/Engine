@@ -7,18 +7,17 @@
  * @date 2025-09-28
  */
 
-
-#include "Common/CommonAPI.hpp"
 #include <cstddef>
 
+#include "Common/CommonAPI.hpp"
 
-namespace EgLab 
+namespace EgLab
 {
     using Length_t = size_t;
     using Capacity_t = size_t;
 
     constexpr size_t bufferSize = sizeof(Length_t) + sizeof(Capacity_t) + sizeof(char*);
-    
+
     class CommonAPI String
     {
     public:
@@ -38,45 +37,81 @@ namespace EgLab
 
         void append(const char* str);
 
-        String& operator = (const String& other);
+        String& operator=(const String& other);
 
-        String operator +(const String& other)const;
+        String operator+(const String& other) const;
 
-        String &operator +=(const String& other);
+        String& operator+=(const String& other);
 
         bool operator==(const String& other) const;
 
+        char* begin()
+        {
+            if (is_sso)
+                return sso_buffer;
+            else
+                return heap._data;
+        }
+
+        char* end()
+        {
+            if (is_sso)
+                return sso_buffer + size();
+            else
+                return heap._data + heap.length;
+        }
+
+        const char* begin() const
+        {
+            if (is_sso)
+                return sso_buffer;
+            else
+                return heap._data;
+        }
+
+        const char* end() const
+        {
+            if (is_sso)
+                return sso_buffer + size();
+            else
+                return heap._data + heap.length;
+        }
 
     private:
-    union {
-        char sso_buffer[bufferSize];
-        struct {
-            char* _data;
-            size_t length;
-            size_t capacity;
-        } heap;
-
+        union
+        {
+            char sso_buffer[bufferSize];
+            struct
+            {
+                char* _data;
+                size_t length;
+                size_t capacity;
+            } heap;
         };
         bool is_sso;
     };
 
-    String operator+(const char* left, String right);
+    CommonAPI String operator+(const char* left, String right);
 
-}
+} // namespace EgLab
 
 #include <functional>
 
-namespace std {
-    template<>
-    struct hash<EgLab::String> {
-        size_t operator()(const EgLab::String& s) const {
+namespace std
+{
+    template <>
+    struct hash<EgLab::String>
+    {
+        size_t operator()(const EgLab::String& s) const
+        {
             const char* str = s.c_str();
             size_t hash = 14695981039346656037ull; // offset basis
-            for(size_t i = 0; i < s.size(); i++) {
+            for (size_t i = 0; i < s.size(); i++)
+            {
                 hash ^= static_cast<size_t>(str[i]);
                 hash *= 1099511628211ull; // FNV prime
             }
             return hash;
         }
     };
-}
+} // namespace std

@@ -1,0 +1,13 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cmake",
+			"label": "CMake: 测试",
+			"command": "test",
+			"preset": "win-clangd-debug-test",
+			"problemMatcher": [],
+			"detail": "CMake 模板 测试 任务"
+		}
+	]
+}
