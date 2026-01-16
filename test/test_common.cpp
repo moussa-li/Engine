@@ -239,30 +239,32 @@ TEST_F(TestCommon, ListItTest)
     list.pushBack(3);
     list.pushBack(4);
 
-    EgLab::Iterator<EgLab::List<int>>* it = list.begin();
+    auto it = list.begin();
     int i = 1;
-    while (it->hasNext())
+    while (it.hasNext())
     {
-        int& value = it->next();
+        int& value = it.next();
         EXPECT_EQ(value, i);
         i++;
     }
 
     i = 1;
-    for (auto it = list.begin(); it->hasNext(); it->next())
+    for (auto it = list.begin(); it.hasNext(); it.next())
     {
-        int& value = **it;
+        int& value = it.data();
         EXPECT_EQ(value, i);
         i++;
     }
-
-    delete it;
 }
 
-// TEST_F(TestCommon, HashTable)
-// {
-//     EgLab::HashTable<int>
-// }
+TEST_F(TestCommon, HashTable)
+{
+    EgLab::HashTable<int> hashTable;
+    EXPECT_TRUE(hashTable.insert(1));
+    EXPECT_TRUE(hashTable.insert(2));
+    EXPECT_FALSE(hashTable.insert(1)); // 重复插入
+    EXPECT_EQ(hashTable.size(), 2);
+}
 
 #if 0
 #include <iostream>

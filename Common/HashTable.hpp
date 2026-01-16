@@ -43,7 +43,12 @@ namespace EgLab
     {
         VALUE_ALIAS(T)
     public:
-        HashTable()
+        using HashTableIterator = Iterator<HashTable<T, Hash, Allocator>>;
+        using HashTableCIterator = CIterator<HashTable<T, Hash, Allocator>>;
+        using Element = List<ValueType, Allocator>;
+        using BucketType = DynamicArray<Element, StaticSizeAllocator<Element>>;
+
+        HashTable() : _size(0), buckets()
         {
         }
 
@@ -51,7 +56,7 @@ namespace EgLab
         {
             if ((_size + 1) > bucketsSize() * 1.0)
             {
-                rehash();
+                rehash(_size + 1);
             }
 
             size_t index = hasher(key) % bucketsSize();
@@ -95,89 +100,262 @@ namespace EgLab
             return buckets.size();
         }
 
-        Iterator<HashTable<T, Hash, Allocator>> *begin() override
+        Iterator<HashTable<T, Hash, Allocator>> begin() override
         {
-            return new HashTableIterator(*this);
+            return move(HashTableIterator(*this));
+        }
+        Iterator<HashTable<T, Hash, Allocator>> end() override
+        {
+            HashTableIterator it(*this);
+            it._bucketIndex = bucketsSize();
+            return (move(it));
         }
 
-        Iterator<HashTable<T, Hash, Allocator>> *end() override
+        CIterator<HashTable<T, Hash, Allocator>> begin() const override
         {
-            HashTableIterator *it = new HashTableIterator(*this);
-            it->_bucketIndex = bucketsSize();
-            return it;
+            return move(HashTableCIterator(*this));
         }
 
-        class HashTableIterator : public Iterator<HashTable<T, Hash, Allocator>>
+        CIterator<HashTable<T, Hash, Allocator>> end() const override
         {
-        public:
-            bool hasNext() const override
-            {
-                size_t bucketIndex = _bucketIndex;
-                while (bucketIndex < _table.bucketsSize())
-                {
-                    if (_bucketIterator != _table.buckets[bucketIndex].end())
-                    {
-                        return true;
-                    }
-                    ++bucketIndex;
-                    if (bucketIndex < _table.bucketsSize())
-                    {
-                        _bucketIterator = _table.buckets[bucketIndex].begin();
-                    }
-                }
-                return false;
-            }
-            ValueRef next() override
-            {
-                if (!hasNext())
-                {
-                    throw OutOfMemoryException("No more elements in HashTable iterator");
-                }
-                ValueRef value = *_bucketIterator;
-                ++_bucketIterator;
-                return value;
-            }
-
-            ValueCRef operator*() const override
-            {
-                if (!hasNext())
-                {
-                    throw OutOfMemoryException("No current element in HashTable iterator");
-                }
-                return *_bucketIterator;
-            }
-
-            ValueRef operator*() override
-            {
-                if (!hasNext())
-                {
-                    throw OutOfMemoryException("No current element in HashTable iterator");
-                }
-                return *_bucketIterator;
-            }
-
-            HashTableIterator(const HashTable<T, Hash, Allocator> &ht) : _table(ht), _bucketIndex(0)
-            {
-                if (_table.bucketsSize() > 0)
-                {
-                    _bucketIterator = _table.buckets[0].begin();
-                }
-            }
-
-        private:
-            const HashTable<T, Hash, Allocator> &_table;
-            size_t _bucketIndex;
-            typename DynamicArray<List<ValueType>>::ValueRef::Iterator _bucketIterator;
-        };
+            HashTableCIterator it(*this);
+            it._bucketIndex = bucketsSize();
+            return (move(it));
+        }
 
     private:
-        DynamicArray<List<ValueType>> buckets;
+        BucketType buckets;
         size_t _size;
         Hash hasher;
+        friend class Iterator<HashTable<T, Hash, Allocator>>;
+        friend class CIterator<HashTable<T, Hash, Allocator>>;
 
-        void rehash()
+        void rehash(size_t n)
+        {
+            size_t newBucketSize = calcBucketSize(n);
+            if (newBucketSize <= buckets.size()) return;
+
+            size_t bucketSize = buckets.size();
+            buckets.resize(newBucketSize);
+
+            typename Element::IteratorT its[bucketSize];
+            for (size_t i = 0; i < bucketSize; ++i)
+            {
+                its[i] = buckets[i].begin();
+            }
+            for (size_t i = bucketSize; i < newBucketSize; ++i)
+            {
+                its[i] = buckets[i].end();
+            }
+
+            for (size_t i = 0; i < bucketSize; ++i)
+            {
+                auto &it = its[i];
+                Element &e = buckets[i];
+                while (it != e.end())
+                {
+                    size_t newIdx = hasher(*it) % newBucketSize;
+                    if (newIdx == i) continue;
+                    auto &newIt = its[newIdx];
+                    if (newIt == buckets[newIdx].end())
+                    {
+                        // it.next();
+                        auto *n = buckets[i].pop(it);
+                        buckets[newIdx].pushBack(n);
+                    }
+                    else
+                    {
+                        swap(*it, *newIt);
+                        ++it;
+                    }
+                }
+            }
+        }
+
+        size_t calcBucketSize(size_t n)
+        {
+            if (n == 0) return 1;
+            --n;
+            n |= n >> 1;
+            n |= n >> 2;
+            n |= n >> 4;
+            n |= n >> 8;
+            n |= n >> 16;
+#if SIZE_MAX > UINT32_MAX
+            n |= n >> 32; // 64位系统
+#endif
+            return n + 1;
+        }
+    };
+
+    template <class T, typename Hash, class Allocator>
+    class Iterator<HashTable<T, Hash, Allocator>>
+    {
+        VALUE_ALIAS(T)
+    public:
+        bool hasNext() const
+        {
+            size_t bucketIndex = _bucketIndex;
+            while (bucketIndex < _table.bucketsSize())
+            {
+                if (_bucketIterator != _table.buckets[bucketIndex].end())
+                {
+                    return true;
+                }
+                ++bucketIndex;
+                if (bucketIndex < _table.bucketsSize())
+                {
+                    _bucketIterator = _table.buckets[bucketIndex].begin();
+                }
+            }
+            return false;
+        }
+        ValueRef next()
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException("No more elements in HashTable iterator");
+            }
+            ValueRef value = *_bucketIterator;
+            ++_bucketIterator;
+            return value;
+        }
+
+        ValueCRef operator*() const
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException("No current element in HashTable iterator");
+            }
+            return *_bucketIterator;
+        }
+
+        ValueRef operator*()
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException("No current element in HashTable iterator");
+            }
+            return *_bucketIterator;
+        }
+
+        ValueRef data()
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException("No current element in HashTable iterator");
+            }
+            return *_bucketIterator;
+        }
+
+        Iterator<HashTable<T, Hash, Allocator>>(
+            const Iterator<HashTable<T, Hash, Allocator>> &other)
+            : _table(other._table), _bucketIndex(other._bucketIndex)
+        {
+            if (_table.bucketsSize() > 0)
+            {
+                _bucketIterator = _table.buckets[0].begin();
+            }
+        }
+
+        Iterator<HashTable<T, Hash, Allocator>>(const HashTable<T, Hash, Allocator> &ht)
+            : _table(ht), _bucketIndex(0), _bucketIterator()
+        {
+            if (_table.bucketsSize() > 0)
+            {
+                _bucketIterator = _table.buckets[0].begin();
+            }
+        }
+
+    private:
+        const HashTable<T, Hash, Allocator> &_table;
+        size_t _bucketIndex;
+        typename List<ValueType, Allocator>::ListCIterator _bucketIterator;
+        friend class HashTable<T, Hash, Allocator>;
+    };
+
+    template <class T, typename Hash, class Allocator>
+    class CIterator<HashTable<T, Hash, Allocator>>
+    {
+        VALUE_ALIAS(T)
+    public:
+        bool hasNext() const
+        {
+            size_t bucketIndex = _bucketIndex;
+            while (bucketIndex < _table.bucketsSize())
+            {
+                if (_bucketIterator != _table.buckets[bucketIndex].end())
+                {
+                    return true;
+                }
+                ++bucketIndex;
+                if (bucketIndex < _table.bucketsSize())
+                {
+                    _bucketIterator = _table.buckets[bucketIndex].begin();
+                }
+            }
+            return false;
+        }
+        ValueCRef next()
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException("No more elements in HashTable iterator");
+            }
+            ValueCRef value = *_bucketIterator;
+            ++_bucketIterator;
+            return value;
+        }
+
+        ValueCRef operator*() const
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException("No current element in HashTable iterator");
+            }
+            return *_bucketIterator;
+        }
+
+        ValueCRef operator*()
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException("No current element in HashTable iterator");
+            }
+            return *_bucketIterator;
+        }
+
+        ValueCRef data()
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException("No current element in HashTable iterator");
+            }
+            return *_bucketIterator;
+        }
+
+        CIterator<HashTable<T, Hash, Allocator>>(
+            const CIterator<HashTable<T, Hash, Allocator>> &other)
+            : _table(other._table),
+              _bucketIndex(other._bucketIndex),
+              _bucketIterator(other._bucketIterator)
         {
         }
+
+        CIterator<HashTable<T, Hash, Allocator>>(const HashTable<T, Hash, Allocator> &ht)
+            : _table(ht), _bucketIndex(0), _bucketIterator()
+        {
+            if (_table.bucketsSize() > 0)
+            {
+                _bucketIterator = _table.buckets[0].begin();
+            }
+        }
+
+    private:
+        const HashTable<T, Hash, Allocator> &_table;
+        size_t _bucketIndex;
+        typename List<ValueType, Allocator>::ListCIterator _bucketIterator;
+        friend class HashTable<T, Hash, Allocator>;
     };
 
 } // namespace EgLab

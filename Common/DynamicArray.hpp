@@ -8,17 +8,13 @@
 namespace EgLab
 {
     template <class T, class Allocator = StaticSizeAllocator<T>>
-    class DynamicArray : public Container<DynamicArray<T>>
+    class DynamicArray : public Container<DynamicArray<T, Allocator>>
     {
     public:
-        using ValuePtr = T *;
-        using ValueCPtr = const T *;
-        using ValueCPtrC = const T *const;
-        using ValueRef = T &;
-        using ValueCRef = const T &;
-        using ValueType = T;
+        using DynamicArrayIterator = Iterator<DynamicArray<T, Allocator>>;
+        using DynamicArrayCIterator = CIterator<DynamicArray<T, Allocator>>;
 
-        // VALUE_ALIAS(T)
+        VALUE_ALIAS(T)
     public:
         DynamicArray() : _size(0), _capacity(0) {};
 
@@ -46,11 +42,11 @@ namespace EgLab
                 {
                     newCapacity *= _incraseFactor;
                 }
-                ValuePtr newDatas = static_cast<ValuePtr>(allocator.alloc(newCapacity));
+                ValuePtr newDatas = (ValuePtr)(allocator.alloc(newCapacity));
                 for (size_t i = 0; i < _size; i++)
                 {
-                    new (newDatas + i) T(std::move(*(_start + i)));
-                    (_start + i)->~T();
+                    new (newDatas + i) ValueType(move(*(_start + i)));
+                    //(_start + i)->~ValueType();
                 }
                 if (_datas != nullptr) allocator.free(_datas);
                 _datas = newDatas;
@@ -58,6 +54,10 @@ namespace EgLab
                 _start = _datas;
                 _tail = _start + _capacity;
                 _end = _start + _size;
+            }
+            for (int i = _size; i < size; i++)
+            {
+                new (_datas + i) ValueType();
             }
             _size = size;
             _end = _start + _size;
@@ -75,7 +75,7 @@ namespace EgLab
                 ValuePtr newDatas = static_cast<ValuePtr>(allocator.alloc(newCapacity));
                 for (size_t i = 0; i < _size; i++)
                 {
-                    new (newDatas + i) T(std::move(*(_start + i)));
+                    new (newDatas + i) T(move(*(_start + i)));
                     (_start + i)->~T();
                 }
                 allocator.free(_datas);
@@ -103,7 +103,7 @@ namespace EgLab
                 ValuePtr newDatas = static_cast<ValuePtr>(allocator.alloc(newCapacity));
                 for (size_t i = 0; i < _size; i++)
                 {
-                    new (newDatas + i) T(std::move(*(_start + i)));
+                    new (newDatas + i) T(move(*(_start + i)));
                     (_start + i)->~T();
                 }
                 allocator.free(_datas);
@@ -135,7 +135,7 @@ namespace EgLab
                 ValuePtr newDatas = static_cast<ValuePtr>(allocator.alloc(newCapacity));
                 for (size_t i = 0; i < _size; i++)
                 {
-                    new (newDatas + i) T(std::move(*(_start + i)));
+                    new (newDatas + i) T(move(*(_start + i)));
                     (_start + i)->~T();
                 }
                 allocator.free(_datas);
@@ -146,7 +146,7 @@ namespace EgLab
                 _end = _start + _size;
             }
 
-            new (_end) T(std::move(data));
+            new (_end) T(move(data));
             ++_size;
             ++_end;
         }
@@ -161,67 +161,29 @@ namespace EgLab
             return *(_start + index);
         }
 
-        Iterator<DynamicArray<T>> *begin() override
+        Iterator<DynamicArray<T, Allocator>> begin() override
         {
-            return new DynamicArrayIterator(*this);
+            return move(DynamicArrayIterator(*this));
         }
 
-        Iterator<DynamicArray<T>> *end() override
+        Iterator<DynamicArray<T, Allocator>> end() override
         {
-            DynamicArrayIterator *it = new DynamicArrayIterator(*this);
-            it->current = _end;
-            return it;
+            DynamicArrayIterator it(*this);
+            it.current = _end;
+            return move(it);
         }
 
-        class DynamicArrayIterator : public Iterator<DynamicArray<T>>
+        CIterator<DynamicArray<T, Allocator>> begin() const override
         {
-        public:
-            bool hasNext() const override
-            {
-                return current < array._end;
-            }
+            return move(DynamicArrayCIterator(*this));
+        }
 
-            ValueRef next() override
-            {
-                if (!hasNext())
-                {
-                    throw OutOfMemoryException("DynamicArray iterator reached the end");
-                }
-                return *(current++);
-            }
-
-            ValueCRef operator*() const override
-            {
-                if (!hasNext())
-                {
-                    throw OutOfMemoryException("DynamicArray iterator reached the end");
-                }
-                return *current;
-            }
-
-            ValueRef operator*() override
-            {
-                if (!hasNext())
-                {
-                    throw OutOfMemoryException("No current element in DynamicArray iterator");
-                }
-                return *current;
-            }
-
-            DynamicArrayIterator(DynamicArray<T> &arr) : array(arr), current(arr._start)
-            {
-            }
-
-            DynamicArrayIterator(const DynamicArrayIterator &other)
-                : array(other.array), current(other.current)
-            {
-            }
-
-        private:
-            friend class DynamicArray<T>;
-            ValuePtr current;
-            DynamicArray<T> &array;
-        };
+        CIterator<DynamicArray<T, Allocator>> end() const override
+        {
+            DynamicArrayCIterator it(*this);
+            it.current = _end;
+            return move(it);
+        }
 
     private:
         ValuePtr _datas{nullptr};
@@ -233,7 +195,155 @@ namespace EgLab
 
         size_t _incraseFactor{2};
 
+        friend class Iterator<DynamicArray<T, Allocator>>;
+        friend class CIterator<DynamicArray<T, Allocator>>;
         static Allocator allocator;
+    };
+
+    template <class T, class Allocator>
+    class Iterator<DynamicArray<T, Allocator>>
+    {
+        VALUE_ALIAS(T)
+    public:
+        bool hasNext() const
+        {
+            return current < array._end;
+        }
+
+        ValueRef next()
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException("DynamicArray iterator reached the end");
+            }
+            return *(current++);
+        }
+
+        ValueCRef operator*() const
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException("DynamicArray iterator reached the end");
+            }
+            return *current;
+        }
+
+        ValueRef operator*()
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException("No current element in DynamicArray iterator");
+            }
+            return *current;
+        }
+
+        ValueRef data()
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException("No current element in DynamicArray iterator");
+            }
+            return *current;
+        }
+
+        Iterator<DynamicArray<T, Allocator>>(DynamicArray<T, Allocator> &arr)
+            : array(arr), current(arr._start)
+        {
+        }
+
+        Iterator<DynamicArray<T, Allocator>>(const Iterator &other)
+            : array(other.array), current(other.current)
+        {
+        }
+
+        Iterator<DynamicArray<T, Allocator>> operator++()
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException("DynamicArray iterator reached the end");
+            }
+            current++;
+
+            return *this;
+        }
+
+    private:
+        friend class DynamicArray<T, Allocator>;
+        ValuePtr current;
+        DynamicArray<T, Allocator> &array;
+    };
+
+    template <class T, class Allocator>
+    class CIterator<DynamicArray<T, Allocator>>
+    {
+        VALUE_ALIAS(T)
+    public:
+        bool hasNext() const
+        {
+            return current < array._end;
+        }
+
+        ValueCRef next()
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException("DynamicArray iterator reached the end");
+            }
+            return *(current++);
+        }
+
+        ValueCRef operator*() const
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException("DynamicArray iterator reached the end");
+            }
+            return *current;
+        }
+
+        ValueCRef operator*()
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException("No current element in DynamicArray iterator");
+            }
+            return *current;
+        }
+
+        ValueCRef data()
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException("No current element in DynamicArray iterator");
+            }
+            return *current;
+        }
+
+        CIterator<DynamicArray<T, Allocator>>(const DynamicArray<T, Allocator> &arr)
+            : array(arr), current(arr._start)
+        {
+        }
+
+        CIterator<DynamicArray<T, Allocator>>(const CIterator &other)
+            : array(other.array), current(other.current)
+        {
+        }
+
+        CIterator<DynamicArray<T, Allocator>> operator++()
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException("DynamicArray iterator reached the end");
+            }
+            current++;
+
+            return *this;
+        }
+
+    private:
+        friend class DynamicArray<T, Allocator>;
+        ValuePtr current;
+        const DynamicArray<T, Allocator> &array;
     };
 
     template <class T, class Allocator>

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common/Iterator.hpp"
+#include "Common/UniquePtr.hpp"
 
 namespace EgLab
 {
@@ -21,10 +22,17 @@ namespace EgLab
         using ContainerCPtrC = const T *const;
         using ContainerRef = T &;
         using ContainerCRef = const T &;
+        using IteratorT = Iterator<T>;
+        using CIteratorT = CIterator<T>;
 
         virtual ~Container() = default;
 
-        virtual Iterator<ContainerType> *begin() = 0;
-        virtual Iterator<ContainerType> *end() = 0;
+        virtual IteratorT begin() = 0;
+
+        virtual CIteratorT begin() const = 0;
+
+        virtual IteratorT end() = 0;
+
+        virtual CIteratorT end() const = 0;
     };
 } // namespace EgLab
