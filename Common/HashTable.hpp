@@ -155,11 +155,15 @@ namespace EgLab
                 while (it != e.end())
                 {
                     size_t newIdx = hasher(*it) % newBucketSize;
-                    if (newIdx == i) continue;
+                    if (newIdx == i)
+                    {
+                        ++it;
+                        continue;
+                    }
                     auto &newIt = its[newIdx];
+                    auto &bucket = buckets[newIdx];
                     if (newIt == buckets[newIdx].end())
                     {
-                        // it.next();
                         auto *n = buckets[i].pop(it);
                         buckets[newIdx].pushBack(n);
                     }
