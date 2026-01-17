@@ -267,6 +267,11 @@ namespace EgLab
             return *this;
         }
 
+        bool operator==(const Iterator<DynamicArray<T, Allocator>> &other) const
+        {
+            return current == other.current;
+        }
+
     private:
         friend class DynamicArray<T, Allocator>;
         ValuePtr current;
@@ -338,6 +343,17 @@ namespace EgLab
             current++;
 
             return *this;
+        }
+
+        bool operator==(const CIterator<DynamicArray<T, Allocator>> &other) const
+        {
+            return current == other.current;
+        }
+
+        size_t index() const
+        {
+            if (hasNext() == false) return -1;
+            return current - array._start;
         }
 
     private:

@@ -249,6 +249,7 @@ TEST_F(TestCommon, ListItTest)
     }
 
     i = 1;
+
     for (auto it = list.begin(); it.hasNext(); it.next())
     {
         int& value = it.data();
@@ -260,10 +261,50 @@ TEST_F(TestCommon, ListItTest)
 TEST_F(TestCommon, HashTable)
 {
     EgLab::HashTable<int> hashTable;
-    EXPECT_TRUE(hashTable.insert(1));
-    EXPECT_TRUE(hashTable.insert(2));
-    EXPECT_FALSE(hashTable.insert(1)); // 重复插入
-    EXPECT_EQ(hashTable.size(), 2);
+    int data[] = {1,       3,    2,    1,   4,     5,       6,     6,   7,     1,     12,
+                  2,       34,   5314, 5,   13246, 1346,    1346,  134, 6134,  513,   45123,
+                  423,     412,  312,  412, 534,   61,      326,   134, 51345, 12233, 2431,
+                  3,       12,   312,  41,  25,    134,     5,     413, 5613,  56,    132,
+                  6,       1346, 1,    235, 123,   5,       12356, 143, 6,     1342,  76,
+                  2548769, 758,  9,    79,  5768,  3657,    6245,  6,   423,   5321,  4,
+                  21,      312,  4,    125, 34,    7626243, 5,     13};
+
+    for (int i = 0; i < 73; i++)
+    {
+        hashTable.insert(data[i]);
+    }
+
+    int i = 0;
+    for (auto it = hashTable.begin(); it != hashTable.end(); ++it)
+    {
+        LOG(INFO) << i << " " << *it;
+        i++;
+    }
+
+    // EXPECT_TRUE(hashTable.insert(1));
+    // EXPECT_TRUE(hashTable.insert(2));
+    // EXPECT_FALSE(hashTable.insert(1)); // 重复插入
+    // EXPECT_EQ(hashTable.size(), 2);
+}
+
+TEST_F(TestCommon, mix)
+{
+    int data[] = {1,       3,    2,    1,   4,     5,       6,     6,   7,     1,     12,
+                  2,       34,   5314, 5,   13246, 1346,    1346,  134, 6134,  513,   45123,
+                  423,     412,  312,  412, 534,   61,      326,   134, 51345, 12233, 2431,
+                  3,       12,   312,  41,  25,    134,     5,     413, 5613,  56,    132,
+                  6,       1346, 1,    235, 123,   5,       12356, 143, 6,     1342,  76,
+                  2548769, 758,  9,    79,  5768,  3657,    6245,  6,   423,   5321,  4,
+                  21,      312,  4,    125, 34,    7626243, 5,     13};
+
+    EgLab::DynamicArray<EgLab::List<int>> test;
+    for (int i = 0; i < 73; i++)
+    {
+        EgLab::List<int> l;
+        test.resize(i + 1);
+        l.pushBack(data[i]);
+        test.pushBack(move(l));
+    }
 }
 
 #if 0

@@ -49,6 +49,11 @@ namespace EgLab
             }
         }
 
+        bool empty() const
+        {
+            return head == nullptr;
+        }
+
         void pushBack(const T& value)
         {
             Node* newNode = static_cast<Node*>(allocator.alloc());
@@ -120,7 +125,7 @@ namespace EgLab
         {
             if (!it.hasNext()) return nullptr;
             Node* nodeToPop = it._current;
-            ++it;
+            it._current = nodeToPop->next;
             if (nodeToPop->prev != nullptr)
             {
                 nodeToPop->prev->next = nodeToPop->next;
@@ -179,7 +184,7 @@ namespace EgLab
         {
             auto it = ListIterator(*this);
             it._current = nullptr;
-            return move(it);
+            return it;
         }
 
         CIterator<List<T, Allocator>> begin() const override
@@ -191,13 +196,13 @@ namespace EgLab
         {
             auto it = ListCIterator(*this);
             it._current = nullptr;
-            return move(it);
+            return it;
         }
 
     private:
         Node* head;
         Node* tail;
-        Allocator allocator;
+        static Allocator allocator;
         friend class Iterator<List<T, Allocator>>;
         friend class CIterator<List<T, Allocator>>;
     };
@@ -286,6 +291,7 @@ namespace EgLab
 
     private:
         friend class List<T, Allocator>;
+        friend class CIterator<List<T, Allocator>>;
         const List<T, Allocator>* _list;
         typename List<T, Allocator>::Node* _current;
     };
@@ -363,8 +369,34 @@ namespace EgLab
             return *this;
         }
 
+        CIterator<List<T, Allocator>>& operator=(CIterator<List<T, Allocator>>&& other)
+        {
+            if (this != &other)
+            {
+                _list = other._list;
+                _current = other._current;
+            }
+            return *this;
+        }
+
+        CIterator<List<T, Allocator>>& operator=(Iterator<List<T, Allocator>>&& other)
+        {
+            _list = other._list;
+            _current = other._current;
+            return *this;
+        }
+
+        CIterator<List<T, Allocator>>(const CIterator<List<T, Allocator>>& other)
+            : _list(other._list), _current(other._current)
+        {
+        }
+
         CIterator<List<T, Allocator>>(const List<T, Allocator>& lst)
             : _list(&lst), _current(lst.head)
+        {
+        }
+
+        CIterator<List<T, Allocator>>(List<T, Allocator>&& lst) : _list(&lst), _current(lst.head)
         {
         }
 
@@ -374,8 +406,12 @@ namespace EgLab
 
     private:
         friend class List<T, Allocator>;
+        friend class Iterator<List<T, Allocator>>;
         const List<T, Allocator>* _list;
         typename List<T, Allocator>::Node* _current;
     };
+
+    template <class T, class Allocator>
+    Allocator List<T, Allocator>::allocator;
 
 } // namespace EgLab
