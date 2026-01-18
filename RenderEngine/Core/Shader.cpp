@@ -17,7 +17,9 @@ namespace EgLab
         _rendererId = createShader(source);
     }
 
-    Shader::~Shader() {}
+    Shader::~Shader()
+    {
+    }
 
     Return Shader::bind() const
     {
@@ -31,7 +33,13 @@ namespace EgLab
         return ret;
     }
 
-    RendererId Shader::createShader(const ShaderProgramSource& source) { return 0; }
+    IdType Shader::createShader(const ShaderProgramSource& source)
+    {
+        return 0;
+    }
 
-    Return Shader::parseShader(ShaderProgramSource& source) { return Return::NotImplacementYet; }
+    Return Shader::parseShader(ShaderProgramSource& source)
+    {
+        return Return::NotImplacementYet;
+    }
 } // namespace EgLab

@@ -23,4 +23,7 @@ namespace EgLab
         a = move(b);
         b = move(temp);
     }
+
+    template <typename T, typename = void>
+    struct hashFun;
 } // namespace EgLab

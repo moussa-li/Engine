@@ -2,8 +2,8 @@
 #include <unordered_map>
 
 #include "Common/String.hpp"
+#include "Definites.hpp"
 #include "RenderEngine/Core/RenderEngineAPI.hpp"
-
 
 namespace EgLab
 {
@@ -18,7 +18,7 @@ namespace EgLab
         String ComputeSource = "";
     };
 
-    using RendererId = unsigned int;
+    // using RendererId = unsigned int;
 
     class RenderEngineAPI Shader
     {
@@ -33,13 +33,13 @@ namespace EgLab
         Return setUniform1i(const AssetId& name, int v0);
 
     private:
-        RendererId createShader(const ShaderProgramSource&);
+        IdType createShader(const ShaderProgramSource&);
 
         Return parseShader(ShaderProgramSource&);
 
     private:
         AssetId _shader;
-        RendererId _rendererId;
+        IdType _rendererId;
         std::unordered_map<String, int> _uniformLocationCache;
     };
 

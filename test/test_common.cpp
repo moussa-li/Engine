@@ -7,6 +7,8 @@
 #include "Common/Log.hpp"
 #include "Common/Matrix.hpp"
 #include "Common/MemAllocator.hpp"
+#include "Common/Object.hpp"
+#include "Common/SharedPtr.hpp"
 #include "Common/Singleton.hpp"
 #include "Common/String.hpp"
 
@@ -305,6 +307,37 @@ TEST_F(TestCommon, mix)
         l.pushBack(data[i]);
         test.pushBack(move(l));
     }
+}
+
+TEST_F(TestCommon, sharedPtr)
+{
+    class A : public EgLab::Object
+    {
+    public:
+        A(int v) : _v(v)
+        {
+            LOG(INFO) << "A()" << " : " << _v;
+        }
+
+        ~A()
+        {
+            LOG(INFO) << "~A()" << " : " << _v;
+        }
+
+    private:
+        int _v;
+    };
+
+    EgLab::SharedPtr<A> a(new A(1));
+    EgLab::SharedPtr<A> b(a);
+    EgLab::SharedPtr<A> c(new A(2));
+    EgLab::SharedPtr<A> d(new A(3));
+    a = nullptr;
+    b = nullptr;
+    c = d;
+    c = b;
+
+    LOG(INFO) << "end";
 }
 
 #if 0

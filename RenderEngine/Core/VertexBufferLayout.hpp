@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common/DynamicArray.hpp"
+#include "Common/SharedPtr.hpp"
 #include "VertexBuffer.hpp"
 
 namespace EgLab
@@ -16,7 +17,7 @@ namespace EgLab
         BufferType type;
         size_t count;
         bool normalized;
-        VertexBuffer* VBO;
+        SharedPtr<VertexBuffer> VBO;
     };
 
     class VertexBufferLayout
@@ -25,13 +26,13 @@ namespace EgLab
         VertexBufferLayout() = default;
 
         template <typename T>
-        void pushBack(unsigned int count, VertexBuffer* vbo)
+        void pushBack(unsigned int count, SharedPtr<VertexBuffer> vbo)
         {
             static_assert(false);
         }
 
         template <>
-        void pushBack<float>(unsigned int count, VertexBuffer* vbo)
+        void pushBack<float>(unsigned int count, SharedPtr<VertexBuffer> vbo)
         {
             _elements.pushBack({BufferType::FLOAT, count, false, vbo});
         }

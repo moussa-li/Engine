@@ -18,7 +18,12 @@ namespace EgLab
     class UniquePtr : public PtrBase<T>
     {
     public:
-        explicit UniquePtr(T *ptr)
+        UniquePtr()
+        {
+            this->_ptr = nullptr;
+        }
+
+        UniquePtr(T *ptr)
         {
             this->_ptr = ptr;
         }

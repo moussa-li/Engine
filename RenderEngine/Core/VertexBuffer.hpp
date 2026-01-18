@@ -1,11 +1,13 @@
 #pragma once
 
 #include "Common/DynamicArray.hpp"
+#include "Common/Object.hpp"
 #include "Common/Vector.hpp"
+
 
 namespace EgLab
 {
-    class VertexBuffer
+    class VertexBuffer : public Object
     {
     public:
         VertexBuffer(const void* data, size_t size);
