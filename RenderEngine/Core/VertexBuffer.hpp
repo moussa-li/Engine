@@ -4,10 +4,9 @@
 #include "Common/Object.hpp"
 #include "Common/Vector.hpp"
 
-
 namespace EgLab
 {
-    class VertexBuffer : public Object
+    class VertexBuffer
     {
     public:
         VertexBuffer(const void* data, size_t size);

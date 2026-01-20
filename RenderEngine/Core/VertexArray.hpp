@@ -4,7 +4,7 @@
 
 namespace EgLab
 {
-    class VertexArray : public Object
+    class VertexArray
     {
     public:
         VertexArray();

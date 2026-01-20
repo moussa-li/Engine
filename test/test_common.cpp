@@ -311,12 +311,17 @@ TEST_F(TestCommon, mix)
 
 TEST_F(TestCommon, sharedPtr)
 {
-    class A : public EgLab::Object
+    class A
     {
     public:
         A(int v) : _v(v)
         {
             LOG(INFO) << "A()" << " : " << _v;
+        }
+
+        A()
+        {
+            LOG(INFO) << "A()" << " : ";
         }
 
         ~A()
@@ -328,10 +333,11 @@ TEST_F(TestCommon, sharedPtr)
         int _v;
     };
 
-    EgLab::SharedPtr<A> a(new A(1));
+    EgLab::SharedPtr<A> a(1);
+    EgLab::SharedPtr<A> e = EgLab::makeShared<A>(2);
     EgLab::SharedPtr<A> b(a);
-    EgLab::SharedPtr<A> c(new A(2));
-    EgLab::SharedPtr<A> d(new A(3));
+    EgLab::SharedPtr<A> c(2);
+    EgLab::SharedPtr<A> d(3);
     a = nullptr;
     b = nullptr;
     c = d;

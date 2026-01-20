@@ -6,7 +6,7 @@
 
 namespace EgLab
 {
-    class IndexBuffer : public Object
+    class IndexBuffer
     {
     public:
         IndexBuffer(const DynamicArray<IdxType>& indeices);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 namespace EgLab
 {
     template <class T>
@@ -32,14 +34,125 @@ namespace EgLab
         }
     };
 
+    template <bool B, typename T, typename F>
+    struct conditional
+    {
+        using type = T;
+    };
+
+    template <typename T, typename F>
+    struct conditional<false, T, F>
+    {
+        using type = F;
+    };
+
+    template <bool B, typename T, typename F>
+    using conditional_t = typename conditional<B, T, F>::type;
+
     using FalseType = integralConstant<bool, false>;
     using TrueType = integralConstant<bool, true>;
+
+    template <typename T>
+    struct isArray
+    {
+        static constexpr bool value = false;
+    };
+
+    template <typename T>
+    struct isArray<T[]>
+    {
+        static constexpr bool value = true;
+    };
+
+    template <typename T, size_t N>
+    struct isArray<T[N]>
+    {
+        static constexpr bool value = true;
+    };
+
+    template <typename T>
+    constexpr bool isArray_v = isArray<T>::value;
+
+    template <typename T>
+    struct isFunction : FalseType
+    {
+    };
+
+    template <typename Ret, typename... Args>
+    struct isFunction<Ret(Args...)> : TrueType
+    {
+    };
+
+    template <typename Ret, typename... Args>
+    struct isFunction<Ret(Args..., ...)> : TrueType
+    {
+    };
+
+    // cv 限定符版本
+    template <typename Ret, typename... Args>
+    struct isFunction<Ret(Args...) const> : TrueType
+    {
+    };
+
+    template <typename Ret, typename... Args>
+    struct isFunction<Ret(Args...) volatile> : TrueType
+    {
+    };
+
+    template <typename Ret, typename... Args>
+    struct isFunction<Ret(Args...) const volatile> : TrueType
+    {
+    };
+
+    // ref 限定符版本
+    template <typename Ret, typename... Args>
+    struct isFunction<Ret(Args...) &> : TrueType
+    {
+    };
+
+    template <typename Ret, typename... Args>
+    struct isFunction<Ret(Args...) const &> : TrueType
+    {
+    };
+
+    template <typename Ret, typename... Args>
+    struct isFunction<Ret(Args...) volatile &> : TrueType
+    {
+    };
+
+    template <typename Ret, typename... Args>
+    struct isFunction<Ret(Args...) const volatile &> : TrueType
+    {
+    };
+
+    template <typename Ret, typename... Args>
+    struct isFunction<Ret(Args...) &&> : TrueType
+    {
+    };
+
+    template <typename Ret, typename... Args>
+    struct isFunction<Ret(Args...) const &&> : TrueType
+    {
+    };
+
+    template <typename Ret, typename... Args>
+    struct isFunction<Ret(Args...) volatile &&> : TrueType
+    {
+    };
+
+    template <typename Ret, typename... Args>
+    struct isFunction<Ret(Args...) const volatile &&> : TrueType
+    {
+    };
+
+    template <typename T>
+    constexpr bool isFunction_v = isFunction<T>::value;
 
     template <typename T>
     struct isReferenceable
     {
     private:
-        static void test(T&&);
+        static void test(T &&);
         template <typename U>
         static auto check(int) -> decltype(test(declval<U>()), TrueType{});
         template <typename>
@@ -56,13 +169,13 @@ namespace EgLab
     };
 
     template <typename T>
-    struct RemoveRef<T&>
+    struct RemoveRef<T &>
     {
         using type = T;
     };
 
     template <typename T>
-    struct RemoveRef<T&&>
+    struct RemoveRef<T &&>
     {
         using type = T;
     };
@@ -70,10 +183,67 @@ namespace EgLab
     template <typename T>
     using RemoveRefT = typename RemoveRef<T>::type;
 
+    template <typename T>
+    struct removeCV
+    {
+        using type = T;
+    };
+
+    template <typename T>
+    struct removeCV<const T>
+    {
+        using type = T;
+    };
+
+    template <typename T>
+    struct removeCV<volatile T>
+    {
+        using type = T;
+    };
+
+    template <typename T>
+    struct removeCV<const volatile T>
+    {
+        using type = T;
+    };
+
+    template <typename T>
+    using removeCV_t = typename removeCV<T>::type;
+
+    template <typename T>
+    struct removeExtent
+    {
+        using type = T;
+    };
+
+    template <typename T>
+    struct removeExtent<T[]>
+    {
+        using type = T;
+    };
+
+    template <typename T, size_t N>
+    struct removeExtent<T[N]>
+    {
+        using type = T;
+    };
+
+    template <typename T>
+    using removeExtent_t = typename removeExtent<T>::type;
+
+    template <typename T>
+    struct addPointer
+    {
+        using type = T *;
+    };
+
+    template <typename T>
+    using addPointer_t = typename addPointer<T>::type;
+
     template <typename T, bool = isReferenceable<T>::value>
     struct addRvalueRefImpl
     {
-        using type = T&&;
+        using type = T &&;
     };
 
     template <typename T>
@@ -116,5 +286,68 @@ namespace EgLab
 
     template <typename T>
     using void_t = void;
+
+    template <typename T>
+    struct decay
+    {
+    private:
+        using U = RemoveRefT<T>;
+
+    public:
+        using type = conditional_t<isArray_v<U>, removeExtent_t<U> *,
+                                   conditional_t<isFunction_v<U>, addPointer_t<U>, removeCV_t<U>>>;
+    };
+
+    template <typename T>
+    using decay_t = typename decay<T>::type;
+
+    template <bool B, typename T = void>
+    struct enableIf
+    {
+    };
+
+    template <typename T>
+    struct enableIf<true, T>
+    {
+        using type = T;
+    };
+
+    template <bool B, typename T = void>
+    using enableIf_t = typename enableIf<B, T>::type;
+
+    template <typename T, typename U>
+    struct isSame
+    {
+    public:
+        static constexpr bool value = false;
+    };
+
+    template <typename T>
+    struct isSame<T, T>
+    {
+    public:
+        static constexpr bool value = true;
+    };
+
+    template <typename T, typename U>
+    using isSame_v = isSame<T, T>::value;
+
+    template <typename... Args>
+    struct isOneParam
+    {
+        static constexpr bool value = (sizeof...(Args) == 1);
+    };
+
+    template <typename... Args>
+    using isOneParam_v = typename isOneParam<Args...>::value;
+
+    template <typename First, typename... Rest>
+    struct FirstType
+    {
+        using type = First;
+    };
+
+    template <typename First, typename... Rest>
+    using FirstType_t = FirstType<First, Rest...>::type;
 
 } // namespace EgLab

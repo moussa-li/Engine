@@ -10,7 +10,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(BUILD_TESTS "build tests" ON)
 option(BUILD_COMMON_SHARED "build the common library dynamic or static " ON)
 option(BUILD_RENDER_SHARED "build the RenderEngine library dynamic or static" ON)
-option(BUILD_DOC "generate the documentation with doxygen" ON)
+option(BUILD_DOC "generate the documentation with doxygen" OFF)
 
 
 include(cmake/common.cmake)

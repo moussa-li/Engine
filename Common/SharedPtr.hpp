@@ -8,6 +8,8 @@
  * @date 2026-01-18
  */
 
+#include <cstddef>
+
 #include "Common/CommonAPI.hpp"
 #include "Common/PtrBase.hpp"
 #include "Common/Utils.hpp"
@@ -22,6 +24,32 @@ namespace EgLab
     template <typename T>
     struct HasRefMember<T, void_t<decltype(declval<T>().ref)>> : TrueType
     {
+    };
+
+    class IntrusiveRef
+    {
+    public:
+        inline size_t getRef()
+        {
+            return ref;
+        }
+
+    protected:
+        ~IntrusiveRef() {};
+
+    private:
+        inline void addRef()
+        {
+            ref++;
+        }
+        inline void subRef()
+        {
+            ref--;
+        }
+
+        size_t ref{0}; // for shared ptr
+        template <typename T>
+        friend class SharedPtr;
     };
 
     template <typename T>
@@ -39,8 +67,9 @@ namespace EgLab
         {
             if (this->_ptr)
             {
-                this->_ptr->subRef();
-                if (this->_ptr->getRef() == 0)
+                TRef *ptr = static_cast<TRef *>(this->_ptr);
+                ptr->subRef();
+                if (ptr->getRef() == 0)
                 {
                     delete this->_ptr;
                     this->_ptr = nullptr;
@@ -48,31 +77,47 @@ namespace EgLab
             }
         }
 
-        explicit SharedPtr(T *ptr)
+        SharedPtr(SharedPtr &&ptr) noexcept
         {
-            this->_ptr = ptr;
-            if (this->_ptr)
+        }
+
+        // explicit SharedPtr(T *ptr)
+        // {
+        //     this->_ptr = ptr;
+        //     if (this->_ptr)
+        //     {
+        //         ptr->addRef();
+        //     }
+        // }
+
+        SharedPtr(const SharedPtr &other)
+        {
+            // TRef *otherPtr = static_cast<TRef *>(other->_ptr);
+            this->_ptr = other._ptr;
+            TRef *ptr = static_cast<TRef *>(this->_ptr);
+            if (ptr)
             {
                 ptr->addRef();
             }
         }
 
-        SharedPtr(const SharedPtr &other)
+        template <typename U, typename... Args,
+                  typename = enableIf_t<!isSame<decay_t<U>, SharedPtr<T>>::value>>
+        explicit SharedPtr(U &&firstArg, Args &&...args)
+            : PtrBase<T>(static_cast<T *>(new TRef(forward<U>(firstArg), forward<Args>(args)...)))
         {
-            this->_ptr = other._ptr;
-            if (this->_ptr)
-            {
-                this->_ptr->addRef();
-            }
+            TRef *ptr = static_cast<TRef *>(this->_ptr);
+            ptr->addRef();
         }
 
         void operator=(T *ptr)
         {
-            T *lastPtr = this->_ptr;
+            TRef *newPtr = static_cast<TRef *>(ptr);
+            TRef *lastPtr = static_cast<TRef *>(this->_ptr);
             this->_ptr = ptr;
             if (this->_ptr)
             {
-                ptr->addRef();
+                newPtr->addRef();
             }
             if (lastPtr)
             {
@@ -98,12 +143,32 @@ namespace EgLab
         }
 
     private:
+        class TRef : public T, public IntrusiveRef
+        {
+        public:
+            template <typename... Args>
+            TRef(Args &&...args) : T(forward<Args>(args)...)
+            {
+            }
+
+            TRef(const T &other) : T(other)
+            {
+            }
+
+            TRef(T &&other) : T(other)
+            {
+            }
+
+            ~TRef()
+            {
+            }
+        };
     };
 
     template <class T, class... Args>
     SharedPtr<T> makeShared(Args &&...args)
     {
-        return SharedPtr<T>(new T(forward<Args>(args)...));
+        return SharedPtr<T>(forward<Args>(args)...);
     }
 
     template <class Derived, typename Base>
