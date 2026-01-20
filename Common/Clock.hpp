@@ -1,6 +1,6 @@
 #pragma once
 /*!
- * @file Clock.h
+ * @file Clock.hpp
  * @brief Clock Tool
  * @details TODO:long description
  * @mainpage

@@ -1,0 +1,8 @@
+# Doxyfile.in
+PROJECT_NAME           = "@PROJECT_NAME@"
+OUTPUT_DIRECTORY       = "@CMAKE_BINARY_DIR@/docs"
+INPUT                  = @CMAKE_SOURCE_DIR@/Common @CMAKE_SOURCE_DIR@/RenderEngine
+RECURSIVE              = YES
+GENERATE_LATEX         = NO
+GENERATE_HTML          = YES
+QUIET                  = YES

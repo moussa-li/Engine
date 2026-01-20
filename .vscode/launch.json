@@ -1,0 +1,92 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Launch",
+            "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "TestMemAllocate",
+            "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
+            "args": [
+                "--gtest_filter=TestCommon.MemAllocateTest"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "TestDynamicArray",
+            "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
+            "args": [
+                "--gtest_filter=TestCommon.DynamicArrayTest"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "MatrixTest",
+            "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
+            "args": [
+                "--gtest_filter=TestCommon.MatrixTest"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "ListTest",
+            "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
+            "args": [
+                "--gtest_filter=TestCommon.mix"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "ListHash",
+            "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
+            "args": [
+                "--gtest_filter=TestCommon.HashTable"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "sharedPtr",
+            "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
+            "args": [
+                "--gtest_filter=TestCommon.sharedPtr"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "RenderTest",
+            "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
+            "args": [
+                "--gtest_filter=TestRender.window"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+    ]
+}

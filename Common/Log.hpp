@@ -1,6 +1,6 @@
 #pragma once
 /*!
- * @file Log.h
+ * @file Log.hpp
  * @brief simple log from glog
  * @details
  * @mainpage

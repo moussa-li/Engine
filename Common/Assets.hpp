@@ -1,23 +1,24 @@
 /**
- * @file Global.h
+ * @file Global.hpp
  * @author Moussa-Li
  * @brief the global assets common storage place
  * @date 2025-10-25
  */
- #pragma once
+#pragma once
 
 #include "Common/CommonAPI.hpp"
 #include "Common/Singleton.hpp"
 
-#define RegisterAssets(NAME, RegisterFunc) \
-    if constexpr (assetId == NAME) { \
+#define RegisterAssets(NAME, RegisterFunc)              \
+    if constexpr (assetId == NAME)                      \
+    {                                                   \
         return Assets::instance().RegisterFunc(buffer); \
     }
 
-
 namespace EgLab
 {
-    enum class AssetId {
+    enum class AssetId
+    {
         Basic
     };
 
@@ -38,15 +39,12 @@ namespace EgLab
 
         class Impl;
         Impl *_data;
-
     };
 
-    template<AssetId assetId>
-    Return getAssets(String& buffer){
-
+    template <AssetId assetId>
+    Return getAssets(String &buffer)
+    {
         RegisterAssets(AssetId::Basic, getBasicShader);
-        
-
     }
 
-}
+} // namespace EgLab

@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file String.h
+ * @file String.hpp
  * @author Moussa-Li
  * @brief a quickly and lower memory string
  * @date 2025-09-28
