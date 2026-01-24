@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 namespace EgLab
 {
     template <class T>
@@ -20,6 +22,16 @@ namespace EgLab
             T* temp = _ptr;
             _ptr = nullptr;
             return temp;
+        }
+
+        bool operator==(std::nullptr_t) const
+        {
+            return this->_ptr == nullptr;
+        }
+
+        explicit operator bool() const
+        {
+            return this->_ptr != nullptr;
         }
 
         T& operator*() const

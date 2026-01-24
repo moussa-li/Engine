@@ -27,7 +27,7 @@ namespace EgLab
 
         void setup();
 
-        void draw(Shader* shader, Transform transform);
+        void draw(SharedPtr<Shader> shader, Transform transform);
 
         void update();
 

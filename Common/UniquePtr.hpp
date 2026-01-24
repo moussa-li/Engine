@@ -34,6 +34,21 @@ namespace EgLab
 
             delete this->_ptr;
         }
+        UniquePtr(UniquePtr &&other)
+        {
+            this->_ptr = other._ptr;
+            other._ptr = nullptr;
+        }
+
+        UniquePtr &operator=(UniquePtr &&other)
+        {
+            this->_ptr = other._ptr;
+            other._ptr = nullptr;
+            return *this;
+        }
+
+        UniquePtr(const UniquePtr &) = delete;
+        UniquePtr operator=(const UniquePtr &) = delete;
     };
 
     template <class T, class... Args>

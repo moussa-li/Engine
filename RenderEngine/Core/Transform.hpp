@@ -10,6 +10,8 @@ namespace EgLab
     public:
         Transform();
 
+        ~Transform() = default;
+
         Transform(CoordType position, CoordType rotation, CoordType scale);
 
         Matrix4f getMatrix();

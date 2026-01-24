@@ -30,6 +30,9 @@ namespace EgLab
         Return bind() const;
         Return unBind() const;
 
+        // template <typename T>
+        // Return setUniform(const AssetId& name, T value);
+
         Return setUniform1i(const AssetId& name, int v0);
 
     private:

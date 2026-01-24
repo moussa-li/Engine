@@ -2,7 +2,7 @@
 
 #include "Common/Assets.hpp"
 #include "Common/DynamicArray.hpp"
-#include "Common/HashTable.hpp"
+#include "Common/HashSet.hpp"
 #include "Common/List.hpp"
 #include "Common/Log.hpp"
 #include "Common/Matrix.hpp"
@@ -260,9 +260,9 @@ TEST_F(TestCommon, ListItTest)
     }
 }
 
-TEST_F(TestCommon, HashTable)
+TEST_F(TestCommon, HashSet)
 {
-    EgLab::HashTable<int> hashTable;
+    EgLab::HashSet<int> HashSet;
     int data[] = {1,       3,    2,    1,   4,     5,       6,     6,   7,     1,     12,
                   2,       34,   5314, 5,   13246, 1346,    1346,  134, 6134,  513,   45123,
                   423,     412,  312,  412, 534,   61,      326,   134, 51345, 12233, 2431,
@@ -273,20 +273,20 @@ TEST_F(TestCommon, HashTable)
 
     for (int i = 0; i < 73; i++)
     {
-        hashTable.insert(data[i]);
+        HashSet.insert(data[i]);
     }
 
     int i = 0;
-    for (auto it = hashTable.begin(); it != hashTable.end(); ++it)
+    for (auto it = HashSet.begin(); it != HashSet.end(); ++it)
     {
         LOG(INFO) << i << " " << *it;
         i++;
     }
 
-    // EXPECT_TRUE(hashTable.insert(1));
-    // EXPECT_TRUE(hashTable.insert(2));
-    // EXPECT_FALSE(hashTable.insert(1)); // 重复插入
-    // EXPECT_EQ(hashTable.size(), 2);
+    // EXPECT_TRUE(HashSet.insert(1));
+    // EXPECT_TRUE(HashSet.insert(2));
+    // EXPECT_FALSE(HashSet.insert(1)); // 重复插入
+    // EXPECT_EQ(HashSet.size(), 2);
 }
 
 TEST_F(TestCommon, mix)
@@ -344,6 +344,33 @@ TEST_F(TestCommon, sharedPtr)
     c = b;
 
     LOG(INFO) << "end";
+}
+
+TEST_F(TestCommon, uniquePtr)
+{
+    class A
+    {
+    public:
+        A(int v) : _v(v)
+        {
+            LOG(INFO) << "A()" << " : " << _v;
+        }
+
+        A()
+        {
+            LOG(INFO) << "A()" << " : ";
+        }
+
+        ~A()
+        {
+            LOG(INFO) << "~A()" << " : " << _v;
+        }
+
+    private:
+        int _v;
+    };
+    EgLab::UniquePtr<A> cc;
+    cc = EgLab::makeUnique<A>(5);
 }
 
 #if 0

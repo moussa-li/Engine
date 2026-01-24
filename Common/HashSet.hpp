@@ -39,16 +39,16 @@ namespace EgLab
     };
 
     template <class T, typename Hash = hash<T>, class Allocator = StaticSizeAllocator<T>>
-    class HashTable : public Container<HashTable<T>>
+    class HashSet : public Container<HashSet<T>>
     {
         VALUE_ALIAS(T)
     public:
-        using HashTableIterator = Iterator<HashTable<T, Hash, Allocator>>;
-        using HashTableCIterator = CIterator<HashTable<T, Hash, Allocator>>;
+        using HashSetIterator = Iterator<HashSet<T, Hash, Allocator>>;
+        using HashSetCIterator = CIterator<HashSet<T, Hash, Allocator>>;
         using Element = List<ValueType, StaticSizeAllocator<ListNode<T>>>;
         using BucketType = DynamicArray<Element, StaticSizeAllocator<Element>>;
 
-        HashTable() : _size(0), buckets()
+        HashSet() : _size(0), buckets()
         {
         }
 
@@ -100,26 +100,26 @@ namespace EgLab
             return buckets.size();
         }
 
-        Iterator<HashTable<T, Hash, Allocator>> begin() override
+        Iterator<HashSet<T, Hash, Allocator>> begin() override
         {
-            return move(HashTableIterator(*this));
+            return move(HashSetIterator(*this));
         }
-        Iterator<HashTable<T, Hash, Allocator>> end() override
+        Iterator<HashSet<T, Hash, Allocator>> end() override
         {
-            HashTableIterator it(*this);
+            HashSetIterator it(*this);
             it._bucketIndex = bucketsSize();
             it._bucketIterator = buckets[bucketsSize() - 1].end(); // TODO: change to back()
             return (move(it));
         }
 
-        CIterator<HashTable<T, Hash, Allocator>> begin() const override
+        CIterator<HashSet<T, Hash, Allocator>> begin() const override
         {
-            return move(HashTableCIterator(*this));
+            return move(HashSetCIterator(*this));
         }
 
-        CIterator<HashTable<T, Hash, Allocator>> end() const override
+        CIterator<HashSet<T, Hash, Allocator>> end() const override
         {
-            HashTableCIterator it(*this);
+            HashSetCIterator it(*this);
             it._bucketIndex = bucketsSize();
             it._bucketIterator = buckets[bucketsSize() - 1].end(); // TODO: change to back()
             return (move(it));
@@ -129,8 +129,8 @@ namespace EgLab
         BucketType buckets;
         size_t _size;
         Hash hasher;
-        friend class Iterator<HashTable<T, Hash, Allocator>>;
-        friend class CIterator<HashTable<T, Hash, Allocator>>;
+        friend class Iterator<HashSet<T, Hash, Allocator>>;
+        friend class CIterator<HashSet<T, Hash, Allocator>>;
 
         void rehash(size_t n)
         {
@@ -195,7 +195,7 @@ namespace EgLab
     };
 
     template <class T, typename Hash, class Allocator>
-    class Iterator<HashTable<T, Hash, Allocator>>
+    class Iterator<HashSet<T, Hash, Allocator>>
     {
         VALUE_ALIAS(T)
     public:
@@ -221,7 +221,7 @@ namespace EgLab
         {
             if (!hasNext())
             {
-                throw OutOfMemoryException("No more elements in HashTable iterator");
+                throw OutOfMemoryException("No more elements in HashSet iterator");
             }
             ValueRef value = *_bucketIterator;
             ++*this;
@@ -232,7 +232,7 @@ namespace EgLab
         {
             if (!hasNext())
             {
-                throw OutOfMemoryException("No current element in HashTable iterator");
+                throw OutOfMemoryException("No current element in HashSet iterator");
             }
             return *_bucketIterator;
         }
@@ -241,18 +241,18 @@ namespace EgLab
         {
             if (!hasNext())
             {
-                throw OutOfMemoryException("No current element in HashTable iterator");
+                throw OutOfMemoryException("No current element in HashSet iterator");
             }
             return *_bucketIterator;
         }
 
-        bool operator==(const Iterator<HashTable<T, Hash, Allocator>> &other) const
+        bool operator==(const Iterator<HashSet<T, Hash, Allocator>> &other) const
         {
             if (_bucketIndex != other._bucketIndex) return false;
             return _bucketIterator == other._bucketIterator;
         }
 
-        Iterator<HashTable<T, Hash, Allocator>> operator++()
+        Iterator<HashSet<T, Hash, Allocator>> operator++()
         {
             if (!hasNext())
             {
@@ -271,13 +271,12 @@ namespace EgLab
         {
             if (!hasNext())
             {
-                throw OutOfMemoryException("No current element in HashTable iterator");
+                throw OutOfMemoryException("No current element in HashSet iterator");
             }
             return *_bucketIterator;
         }
 
-        Iterator<HashTable<T, Hash, Allocator>>(
-            const Iterator<HashTable<T, Hash, Allocator>> &other)
+        Iterator<HashSet<T, Hash, Allocator>>(const Iterator<HashSet<T, Hash, Allocator>> &other)
             : _table(other._table),
               _bucketIndex(other._bucketIndex),
               _bucketIterator(other._bucketIterator)
@@ -288,7 +287,7 @@ namespace EgLab
             // }
         }
 
-        Iterator<HashTable<T, Hash, Allocator>>(const HashTable<T, Hash, Allocator> &ht)
+        Iterator<HashSet<T, Hash, Allocator>>(const HashSet<T, Hash, Allocator> &ht)
             : _table(ht), _bucketIndex(0), _bucketIterator()
         {
             // for (const auto &it : _table.buckets)
@@ -304,14 +303,14 @@ namespace EgLab
         }
 
     private:
-        const HashTable<T, Hash, Allocator> &_table;
+        const HashSet<T, Hash, Allocator> &_table;
         size_t _bucketIndex;
         typename List<ValueType, StaticSizeAllocator<ListNode<T>>>::ListCIterator _bucketIterator;
-        friend class HashTable<T, Hash, Allocator>;
+        friend class HashSet<T, Hash, Allocator>;
     };
 
     template <class T, typename Hash, class Allocator>
-    class CIterator<HashTable<T, Hash, Allocator>>
+    class CIterator<HashSet<T, Hash, Allocator>>
     {
         VALUE_ALIAS(T)
     public:
@@ -336,7 +335,7 @@ namespace EgLab
         {
             if (!hasNext())
             {
-                throw OutOfMemoryException("No more elements in HashTable iterator");
+                throw OutOfMemoryException("No more elements in HashSet iterator");
             }
             ValueCRef value = *_bucketIterator;
             ++_bucketIterator;
@@ -347,7 +346,7 @@ namespace EgLab
         {
             if (!hasNext())
             {
-                throw OutOfMemoryException("No current element in HashTable iterator");
+                throw OutOfMemoryException("No current element in HashSet iterator");
             }
             return *_bucketIterator;
         }
@@ -356,7 +355,7 @@ namespace EgLab
         {
             if (!hasNext())
             {
-                throw OutOfMemoryException("No current element in HashTable iterator");
+                throw OutOfMemoryException("No current element in HashSet iterator");
             }
             return *_bucketIterator;
         }
@@ -365,20 +364,19 @@ namespace EgLab
         {
             if (!hasNext())
             {
-                throw OutOfMemoryException("No current element in HashTable iterator");
+                throw OutOfMemoryException("No current element in HashSet iterator");
             }
             return *_bucketIterator;
         }
 
-        CIterator<HashTable<T, Hash, Allocator>>(
-            const CIterator<HashTable<T, Hash, Allocator>> &other)
+        CIterator<HashSet<T, Hash, Allocator>>(const CIterator<HashSet<T, Hash, Allocator>> &other)
             : _table(other._table),
               _bucketIndex(other._bucketIndex),
               _bucketIterator(other._bucketIterator)
         {
         }
 
-        CIterator<HashTable<T, Hash, Allocator>>(const HashTable<T, Hash, Allocator> &ht)
+        CIterator<HashSet<T, Hash, Allocator>>(const HashSet<T, Hash, Allocator> &ht)
             : _table(ht), _bucketIndex(0), _bucketIterator()
         {
             for (auto &it : _table.buckets)
@@ -391,10 +389,10 @@ namespace EgLab
         }
 
     private:
-        const HashTable<T, Hash, Allocator> &_table;
+        const HashSet<T, Hash, Allocator> &_table;
         size_t _bucketIndex;
         typename List<ValueType, StaticSizeAllocator<ListNode<T>>>::ListCIterator _bucketIterator;
-        friend class HashTable<T, Hash, Allocator>;
+        friend class HashSet<T, Hash, Allocator>;
     };
 
 } // namespace EgLab

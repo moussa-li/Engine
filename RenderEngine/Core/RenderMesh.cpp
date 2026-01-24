@@ -1,6 +1,6 @@
 #include "RenderMesh.hpp"
 
-#include "Common/HashTable.hpp"
+#include "Common/HashSet.hpp"
 #include "IndexBuffer.hpp"
 #include "Shader.hpp"
 #include "Texture.hpp"
@@ -8,7 +8,6 @@
 #include "VertexArray.hpp"
 #include "VertexBuffer.hpp"
 #include "VertexBufferLayout.hpp"
-
 
 namespace EgLab
 {
@@ -47,8 +46,10 @@ namespace EgLab
         _vertexArray->unBind();
     }
 
-    void RenderMesh::draw(Shader* shader, Transform transform)
+    void RenderMesh::draw(SharedPtr<Shader> shader, Transform transform)
     {
+        shader->bind();
+        // shader->setUniform1i();
     }
 
     void RenderMesh::update()

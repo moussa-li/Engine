@@ -1,10 +1,11 @@
 #include "Common/Assets.hpp"
-#include "Common/String.hpp"
-#include "Common/Return.hpp"
 
+#include "Common/Return.hpp"
+#include "Common/String.hpp"
 
 // Assets
 #include "Basic.shader.h"
+#include "Common/HashSet.hpp"
 
 namespace EgLab
 {
@@ -14,10 +15,9 @@ namespace EgLab
         String BasicBuffer;
     };
 
-    Assets::Assets() 
-        : _data(new Impl)
+    Assets::Assets() : _data(new Impl)
     {
-        _data->BasicBuffer = String(BASIC_SHADER__DATA,BASIC_SHADER__SIZE);
+        _data->BasicBuffer = String(BASIC_SHADER__DATA, BASIC_SHADER__SIZE);
     }
 
     Assets::~Assets()
@@ -25,11 +25,11 @@ namespace EgLab
         delete _data;
     }
 
-    Return Assets::getBasicShader(String& buffer) {
+    Return Assets::getBasicShader(String& buffer)
+    {
         Return ret = Return::Succeed;
         buffer = _data->BasicBuffer;
         return ret;
     }
 
-
-}
+} // namespace EgLab

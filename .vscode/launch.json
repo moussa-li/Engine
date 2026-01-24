@@ -61,7 +61,7 @@
             "name": "ListHash",
             "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
             "args": [
-                "--gtest_filter=TestCommon.HashTable"
+                "--gtest_filter=TestCommon.HashSet"
             ],
             "cwd": "${workspaceFolder}",
             "console": "externalTerminal"
@@ -73,6 +73,17 @@
             "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
             "args": [
                 "--gtest_filter=TestCommon.sharedPtr"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "UniquePtr",
+            "program": "${workspaceFolder}/build/win-clangd-debug/bin/common_test.exe",
+            "args": [
+                "--gtest_filter=TestCommon.uniquePtr"
             ],
             "cwd": "${workspaceFolder}",
             "console": "externalTerminal"

@@ -1,8 +1,9 @@
 #pragma once
 #include "Common/DynamicArray.hpp"
+#include "Common/Return.hpp"
+#include "Common/SharedPtr.hpp"
 #include "Definites.hpp"
 #include "RenderEngineAPI.hpp"
-
 
 namespace EgLab
 {
@@ -10,11 +11,12 @@ namespace EgLab
     class Camera;
     class Entity;
     class Light;
+    class RenderConfigure;
 
     class RenderEngineAPI Renderer
     {
     public:
-        void setWindow(Window*);
+        void setWindow(SharedPtr<Window>);
 
         void clear();
 
@@ -26,16 +28,24 @@ namespace EgLab
         void insertLight(Light* light);
         */
 
+        Return addEntity(SharedPtr<Entity> entity);
+
         void update(DeltaTime deltaTime);
 
-        Renderer(Camera* camera);
+        UniquePtr<RenderConfigure> &getConfigure();
+
+        Renderer(UniquePtr<Camera> &&camera);
+
+        ~Renderer() = default;
 
     private:
-        EgLab::DynamicArray<Entity*> _entities;
+        EgLab::DynamicArray<SharedPtr<Entity>> _entities;
 
-        EgLab::DynamicArray<Light*> _lights;
+        EgLab::DynamicArray<Light *> _lights;
 
-        Camera* _camera;
+        UniquePtr<Camera> _camera;
+
+        UniquePtr<RenderConfigure> _configure;
     };
 
 } // namespace EgLab

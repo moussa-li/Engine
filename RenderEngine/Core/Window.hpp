@@ -2,6 +2,8 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#include "Common/UniquePtr.hpp"
+#include "Core/Definites.hpp"
 #include "RenderEngineAPI.hpp"
 
 namespace EgLab
@@ -12,24 +14,22 @@ namespace EgLab
     {
     public:
         Window();
+        ~Window();
         Window(const unsigned int &width, const unsigned int &height);
 
         void setSize(const unsigned int &width, const unsigned int &height);
 
-        void exec();
+        bool shouldClose() const;
+        // void exec();
+        DeltaTime getTime() const;
 
         void setRenderer(Renderer *renderer);
 
     private:
-        GLFWwindow *_window;
+        class Impl;
+        Impl *_impl;
 
-        Renderer *_renderer;
-
-        unsigned int _width;
-        unsigned int _height;
-
-        float lastFrame{0.0f};
-        float deltaTime{0.0f};
+        // UniquePtr<Renderer> _renderer;
     };
 
 } // namespace EgLab
