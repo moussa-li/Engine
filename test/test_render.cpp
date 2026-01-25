@@ -4,6 +4,7 @@
 #include "RenderEngine/Core/Entity.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"
 #include "RenderEngine/Core/Renderer.hpp"
+#include "RenderEngine/Core/ShaderLib.hpp"
 #include "RenderEngine/Core/Window.hpp"
 
 class SimpleApp
@@ -52,4 +53,10 @@ TEST_F(TestRender, window)
 {
     SimpleApp app;
     app.exec();
+}
+
+TEST_F(TestRender, ShaderLib)
+{
+    EgLab::String buffer;
+    EgLab::ShaderLib::instance().getBasicShader(buffer);
 }

@@ -3,13 +3,13 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-#include "Common/Assets.hpp"
 #include "Common/Return.hpp"
 #include "Common/String.hpp"
+#include "Core/ShaderLib.hpp"
 
 namespace EgLab
 {
-    Shader::Shader(const AssetId shader) : _shader(shader), _rendererId(0)
+    Shader::Shader(const ShaderId shader) : _shader(shader), _rendererId(0)
     {
         ShaderProgramSource source;
         parseShader(source);

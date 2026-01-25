@@ -350,4 +350,12 @@ namespace EgLab
     template <typename First, typename... Rest>
     using FirstType_t = FirstType<First, Rest...>::type;
 
+    template <typename T = void>
+    struct equal
+    {
+        constexpr bool operator()(const T &left, const T &right) const
+        {
+            return left == right;
+        }
+    };
 } // namespace EgLab

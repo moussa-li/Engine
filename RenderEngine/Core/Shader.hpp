@@ -8,7 +8,7 @@
 namespace EgLab
 {
     class String;
-    enum class AssetId;
+    enum class ShaderId;
     enum class Return;
 
     struct ShaderProgramSource
@@ -24,16 +24,16 @@ namespace EgLab
     {
     public:
         Shader() = default;
-        Shader(const AssetId);
+        Shader(const ShaderId);
         ~Shader();
 
         Return bind() const;
         Return unBind() const;
 
         // template <typename T>
-        // Return setUniform(const AssetId& name, T value);
+        // Return setUniform(const ShaderId& name, T value);
 
-        Return setUniform1i(const AssetId& name, int v0);
+        Return setUniform1i(const ShaderId& name, int v0);
 
     private:
         IdType createShader(const ShaderProgramSource&);
@@ -41,7 +41,7 @@ namespace EgLab
         Return parseShader(ShaderProgramSource&);
 
     private:
-        AssetId _shader;
+        ShaderId _shader;
         IdType _rendererId;
         std::unordered_map<String, int> _uniformLocationCache;
     };

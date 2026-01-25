@@ -1,7 +1,7 @@
 #include "test_common.h"
 
-#include "Common/Assets.hpp"
 #include "Common/DynamicArray.hpp"
+#include "Common/HashMap.hpp"
 #include "Common/HashSet.hpp"
 #include "Common/List.hpp"
 #include "Common/Log.hpp"
@@ -119,13 +119,6 @@ TEST_F(TestCommon, anyTest)
 
     cout << "std::any cost: " << duration_any << " ms, sum = " << sum_any << endl;
     cout << "void* cost: " << duration_void << " ms, sum = " << sum_void << endl;
-}
-
-TEST_F(TestCommon, Global)
-{
-    EgLab::String buffer;
-    EgLab::getAssets<EgLab::AssetId::Basic>(buffer);
-    LOG(INFO) << buffer.c_str();
 }
 
 TEST_F(TestCommon, MemAllocateTest)
@@ -287,6 +280,25 @@ TEST_F(TestCommon, HashSet)
     // EXPECT_TRUE(HashSet.insert(2));
     // EXPECT_FALSE(HashSet.insert(1)); // 重复插入
     // EXPECT_EQ(HashSet.size(), 2);
+}
+
+TEST_F(TestCommon, HashMap)
+{
+    EgLab::HashMap<int, int> map;
+    map.insert({1, 1});
+    map.insert({1, 2});
+    map.insert({1, 4});
+    map.insert({2, 1});
+    for (auto it : map)
+    {
+        LOG(INFO) << it.first << " " << it.second;
+    }
+    map.erase(2);
+    map.erase(3);
+    for (auto it : map)
+    {
+        LOG(INFO) << it.first << " " << it.second;
+    }
 }
 
 TEST_F(TestCommon, mix)
