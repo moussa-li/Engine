@@ -44,11 +44,11 @@ namespace EgLab
         {
             if (data[i] == '\r' && data[i + 1] == '\n')
             {
-                _lineStart.pushBack(i);
+                _lineStart.pushBack(i + 2);
             }
         }
         if (_lineStart.back() >= len) _lineStart.popBack();
-        _lineStart.pushBack(_str.size());
+        _lineStart.pushBack(_str.size() - 1); // an extra '\0' was added.
     }
 
     bool StringLineIterator::hasNext() const

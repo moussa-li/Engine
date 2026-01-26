@@ -49,7 +49,7 @@ namespace EgLab
         }
     }
 
-    String::String(const unsigned char str[], const unsigned long size)
+    String::String(const unsigned char str[], const unsigned long size) : is_sso(true)
     {
         size_t len = size / sizeof(str[0]) + 1;
         if (is_sso && len < sizeof(sso_buffer))
@@ -68,7 +68,7 @@ namespace EgLab
         }
     }
 
-    String::String(const char* str, const unsigned long size)
+    String::String(const char* str, const unsigned long size) : is_sso(true)
     {
         size_t len = size / sizeof(str[0]) + 1;
         if (is_sso && len < sizeof(sso_buffer))
@@ -101,6 +101,31 @@ namespace EgLab
             heap._data = new char[other.heap.capacity];
             memcpy(heap._data, other.heap._data, other.heap.length);
         }
+        return *this;
+    }
+
+    bool String::operator==(const char* str) const
+    {
+        size_t len = strlen(str);
+        String other(str, len);
+        return *this == other;
+    }
+
+    bool String::operator==(const String& other) const
+    {
+        if (this->size() != other.size()) return false;
+        const char* str = this->c_str();
+        const char* otherStr = other.c_str();
+        for (size_t i = 0; i < this->size(); ++i)
+        {
+            if (str[i] != otherStr[i]) return false;
+        }
+        return true;
+    }
+
+    String& String::operator+=(const String& other)
+    {
+        append(other.c_str());
         return *this;
     }
 

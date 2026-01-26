@@ -47,6 +47,8 @@ namespace EgLab
 
         bool operator==(const String& other) const;
 
+        bool operator==(const char* other) const;
+
         char* begin()
         {
             if (is_sso)
