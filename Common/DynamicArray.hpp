@@ -151,6 +151,14 @@ namespace EgLab
             ++_end;
         }
 
+        void popBack()
+        {
+            if (empty()) return;
+
+            _end--;
+            _size--;
+        }
+
         T &operator[](size_t index)
         {
             return *(_start + index);
@@ -159,6 +167,26 @@ namespace EgLab
         const T &operator[](size_t index) const
         {
             return *(_start + index);
+        }
+
+        ValueRef front()
+        {
+            return *_start;
+        }
+
+        ValueCRef front() const
+        {
+            return *_start;
+        }
+
+        ValueRef back()
+        {
+            return *(_start + _size - 1);
+        }
+
+        ValueCRef back() const
+        {
+            return *(_start + _size - 1);
         }
 
         Iterator<DynamicArray<T, Allocator>> begin() override

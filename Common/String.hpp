@@ -31,6 +31,8 @@ namespace EgLab
 
         String(const unsigned char str[], const unsigned long size);
 
+        String(const char* str, const unsigned long size);
+
         size_t size() const;
 
         const char* c_str() const;

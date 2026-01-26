@@ -1,5 +1,6 @@
 #include "test_render.h"
 
+#include "Common/StringLineIterator.hpp"
 #include "RenderEngine/Core/Camera.hpp"
 #include "RenderEngine/Core/Entity.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"
@@ -57,6 +58,28 @@ TEST_F(TestRender, window)
 
 TEST_F(TestRender, ShaderLib)
 {
+    class A
+    {
+    public:
+        int* tt;
+        int bb;
+    };
+    A a;
+    a.tt = new int(32);
+    a.tt[0] = 2;
+    a.tt[1] = 5;
+    a.tt[2] = 3;
+    a.bb = 4;
     EgLab::String buffer;
     EgLab::ShaderLib::instance().getBasicShader(buffer);
+
+    EgLab::StringLineIterator it(buffer);
+    EgLab::DynamicArray<EgLab::String> lines;
+    for (; it.hasNext(); ++it)
+    {
+        const char* str;
+        size_t len;
+        it.getString(str, len);
+        lines.pushBack(EgLab::String(str, len));
+    }
 }
