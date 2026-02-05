@@ -180,6 +180,20 @@ namespace EgLab
             return ListIterator(*this);
         }
 
+        Iterator<List<T, Allocator>> last()
+        {
+            ListIterator it(*this);
+            it._current = tail;
+            return it;
+        }
+
+        CIterator<List<T, Allocator>> last() const
+        {
+            ListCIterator it(*this);
+            it._current = tail;
+            return it;
+        }
+
         Iterator<List<T, Allocator>> end() override
         {
             auto it = ListIterator(*this);

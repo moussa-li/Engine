@@ -3,7 +3,9 @@
 #include "Common/DynamicArray.hpp"
 #include "Common/SharedPtr.hpp"
 #include "Common/Vector.hpp"
-#include "Definites.hpp"
+#include "Core/Definites.hpp"
+#include "Core/IndexBuffer.hpp"
+#include "Core/VertexArray.hpp"
 
 namespace EgLab
 {
@@ -24,6 +26,10 @@ namespace EgLab
         RenderMesh(DynamicArray<CoordType> vertices, DynamicArray<CoordType> normals,
                    DynamicArray<TexCoordType> texCoords, DynamicArray<IdxType> indices,
                    DynamicArray<Texture*> textures);
+
+        ~RenderMesh()
+        {
+        }
 
         void setup();
 

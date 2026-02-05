@@ -213,6 +213,11 @@ namespace EgLab
             return move(it);
         }
 
+        ValuePtr data() const
+        {
+            return _datas;
+        }
+
     private:
         ValuePtr _datas{nullptr};
         ValuePtr _start{nullptr};

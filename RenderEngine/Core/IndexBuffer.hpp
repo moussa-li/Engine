@@ -10,6 +10,12 @@ namespace EgLab
     {
     public:
         IndexBuffer(const DynamicArray<IdxType>& indeices);
+        ~IndexBuffer();
+
+        void bind() const;
+        void unBind() const;
+
+        unsigned int getCount() const;
 
     private:
         class Impl;

@@ -26,6 +26,11 @@ namespace EgLab
             return _data[i];
         }
 
+        const Scalar* data() const
+        {
+            return &_data[0][0];
+        }
+
     protected:
         Scalar _data[Col][Row];
     };

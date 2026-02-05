@@ -70,12 +70,27 @@
             "type": "lldb",
             "request": "launch",
             "name": "HashMap",
-            "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
+            "program": "${workspaceFolder}/build/win-clangd-debug/bin/common_test.exe",
             "args": [
                 "--gtest_filter=TestCommon.HashMap"
             ],
             "cwd": "${workspaceFolder}",
             "console": "externalTerminal"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "HashMap_Operator",
+            "program": "${workspaceFolder}/build/win-clangd-debug/bin/common_test.exe",
+            "args": [
+                "--gtest_filter=TestCommon.HashMap_operator"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal",
+            "initCommands": [
+                "command script import ${workspaceFolder}/debug/dynamic_array.py",
+                "type category enable EgLab"
+            ]
         },
         {
             "type": "lldb",
@@ -108,7 +123,11 @@
                 "--gtest_filter=TestRender.window"
             ],
             "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "initCommands": [
+                "command script import ${workspaceFolder}/debug/dynamic_array.py",
+                "type category enable EgLab"
+            ]
         },
         {
             "type": "lldb",

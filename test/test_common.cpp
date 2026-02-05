@@ -301,6 +301,15 @@ TEST_F(TestCommon, HashMap)
     }
 }
 
+TEST_F(TestCommon, HashMap_operator)
+{
+    EgLab::HashMap<int, EgLab::String> map;
+    map[0] = "aaa";
+    EXPECT_EQ(map[0], "aaa");
+    map[0] = "bbb";
+    EXPECT_EQ(map[0], "bbb");
+}
+
 TEST_F(TestCommon, mix)
 {
     int data[] = {1,       3,    2,    1,   4,     5,       6,     6,   7,     1,     12,

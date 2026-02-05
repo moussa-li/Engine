@@ -1,5 +1,7 @@
 #include "RenderMesh.hpp"
 
+#include <GL/glew.h>
+
 #include "Common/HashSet.hpp"
 #include "IndexBuffer.hpp"
 #include "Shader.hpp"
@@ -49,7 +51,15 @@ namespace EgLab
     void RenderMesh::draw(SharedPtr<Shader> shader, Transform transform)
     {
         shader->bind();
+        shader->setUniformMat4f("model", transform.getMatrix());
         // shader->setUniform1i();
+        _vertexArray->bind();
+        _indexBuffer->bind();
+        glDrawElements(GL_TRIANGLES, _indexBuffer->getCount(), GL_UNSIGNED_INT, 0);
+        glDepthMask(GL_TRUE);
+        _vertexArray->unBind();
+        _indexBuffer->unBind();
+        shader->unBind();
     }
 
     void RenderMesh::update()

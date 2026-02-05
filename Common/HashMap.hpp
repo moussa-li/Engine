@@ -59,23 +59,32 @@ namespace EgLab
 
         Value &operator[](const Key &key)
         {
+            auto it = find(key);
+            if (it == this->end()) it = insert({key, Value()});
+            return const_cast<Value &>((*it).second);
+        }
+
+        Iterator<HashTable<Pair<Key, Value>, Hash, Equal, Allocator>> find(const Key &key)
+        {
+            if (this->bucketsSize() == 0) return this->end();
             size_t index = this->hasher(key) % this->bucketsSize();
-            auto &bucket = this->buckets[index];
+            const auto &bucket = this->buckets[index];
 
             for (auto it = bucket.begin(); it != bucket.end(); ++it)
             {
                 if (this->equaler(*it, key))
                 {
-                    --this->_size;
-                    return (*it).second;
+                    Iterator<HashTable<Pair<Key, Value>, Hash, Equal, Allocator>> ret(*this);
+                    this->setItData(ret, index, it);
+                    // ret._bucketIndex = index;
+                    // ret._bucketIterator = it;
+                    return ret;
                 }
             }
-
-            insert({key, Value()});
-            return (*this)[key];
+            return this->end();
         }
 
-        Value &operator[](Key &&key)
+        CIterator<HashTable<Pair<Key, Value>, Hash, Equal, Allocator>> find(const Key &key) const
         {
             size_t index = this->hasher(key) % this->bucketsSize();
             auto &bucket = this->buckets[index];
@@ -84,16 +93,23 @@ namespace EgLab
             {
                 if (this->equaler(*it, key))
                 {
-                    --this->_size;
-                    return (*it).second;
+                    CIterator<HashTable<Pair<Key, Value>, Hash, Equal, Allocator>> ret(*this);
+                    ret._bucketIndex = index;
+                    ret._bucketIterator = it;
+                    return ret;
                 }
             }
-
-            insert({key, Value()});
-            return (*this)[key];
+            return this->end();
         }
 
-        bool insert(const DataType &data)
+        Value &operator[](Key &&key)
+        {
+            auto it = find(key);
+            if (it == this->end()) it = insert({key, Value()});
+            return const_cast<Value &>((*it).second);
+        }
+
+        Iterator<HashTable<Pair<Key, Value>, Hash, Equal, Allocator>> insert(const DataType &data)
         {
             if ((this->_size + 1) > this->bucketsSize() * 1.0)
             {
@@ -101,13 +117,21 @@ namespace EgLab
             }
 
             size_t index = this->hasher(data) % this->bucketsSize();
-            for (const auto &k : this->buckets[index])
+            const auto &bucket = this->buckets[index];
+            for (auto listIt = bucket.begin(); listIt != bucket.end(); ++listIt)
             {
-                if (this->equaler(k, data)) return false;
+                if (this->equaler(*listIt, data))
+                {
+                    Iterator<HashTable<Pair<Key, Value>, Hash, Equal, Allocator>> it(*this);
+                    this->setItData(it, index, listIt);
+                    return it;
+                }
             }
             this->buckets[index].pushBack(data);
             ++this->_size;
-            return true;
+            Iterator<HashTable<Pair<Key, Value>, Hash, Equal, Allocator>> it(*this);
+            this->setItData(it, index, bucket.last());
+            return it;
         }
 
         bool erase(const Key &key)

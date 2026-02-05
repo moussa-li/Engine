@@ -101,6 +101,17 @@ namespace EgLab
             }
         }
 
+        template <typename Derived>
+        SharedPtr(const SharedPtr<Derived> &other)
+        {
+            this->_ptr = other._ptr;
+            TRef *ptr = static_cast<TRef *>(this->_ptr);
+            if (ptr)
+            {
+                ptr->addRef();
+            }
+        }
+
         template <typename U, typename... Args,
                   typename = enableIf_t<!isSame<decay_t<U>, SharedPtr<T>>::value>>
         explicit SharedPtr(U &&firstArg, Args &&...args)
@@ -163,6 +174,9 @@ namespace EgLab
             {
             }
         };
+
+        template <typename Derived>
+        friend class SharedPtr;
     };
 
     template <class T, class... Args>

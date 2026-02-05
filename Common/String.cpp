@@ -70,7 +70,7 @@ namespace EgLab
 
     String::String(const char* str, const unsigned long size) : is_sso(true)
     {
-        size_t len = size / sizeof(str[0]) + 1;
+        size_t len = size / sizeof(str[0]);
         if (is_sso && len < sizeof(sso_buffer))
         {
             memcpy(sso_buffer, str, len);
@@ -150,9 +150,11 @@ namespace EgLab
         {
             if (is_sso)
             {
+                char tmp_buffer[bufferSize];
+                strcpy(tmp_buffer, sso_buffer);
                 heap.capacity = new_len * expansionCoefficient;
                 heap._data = new char[heap.capacity];
-                strcpy(heap._data, sso_buffer);
+                strcpy(heap._data, tmp_buffer);
                 is_sso = false;
             }
             else if (new_len > heap.capacity)

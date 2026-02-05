@@ -7,6 +7,7 @@
 #include "RenderEngine/Core/Renderer.hpp"
 #include "RenderEngine/Core/ShaderLib.hpp"
 #include "RenderEngine/Core/Window.hpp"
+#include "RenderEngine/Objects/Box.hpp"
 
 class SimpleApp
 {
@@ -21,6 +22,13 @@ public:
     {
         auto c = EgLab::makeUnique<EgLab::Camera>();
         r = EgLab::makeUnique<EgLab::Renderer>(move(c));
+
+        EgLab::Vector3f pos(0, 0, 0);
+        EgLab::Vector3f rot(0, 0, 0);
+        EgLab::Vector3f scal(1, 1, 1);
+        auto box = EgLab::makeShared<EgLab::Box>(pos, rot, scal);
+
+        r->addEntity(box);
     }
 
     ~SimpleApp() = default;
@@ -58,18 +66,6 @@ TEST_F(TestRender, window)
 
 TEST_F(TestRender, ShaderLib)
 {
-    class A
-    {
-    public:
-        int* tt;
-        int bb;
-    };
-    A a;
-    a.tt = new int(32);
-    a.tt[0] = 2;
-    a.tt[1] = 5;
-    a.tt[2] = 3;
-    a.bb = 4;
     EgLab::String buffer;
     EgLab::ShaderLib::instance().getBasicShader(buffer);
 

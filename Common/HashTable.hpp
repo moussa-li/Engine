@@ -74,8 +74,11 @@ namespace EgLab
         {
             HashTableIterator it(*this);
             it._bucketIndex = this->bucketsSize();
-            it._bucketIterator =
-                this->buckets[this->bucketsSize() - 1].end(); // TODO: change to back()
+            if (it._bucketIndex != 0)
+            {
+                it._bucketIterator =
+                    this->buckets[this->bucketsSize() - 1].end(); // TODO: change to back()
+            }
             return (move(it));
         }
 
@@ -88,8 +91,11 @@ namespace EgLab
         {
             HashTableCIterator it(*this);
             it._bucketIndex = this->bucketsSize();
-            it._bucketIterator =
-                this->buckets[this->bucketsSize() - 1].end(); // TODO: change to back()
+            if (it._bucketIndex != 0)
+            {
+                it._bucketIterator =
+                    this->buckets[this->bucketsSize() - 1].end(); // TODO: change to back()
+            }
             return (move(it));
         }
 
@@ -149,6 +155,22 @@ namespace EgLab
                     }
                 }
             }
+        }
+
+        void setItData(
+            Iterator<HashTable<T, Hash, Equal, Allocator>> &it, const size_t &bucketIndex,
+            const List<ValueType, StaticSizeAllocator<ListNode<T>>>::ListCIterator &bucketIterator)
+        {
+            it._bucketIndex = bucketIndex;
+            it._bucketIterator = bucketIterator;
+        }
+
+        void setItData(
+            CIterator<HashTable<T, Hash, Equal, Allocator>> &it, const size_t &bucketIndex,
+            const List<ValueType, StaticSizeAllocator<ListNode<T>>>::ListCIterator &bucketIterator)
+        {
+            it._bucketIndex = bucketIndex;
+            it._bucketIterator = bucketIterator;
         }
 
         size_t calcBucketSize(size_t n)
@@ -250,22 +272,54 @@ namespace EgLab
         }
 
         Iterator<HashTable<T, Hash, Equal, Allocator>>(
+            Iterator<HashTable<T, Hash, Equal, Allocator>> &&other)
+            : _table(other._table),
+              _bucketIndex(other._bucketIndex),
+              _bucketIterator(other._bucketIterator)
+        {
+        }
+
+        Iterator<HashTable<T, Hash, Equal, Allocator>>(
             const Iterator<HashTable<T, Hash, Equal, Allocator>> &other)
             : _table(other._table),
               _bucketIndex(other._bucketIndex),
               _bucketIterator(other._bucketIterator)
         {
-            // if (_table.bucketsSize() > 0)
-            // {
-            //     _bucketIterator = _table.buckets[0].begin();
-            // }
+        }
+
+        Iterator<HashTable<T, Hash, Equal, Allocator>>(
+            CIterator<HashTable<T, Hash, Equal, Allocator>> &&other)
+            : _table(other._table),
+              _bucketIndex(other._bucketIndex),
+              _bucketIterator(other._bucketIterator)
+        {
+        }
+
+        Iterator<HashTable<T, Hash, Equal, Allocator>> operator=(
+            const Iterator<HashTable<T, Hash, Equal, Allocator>> &other)
+        {
+            if (&_table != &other._table)
+            {
+                LOG(ERROR) << "error iterator for hashTable, becaus the error table";
+                return *this;
+            }
+            _bucketIndex = other._bucketIndex;
+            _bucketIterator = other._bucketIterator;
+            return *this;
+        }
+
+        Iterator<HashTable<T, Hash, Equal, Allocator>>(
+            const CIterator<HashTable<T, Hash, Equal, Allocator>> &other)
+            : _table(other._table),
+              _bucketIndex(other._bucketIndex),
+              _bucketIterator(other._bucketIterator)
+        {
         }
 
         Iterator<HashTable<T, Hash, Equal, Allocator>>(
             const HashTable<T, Hash, Equal, Allocator> &ht)
             : _table(ht), _bucketIndex(0), _bucketIterator()
         {
-            // for (const auto &it : _table.buckets)
             for (auto it = _table.buckets.begin(); it != _table.buckets.end(); ++it)
             {
                 if ((*it).empty() == false)
@@ -335,6 +389,12 @@ namespace EgLab
             return *_bucketIterator;
         }
 
+        bool operator==(const CIterator<HashTable<T, Hash, Equal, Allocator>> &other) const
+        {
+            if (_bucketIndex != other._bucketIndex) return false;
+            return _bucketIterator == other._bucketIterator;
+        }
+
         ValueCRef data()
         {
             if (!hasNext())
@@ -350,6 +410,15 @@ namespace EgLab
               _bucketIndex(other._bucketIndex),
               _bucketIterator(other._bucketIterator)
         {
+        }
+
+        CIterator<HashTable<T, Hash, Equal, Allocator>> operator=(
+            const CIterator<HashTable<T, Hash, Equal, Allocator>> &other)
+        {
+            _table = other._table;
+            _bucketIndex = other._bucketIndex;
+            _bucketIterator = other._bucketIterator;
+            return *this;
         }
 
         CIterator<HashTable<T, Hash, Equal, Allocator>>(
