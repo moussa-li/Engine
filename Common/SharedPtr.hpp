@@ -79,6 +79,8 @@ namespace EgLab
 
         SharedPtr(SharedPtr &&ptr) noexcept
         {
+            this->operator=(ptr.get());
+            // return *this;
         }
 
         // explicit SharedPtr(T *ptr)
@@ -119,6 +121,12 @@ namespace EgLab
         {
             TRef *ptr = static_cast<TRef *>(this->_ptr);
             ptr->addRef();
+        }
+
+        SharedPtr(T *ptr) : PtrBase<T>(ptr)
+        {
+            TRef *tptr = static_cast<TRef *>(this->_ptr);
+            tptr->addRef();
         }
 
         void operator=(T *ptr)
@@ -182,7 +190,7 @@ namespace EgLab
     template <class T, class... Args>
     SharedPtr<T> makeShared(Args &&...args)
     {
-        return SharedPtr<T>(forward<Args>(args)...);
+        return SharedPtr<T>(new T(forward<Args>(args)...));
     }
 
     template <class Derived, typename Base>
