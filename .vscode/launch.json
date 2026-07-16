@@ -123,7 +123,7 @@
                 "--gtest_filter=TestRender.window"
             ],
             "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal",
+            "console": "externalTerminal",
             "initCommands": [
                 "command script import ${workspaceFolder}/debug/dynamic_array.py",
                 "type category enable EgLab"

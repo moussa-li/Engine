@@ -1,14 +1,20 @@
 #include "Renderer.hpp"
 
-#include "Camera.hpp"
-#include "Entity.hpp"
-#include "RenderConfigure.hpp"
-#include "Window.hpp"
+#include "RenderEngine/Core/Camera.hpp"
+#include "RenderEngine/Core/Entity.hpp"
+#include "RenderEngine/Core/RenderConfigure.hpp"
+#include "RenderEngine/Core/Scene.hpp"
+#include "RenderEngine/Core/Window.hpp"
 
 namespace EgLab
 {
     void Renderer::clear()
     {
+    }
+
+    void Renderer::addViewport(RenderViewport &viewport)
+    {
+        _viewports.pushBack(viewport);
     }
 
     Return Renderer::addEntity(SharedPtr<Entity> entity)
@@ -40,6 +46,7 @@ namespace EgLab
             glDisable(GL_DEPTH_TEST);
         }
 
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         for (size_t i = 0; i < _entities.size(); ++i)
@@ -48,12 +55,17 @@ namespace EgLab
         }
     }
 
-    void Renderer::draw() const
+    void Renderer::draw(const Scene &scene, const Camera &camera) const
     {
-        for (size_t i = 0; i < _entities.size(); ++i)
+        for (IdxType i = 0; i < _viewports.size(); ++i)
         {
-            auto &e = _entities[i];
-            e->draw();
+            const auto &viewport = _viewports[i];
+            for (IdxType j = 0; j < _entities.size(); ++j)
+            {
+                auto &e = _entities[j];
+                e->loadCamera(viewport.camera);
+                e->draw();
+            }
         }
     }
 
@@ -62,8 +74,7 @@ namespace EgLab
         return _configure;
     }
 
-    Renderer::Renderer(UniquePtr<Camera> &&camera)
-        : _camera(move(camera)), _configure(makeUnique<RenderConfigure>())
+    Renderer::Renderer() : _configure(makeUnique<RenderConfigure>())
     {
     }
 

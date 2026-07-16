@@ -13,6 +13,7 @@ namespace EgLab
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _rendererId);
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, indeices.size() * sizeof(IdxType),
                          indeices.data(), GL_STATIC_DRAW);
+            _count = indeices.size();
         }
 
         ~Impl()

@@ -21,7 +21,8 @@ namespace EgLab
 {
     enum class ShaderId
     {
-        Basic
+        Basic,
+        Easy
     };
 
     class String;

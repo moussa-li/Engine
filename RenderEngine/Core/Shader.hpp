@@ -39,6 +39,8 @@ namespace EgLab
 
         Return setUniformMat4f(const String& name, const Matrix4f& mat);
 
+        Return setUniform3f(const String& name, const Vector3f& vec);
+
     private:
         IdType createShader(const ShaderProgramSource&);
 

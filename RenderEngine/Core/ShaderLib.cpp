@@ -6,6 +6,7 @@
 // ShaderLib
 #include "Basic.shader.h"
 #include "Common/HashMap.hpp"
+#include "Easy.shader.h"
 
 namespace EgLab
 {
@@ -28,6 +29,7 @@ namespace EgLab
     ShaderLib::ShaderLib() : _data(new Impl)
     {
         _data->buffers.insert({ShaderId::Basic, String(BASIC_SHADER__DATA, BASIC_SHADER__SIZE)});
+        _data->buffers.insert({ShaderId::Easy, String(EASY_SHADER__DATA, EASY_SHADER__SIZE)});
     }
 
     ShaderLib::~ShaderLib()
@@ -39,6 +41,7 @@ namespace EgLab
     {
         Return ret = Return::Succeed;
         buffer = _data->buffers[ShaderId::Basic];
+        // buffer = _data->buffers[ShaderId::Easy];
         return ret;
     }
 

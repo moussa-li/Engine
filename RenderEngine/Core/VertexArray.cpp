@@ -11,6 +11,12 @@ namespace EgLab
     public:
         Impl()
         {
+            GLCall(glGenVertexArrays(1, &_renderId));
+        }
+
+        ~Impl()
+        {
+            GLCall(glDeleteVertexArrays(1, &_renderId));
         }
 
         unsigned int getGLType(BufferType bt)

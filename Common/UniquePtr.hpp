@@ -47,6 +47,14 @@ namespace EgLab
             return *this;
         }
 
+        template <class U, class = enableIf_t<std::is_convertible<U *, T *>::value>>
+        UniquePtr<T> &operator=(UniquePtr<U> &&rhs) noexcept
+        {
+            delete this->_ptr;
+            this->_ptr = rhs.release();
+            return *this;
+        }
+
         UniquePtr(const UniquePtr &) = delete;
         UniquePtr operator=(const UniquePtr &) = delete;
     };

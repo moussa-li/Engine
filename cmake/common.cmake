@@ -1,5 +1,7 @@
 function(gen_assets)
 # the file should be embed
+
+unset(EMBED_FILES CACHE)
 file (GLOB EMBED_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/*"
 )

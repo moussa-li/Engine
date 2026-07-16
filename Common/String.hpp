@@ -8,6 +8,7 @@
  */
 
 #include <cstddef>
+#include <iostream>
 
 #include "Common/CommonAPI.hpp"
 
@@ -81,6 +82,14 @@ namespace EgLab
                 return heap._data + heap.length;
         }
 
+        friend String operator<<(const char* lhs, const String& rhs);
+
+        friend std::ostream& operator<<(std::ostream& os, const String& str)
+        {
+            os << str.c_str();
+            return os;
+        }
+
     private:
         union
         {
@@ -96,6 +105,8 @@ namespace EgLab
     };
 
     CommonAPI String operator+(const char* left, String right);
+
+    String operator<<(const char* lhs, const String& rhs);
 
 } // namespace EgLab
 

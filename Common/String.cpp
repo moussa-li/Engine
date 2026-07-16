@@ -185,4 +185,10 @@ namespace EgLab
         return res + right;
     }
 
+    String operator<<(const char* lhs, const String& rhs)
+    {
+        String res(lhs);
+        return lhs + rhs;
+    }
+
 } // namespace EgLab

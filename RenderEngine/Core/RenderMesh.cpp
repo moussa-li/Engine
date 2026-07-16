@@ -3,6 +3,7 @@
 #include <GL/glew.h>
 
 #include "Common/HashSet.hpp"
+#include "GLWrapper.hpp"
 #include "IndexBuffer.hpp"
 #include "Shader.hpp"
 #include "Texture.hpp"
@@ -56,6 +57,7 @@ namespace EgLab
         _vertexArray->bind();
         _indexBuffer->bind();
         glDrawElements(GL_TRIANGLES, _indexBuffer->getCount(), GL_UNSIGNED_INT, 0);
+        GL_CHECK();
         glDepthMask(GL_TRUE);
         _vertexArray->unBind();
         _indexBuffer->unBind();

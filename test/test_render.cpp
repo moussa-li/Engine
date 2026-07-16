@@ -12,20 +12,28 @@
 class SimpleApp
 {
 public:
-    EgLab::UniquePtr<EgLab::Window> w;
-    EgLab::UniquePtr<EgLab::Renderer> r;
+    EgLab::SharedPtr<EgLab::Window> w;
+    EgLab::SharedPtr<EgLab::Renderer> r;
 
     EgLab::DeltaTime lastFrame;
     EgLab::DeltaTime deltaTime;
 
-    SimpleApp() : w(EgLab::makeUnique<EgLab::Window>(300, 300))
+    SimpleApp() : w(EgLab::makeShared<EgLab::Window>(300, 300))
     {
-        auto c = EgLab::makeUnique<EgLab::Camera>();
-        r = EgLab::makeUnique<EgLab::Renderer>(move(c));
+        auto c = EgLab::makeShared<EgLab::Camera>(300, 300);
+        r = EgLab::makeShared<EgLab::Renderer>();
+        EgLab::RenderViewport viewport;
+        viewport.camera = c;
+        viewport.window = w;
+        viewport.x = 0;
+        viewport.y = 0;
+        viewport.width = 300;
+        viewport.height = 300;
+        r->addViewport(viewport);
 
         EgLab::Vector3f pos(0, 0, 0);
         EgLab::Vector3f rot(0, 0, 0);
-        EgLab::Vector3f scal(1, 1, 1);
+        EgLab::Vector3f scal(10, 10, 10);
         auto box = EgLab::makeShared<EgLab::Box>(pos, rot, scal);
 
         r->addEntity(box);
@@ -44,16 +52,7 @@ public:
 
             r->draw();
 
-            /*input*/
-            // CAMERA->processInput(window, deltaTime);
-
-            /* Swap front and back buffers */
-            // glfwSwapBuffers(_window);
-
-            /* Poll for and process events */
-            // glfwPollEvents();
-
-            // CalculateFrameRate();
+            w->deal();
         };
     }
 };

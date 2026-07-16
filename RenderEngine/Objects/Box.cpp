@@ -11,6 +11,31 @@ namespace EgLab
         createMesh();
     }
 
+#if 0
+    Return Box::createMesh()
+    {
+        DynamicArray<CoordType> vertices;
+        CoordType v1(-0.5, -0.5, 0);
+        CoordType v2(0.5, -0.5, 0);
+        CoordType v3(0, 0.5, 0);
+        vertices.pushBack(v1);
+        vertices.pushBack(v2);
+        vertices.pushBack(v3);
+
+        DynamicArray<TexCoordType> texcoords;
+        DynamicArray<IdxType> indices;
+        indices.pushBack(0);
+        indices.pushBack(1);
+        indices.pushBack(2);
+        DynamicArray<CoordType> normals;
+        DynamicArray<Texture*> tex;
+
+        _meshes.pushBack(makeShared<RenderMesh>(vertices, normals, texcoords, indices, tex));
+
+        return Return::Succeed;
+    }
+
+#else
     Return Box::createMesh()
     {
         DynamicArray<CoordType> vertices;
@@ -27,9 +52,9 @@ namespace EgLab
         float temp[3];
         for (int i = 0; i < 6; i++)
         {
-            memcpy(temp, n[i], sizeof(float) * 3);
             for (int j = 0; j < 4; ++j)
             {
+                memcpy(temp, n[i], sizeof(float) * 3);
                 size_t c = 0;
                 for (int k = 0; k < 3 && c < 2; k++)
                 {
@@ -56,11 +81,22 @@ namespace EgLab
         }
 
         DynamicArray<Texture*> tex;
+
+        for (auto& v : vertices)
+        {
+            LOG(INFO) << v[0] << ", " << v[1] << ", " << v[2];
+        }
+
+        for (int i = 0; i < indices.size(); i += 3)
+        {
+            LOG(INFO) << indices[i] << ", " << indices[i + 1] << ", " << indices[i + 2];
+        }
+
         _meshes.pushBack(makeShared<RenderMesh>(vertices, normals, texcoords, indices, tex));
 
         return Return::Succeed;
     }
-
+#endif
     // void Box::draw() const
     // {
     // }

@@ -11,22 +11,25 @@ namespace EgLab
     class Camera;
     class Entity;
     class Light;
+    class Scene;
     class RenderConfigure;
+
+    struct RenderViewport
+    {
+        SharedPtr<Camera> camera;
+        SharedPtr<Window> window;
+        int x, y;          // start position
+        int width, height; // size
+    };
 
     class RenderEngineAPI Renderer
     {
     public:
-        void setWindow(SharedPtr<Window>);
+        void addViewport(RenderViewport &);
 
         void clear();
 
-        void draw() const;
-
-        /*
-        void insertEntity(Entity* entity);
-
-        void insertLight(Light* light);
-        */
+        void draw(const Scene &scene, const Camera &camera) const;
 
         Return addEntity(SharedPtr<Entity> entity);
 
@@ -34,16 +37,16 @@ namespace EgLab
 
         UniquePtr<RenderConfigure> &getConfigure();
 
-        Renderer(UniquePtr<Camera> &&camera);
+        Renderer();
 
         ~Renderer() = default;
 
     private:
         EgLab::DynamicArray<SharedPtr<Entity>> _entities;
 
-        EgLab::DynamicArray<Light *> _lights;
+        EgLab::DynamicArray<RenderViewport> _viewports;
 
-        UniquePtr<Camera> _camera;
+        EgLab::DynamicArray<Light *> _lights;
 
         UniquePtr<RenderConfigure> _configure;
     };

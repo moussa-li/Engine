@@ -14,6 +14,8 @@ namespace EgLab
 
         Transform(CoordType position, CoordType rotation, CoordType scale);
 
+        Transform(const Transform &other);
+
         Matrix4f getMatrix();
         Matrix4f getRotationMatrix();
 

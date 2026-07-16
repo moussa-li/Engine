@@ -8,17 +8,19 @@ out vec3 FragPos;
 out vec3 Normal;
 out vec2 TexCoords;
 
-uniform mat4 u_MVP;
+uniform mat4 proj;
 uniform mat4 view;
 uniform mat4 model;
-       
+
 void main()
 {
     FragPos = vec3(model * vec4(position, 1.0));
     Normal = mat3(transpose(inverse(model))) * normal;
     TexCoords = texCoord;
-    gl_Position = u_MVP * view * vec4(FragPos, 1.0);
+    gl_Position = proj * view * vec4(FragPos, 1.0);
 };
+       
+
 
 #shader fragment
 #version 330 core
@@ -100,14 +102,15 @@ void main()
     // this fragment's final color.
     // == =====================================================
     // phase 1: directional lighting
-    vec3 result = CalcDirLight(dirLight, norm, viewDir);
+    //vec3 result = CalcDirLight(dirLight, norm, viewDir);
     //  // phase 2: point lights
     //  for(int i = 0; i < NR_POINT_LIGHTS; i++)
-          result += CalcPointLight(pointLights, norm, FragPos, viewDir);    
+          //result += CalcPointLight(pointLights, norm, FragPos, viewDir);    
     //  // phase 3: spot light
     //  result += CalcSpotLight(spotLight, norm, FragPos, viewDir);    
       
-    FragColor = vec4(result, 1.0);
+    //FragColor = vec4(result, 1.0);
+    FragColor = vec4(1.0,1.0,1.0,1.0);
 }
 
 // calculates the color when using a directional light.

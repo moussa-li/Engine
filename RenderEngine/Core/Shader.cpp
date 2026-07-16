@@ -7,6 +7,7 @@
 #include "Common/String.hpp"
 #include "Common/StringLineIterator.hpp"
 #include "Core/ShaderLib.hpp"
+#include "GLWrapper.hpp"
 
 namespace EgLab
 {
@@ -34,11 +35,13 @@ namespace EgLab
     Return Shader::bind() const
     {
         Return ret = Return::Succeed;
+        glUseProgram(_rendererId);
         return ret;
     }
 
     Return Shader::unBind() const
     {
+        glUseProgram(0);
         Return ret = Return::Succeed;
         return ret;
     }
@@ -49,6 +52,7 @@ namespace EgLab
         const char* src = source.c_str();
         glShaderSource(id, 1, &src, nullptr);
         glCompileShader(id);
+        GL_CHECK();
 
         int result;
         glGetShaderiv(id, GL_COMPILE_STATUS, &result);
@@ -59,6 +63,7 @@ namespace EgLab
             char* msg = new char[length];
             glGetShaderInfoLog(id, length, &length, msg);
             LOG(ERROR) << "Failed to comile [ " << type << "] : " << msg;
+            GL_CHECK();
             glDeleteShader(id);
             return 0;
         }
@@ -144,19 +149,29 @@ namespace EgLab
 
     Return Shader::setUniform1i(const String& name, const int& v0)
     {
-        glUniform1iv(getUniformLocation(name), 1, &v0);
+        LOG(INFO) << "value name : " << name;
+        LOG_CALL(glUniform1iv, getUniformLocation(name), 1, &v0);
         return Return::Succeed;
     }
 
     Return Shader::setUniform1f(const String& name, const float& v0)
     {
-        glUniform1fv(getUniformLocation(name), 1, &v0);
+        LOG(INFO) << "value name : " << name;
+        LOG_CALL(glUniform1fv, getUniformLocation(name), 1, &v0);
         return Return::Succeed;
     }
 
     Return Shader::setUniformMat4f(const String& name, const Matrix4f& mat)
     {
-        glUniformMatrix4fv(getUniformLocation(name), 1, GL_FALSE, mat.data());
+        LOG(INFO) << "value name : " << name;
+        LOG_CALL(glUniformMatrix4fv, getUniformLocation(name), 1, GL_TRUE, mat.data());
+        return Return::Succeed;
+    }
+
+    Return Shader::setUniform3f(const String& name, const Vector3f& vec)
+    {
+        LOG(INFO) << "value name : " << name;
+        LOG_CALL(glUniform3fv, getUniformLocation(name), 1, vec.data());
         return Return::Succeed;
     }
 

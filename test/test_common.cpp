@@ -39,12 +39,32 @@ TEST_F(TestCommon, testSingle)
     EXPECT_EQ(a1.getA(), 4);
 }
 
+int testWithOneParam(int a)
+{
+    return 1;
+}
+
+void testWithTwoParam(int a, float b)
+{
+    // return 1;
+}
+
+int testWithZeroParam()
+{
+    return 1;
+}
+
 TEST_F(TestCommon, Log)
 {
     LOG(INFO) << "info";
     LOG(WARNING) << "test";
     LOG(ERROR) << "test";
     LOG(FATAL) << "test";
+
+    int a = 4;
+    LOG_CALL(testWithOneParam, a);
+    LOG_CALL(testWithTwoParam, a, a);
+    LOG_CALL(testWithZeroParam);
 }
 
 TEST_F(TestCommon, String)
@@ -330,6 +350,20 @@ TEST_F(TestCommon, mix)
     }
 }
 
+TEST_F(TestCommon, logMatrix)
+{
+    // clang-format off
+    EgLab::Matrix4f m(
+        1,0,0,351236501,
+        0,565125125,0,0,
+        0,0,1.12412515,0,
+        0,0,0,1.432141
+    );
+    // clang-format on
+
+    LOG(INFO) << m;
+}
+
 TEST_F(TestCommon, sharedPtr)
 {
     class A
@@ -392,6 +426,21 @@ TEST_F(TestCommon, uniquePtr)
     };
     EgLab::UniquePtr<A> cc;
     cc = EgLab::makeUnique<A>(5);
+}
+
+TEST_F(TestCommon, Matrix_Identity)
+{
+    EgLab::Matrix4f mat = EgLab::Matrix4f::Identity();
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            if (i == j)
+                EXPECT_EQ(mat[i][j], 1);
+            else
+                EXPECT_EQ(mat[i][j], 0);
+        }
+    }
 }
 
 #if 0

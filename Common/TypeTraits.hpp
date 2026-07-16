@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <type_traits>
 
 namespace EgLab
 {
@@ -358,4 +359,21 @@ namespace EgLab
             return left == right;
         }
     };
+
+    template <typename To>
+    static TrueType testConvertible(To);
+
+    static FalseType testConvertible(...);
+
+    template <typename From, typename To, typename = void>
+    struct isConvertible : FalseType
+    {
+    };
+
+    // FIXME: isConvertible is not effect
+    template <typename From, typename To>
+    struct isConvertible<From, To, decltype(testConvertible<To>(std::declval<From>()))> : TrueType
+    {
+    };
+
 } // namespace EgLab

@@ -7,6 +7,21 @@
 
 namespace EgLab
 {
+    void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
+                                    GLsizei length, const GLchar *message, const void *userParam)
+    {
+        // 忽略一些低优先级的通知，只关注错误和警告
+        if (type == GL_DEBUG_TYPE_ERROR || type == GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR)
+        {
+            fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+                    (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), type, severity, message);
+        }
+    }
+
+    void glfwErrorCallback(int error, const char *description)
+    {
+        LOG(ERROR) << "GLFW Error " << error << ": " << description;
+    }
 
     class Window::Impl
     {
@@ -18,6 +33,8 @@ namespace EgLab
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+            glfwSetErrorCallback(glfwErrorCallback);
 
             /* Create a windowed mode window and its OpenGL context */
             _window = glfwCreateWindow(_width, _height, "Hello World", NULL, NULL);
@@ -49,6 +66,11 @@ namespace EgLab
                 LOG(ERROR) << "Error";
             }
 
+            glEnable(GL_DEBUG_OUTPUT);
+            glDebugMessageCallback(MessageCallback, 0);
+            // 确保同步输出，这样错误发生时会立即触发回调（开发阶段推荐）
+            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+
             LOG(INFO) << glGetString(GL_VERSION);
         }
 
@@ -56,6 +78,12 @@ namespace EgLab
         {
             if (_window == nullptr) return true;
             return glfwWindowShouldClose(_window);
+        }
+
+        void deal() const
+        {
+            glfwSwapBuffers(_window);
+            glfwPollEvents();
         }
 
     public:
@@ -97,6 +125,11 @@ namespace EgLab
     {
         // TODO: implete to _impl
         return static_cast<DeltaTime>(glfwGetTime());
+    }
+
+    void Window::deal() const
+    {
+        return _impl->deal();
     }
 
     // void Window::exec()
