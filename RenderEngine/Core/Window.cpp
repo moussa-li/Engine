@@ -1,9 +1,10 @@
-#include "Window.hpp"
+#include "RenderEngine/Core/Window.hpp"
 
-#include "Camera.hpp"
 #include "Common/Log.hpp"
 #include "GLFW/glfw3.h"
-#include "Renderer.hpp"
+#include "RenderEngine/Core/Camera.hpp"
+#include "RenderEngine/Core/CameraController.hpp"
+#include "RenderEngine/Core/Renderer.hpp"
 
 namespace EgLab
 {
@@ -55,8 +56,16 @@ namespace EgLab
             /* disable cursor */
             glfwSetInputMode(_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+            glfwSetWindowUserPointer(_window, this);
+
             /* user operator */
             glfwMakeContextCurrent(_window);
+
+            glfwSetMouseButtonCallback(_window, mouseButtonCallback);
+
+            glfwSetCursorPosCallback(_window, mouseButtonMoveCallback);
+
+            glfwSetScrollCallback(_window, mouseScrollCallback);
 
             /* v-Sync */
             // glfwSwapInterval(1);
@@ -86,8 +95,66 @@ namespace EgLab
             glfwPollEvents();
         }
 
+        static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
+        {
+            Impl *impl = static_cast<Impl *>(glfwGetWindowUserPointer(window));
+            if (impl)
+            {
+                // if (ImGui::GetIO().WantCaptureMouse) return;
+
+                double xpos, ypos;
+                glfwGetCursorPos(window, &xpos, &ypos);
+                impl->processMouseButton(button, action, (float)xpos, (float)ypos);
+            }
+        }
+
+        static void mouseButtonMoveCallback(GLFWwindow *window, double xpos, double ypos)
+        {
+            Impl *impl = static_cast<Impl *>(glfwGetWindowUserPointer(window));
+            if (impl)
+            {
+                // if (ImGui::GetIO().WantCaptureMouse) return;
+
+                double xpos, ypos;
+                glfwGetCursorPos(window, &xpos, &ypos);
+                impl->processMouseMove((float)xpos, (float)ypos);
+            }
+        }
+
+        static void mouseScrollCallback(GLFWwindow *window, double xoffset, double yoffset)
+        {
+            // ImGuiIO &io = ImGui::GetIO();
+            // if (io.WantCaptureMouse) return; // 防止在 Imgui 窗口上滚轮时，场景也跟着缩放
+
+            Impl *impl = static_cast<Impl *>(glfwGetWindowUserPointer(window));
+            if (impl)
+            {
+                // if (ImGui::GetIO().WantCaptureMouse) return;
+                impl->processMouseScroll((float)yoffset);
+            }
+        }
+
+        void processMouseButton(int button, int action, float xpos, float ypos)
+        {
+            if (_cameraController == nullptr) return;
+            _cameraController->processMouseButton(button, action, xpos, ypos);
+        }
+
+        void processMouseMove(float xpos, float ypos)
+        {
+            if (_cameraController == nullptr) return;
+            _cameraController->processMouseMove(xpos, ypos);
+        }
+
+        void processMouseScroll(float yoffset)
+        {
+            if (_cameraController == nullptr) return;
+            _cameraController->processMouseScroll(yoffset);
+        }
+
     public:
         GLFWwindow *_window;
+        SharedPtr<CameraController> _cameraController;
 
         unsigned int _width;
         unsigned int _height;
@@ -130,6 +197,16 @@ namespace EgLab
     void Window::deal() const
     {
         return _impl->deal();
+    }
+
+    void Window::setCameraController(SharedPtr<CameraController> cmaeraController)
+    {
+        _impl->_cameraController = cmaeraController;
+        if (cmaeraController == nullptr) return;
+        if (cmaeraController->enableCursor())
+            glfwSetInputMode(_impl->_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        else
+            glfwSetInputMode(_impl->_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     }
 
     // void Window::exec()

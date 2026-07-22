@@ -14,9 +14,9 @@ namespace EgLab
         _shader = makeShared<Shader>(ShaderId::Basic);
         _shader->bind();
 
-        _shader->setUniform1i("material.texture_specular1", 1);
-        _shader->setUniform1i("material.texture_diffuse1", 1);
-        _shader->setUniform1f("material.shininess", 32.0f);
+        // _shader->setUniform1i("material.texture_specular1", 1);
+        // _shader->setUniform1i("material.texture_diffuse1", 1);
+        // _shader->setUniform1f("material.shininess", 32.0f);
     }
 
     void Entity::draw() const

@@ -16,7 +16,6 @@ namespace EgLab
 
     struct RenderViewport
     {
-        SharedPtr<Camera> camera;
         SharedPtr<Window> window;
         int x, y;          // start position
         int width, height; // size
@@ -29,7 +28,7 @@ namespace EgLab
 
         void clear();
 
-        void draw(const Scene &scene, const Camera &camera) const;
+        void draw(const SharedPtr<Scene> &scene, const SharedPtr<Camera> &camera) const;
 
         Return addEntity(SharedPtr<Entity> entity);
 
@@ -42,8 +41,6 @@ namespace EgLab
         ~Renderer() = default;
 
     private:
-        EgLab::DynamicArray<SharedPtr<Entity>> _entities;
-
         EgLab::DynamicArray<RenderViewport> _viewports;
 
         EgLab::DynamicArray<Light *> _lights;

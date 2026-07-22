@@ -2,11 +2,15 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#include "Common/SharedPtr.hpp"
 #include "Core/Definites.hpp"
 #include "RenderEngineAPI.hpp"
 
+
 namespace EgLab
 {
+
+    class CameraController;
     class RenderEngineAPI Window
     {
     public:
@@ -21,6 +25,8 @@ namespace EgLab
         DeltaTime getTime() const;
 
         void deal() const;
+
+        void setCameraController(SharedPtr<CameraController>);
 
     private:
         class Impl;

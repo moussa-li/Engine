@@ -3,8 +3,10 @@
 #include "Common/StringLineIterator.hpp"
 #include "RenderEngine/Core/Camera.hpp"
 #include "RenderEngine/Core/Entity.hpp"
+#include "RenderEngine/Core/OrbitCameraController.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"
 #include "RenderEngine/Core/Renderer.hpp"
+#include "RenderEngine/Core/Scene.hpp"
 #include "RenderEngine/Core/ShaderLib.hpp"
 #include "RenderEngine/Core/Window.hpp"
 #include "RenderEngine/Objects/Box.hpp"
@@ -12,47 +14,56 @@
 class SimpleApp
 {
 public:
-    EgLab::SharedPtr<EgLab::Window> w;
-    EgLab::SharedPtr<EgLab::Renderer> r;
+    EgLab::SharedPtr<EgLab::Window> window;
+    EgLab::SharedPtr<EgLab::Renderer> renderer;
+    EgLab::SharedPtr<EgLab::Scene> scene;
+    EgLab::SharedPtr<EgLab::Camera> camera;
+    EgLab::SharedPtr<EgLab::CameraController> cameraController;
 
     EgLab::DeltaTime lastFrame;
     EgLab::DeltaTime deltaTime;
 
-    SimpleApp() : w(EgLab::makeShared<EgLab::Window>(300, 300))
+    SimpleApp() : window(EgLab::makeShared<EgLab::Window>(300, 300))
     {
-        auto c = EgLab::makeShared<EgLab::Camera>(300, 300);
-        r = EgLab::makeShared<EgLab::Renderer>();
+        camera = EgLab::makeShared<EgLab::Camera>(300, 300);
+        cameraController = EgLab::makeShared<EgLab::OrbitCameraController>();
+        cameraController->setCamera(camera);
+        window->setCameraController(cameraController);
+
+        renderer = EgLab::makeShared<EgLab::Renderer>();
+        scene = EgLab::makeShared<EgLab::Scene>();
         EgLab::RenderViewport viewport;
-        viewport.camera = c;
-        viewport.window = w;
+        viewport.window = window;
         viewport.x = 0;
         viewport.y = 0;
         viewport.width = 300;
         viewport.height = 300;
-        r->addViewport(viewport);
+        renderer->addViewport(viewport);
 
         EgLab::Vector3f pos(0, 0, 0);
         EgLab::Vector3f rot(0, 0, 0);
         EgLab::Vector3f scal(10, 10, 10);
         auto box = EgLab::makeShared<EgLab::Box>(pos, rot, scal);
 
-        r->addEntity(box);
+        scene->addEntity(box);
     }
 
     ~SimpleApp() = default;
     void exec()
     {
-        while (w->shouldClose() == false)
+        while (window->shouldClose() == false)
         {
-            float currentFrame = w->getTime();
+            float currentFrame = window->getTime();
             deltaTime = currentFrame - lastFrame;
             lastFrame = currentFrame;
 
-            r->update(deltaTime);
+            cameraController->update(deltaTime);
+            scene->update(deltaTime);
+            renderer->update(deltaTime);
 
-            r->draw();
+            renderer->draw(scene, camera);
 
-            w->deal();
+            window->deal();
         };
     }
 };

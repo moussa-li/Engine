@@ -12,14 +12,21 @@ namespace EgLab
     class Vector : public Matrix<Scalar, 1, Dim>
     {
     public:
-        Vector()
-        {
-        }
+        Vector() = default;
 
-        template <typename... Args>
+        Vector(const Vector &other) = default;
+
+        Vector(Vector &&other) noexcept = default;
+
+        Vector &operator=(const Vector &other) = default;
+
+        Vector &operator=(Vector &&other) noexcept = default;
+
+        template <typename... Args,
+                  typename = std::enable_if_t<sizeof...(Args) == Dim &&
+                                              (std::is_convertible_v<Args, Scalar> && ...)>>
         Vector(Args... args)
         {
-            static_assert(sizeof...(Args) == Dim, "number of parameter must be equal wtih dim");
             Scalar temp[] = {static_cast<Scalar>(args)...};
             for (size_t i = 0; i < Dim; ++i) this->_data[0][i] = temp[i];
         }
@@ -107,6 +114,41 @@ namespace EgLab
         Scalar dot(const Vector<Scalar, Dim> &other) const
         {
             return this->x() * other.x() + this->y() * other.y() + this->z() * other.z();
+        }
+
+        Vector operator+(const Vector &other) const
+        {
+            Vector result;
+            for (int i = 0; i < Dim; ++i)
+            {
+                result._data[0][i] = this->_data[0][i] + other._data[0][i];
+            }
+            return result;
+        }
+
+        Vector operator-(const Vector &other) const
+        {
+            Vector result;
+            for (int i = 0; i < Dim; ++i)
+            {
+                result._data[0][i] = this->_data[0][i] - other._data[0][i];
+            }
+            return result;
+        }
+
+        Vector operator*(Scalar scalar) const
+        {
+            Vector result;
+            for (int i = 0; i < Dim; ++i)
+            {
+                result._data[0][i] = this->_data[0][i] * scalar;
+            }
+            return result;
+        }
+
+        friend Vector operator*(Scalar scalar, const Vector &vec)
+        {
+            return vec * scalar;
         }
     };
 

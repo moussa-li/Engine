@@ -1,31 +1,20 @@
 #include "RenderEngine/Core/Scene.hpp"
 
 #include "RenderEngine/Core/CameraController.hpp"
+#include "RenderEngine/Core/Entity.hpp"
 #include "RenderEngine/Core/OrbitCameraController.hpp"
 
 namespace EgLab
 {
-    Scene::Scene(InteractionModel mode)
+    Scene::Scene()
     {
-        switch (mode)
-        {
-        case InteractionModel::FPS:
-            return;
-        case InteractionModel::OBRIT:
-            _controller = makeUnique<OrbitCameraController>();
-            break;
-        default:
-            return;
-        }
-
-        _controller->setCamera(_camera);
     }
 
     void Scene::update(DeltaTime deltaTime)
     {
-        if (_controller)
+        for (size_t i = 0; i < _entities.size(); ++i)
         {
-            _controller->update(deltaTime);
+            _entities[i]->update(deltaTime);
         }
     }
 

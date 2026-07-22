@@ -18,9 +18,9 @@ namespace EgLab
     {
     }
 
-    RenderMesh::RenderMesh(DynamicArray<CoordType> vertices, DynamicArray<CoordType> normals,
-                           DynamicArray<TexCoordType> texCoords, DynamicArray<IdxType> indices,
-                           DynamicArray<Texture*> textures)
+    RenderMesh::RenderMesh(DynamicArray<CoordType> &vertices, DynamicArray<CoordType> &normals,
+                           DynamicArray<TexCoordType> &texCoords, DynamicArray<IdxType> &indices,
+                           DynamicArray<Texture *> &textures)
     {
         _vertices = vertices;
         _normals = normals;

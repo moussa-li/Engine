@@ -23,9 +23,9 @@ namespace EgLab
     public:
         RenderMesh();
 
-        RenderMesh(DynamicArray<CoordType> vertices, DynamicArray<CoordType> normals,
-                   DynamicArray<TexCoordType> texCoords, DynamicArray<IdxType> indices,
-                   DynamicArray<Texture*> textures);
+        RenderMesh(DynamicArray<CoordType> &vertices, DynamicArray<CoordType> &normals,
+                   DynamicArray<TexCoordType> &texCoords, DynamicArray<IdxType> &indices,
+                   DynamicArray<Texture *> &textures);
 
         ~RenderMesh()
         {
@@ -44,7 +44,7 @@ namespace EgLab
         DynamicArray<CoordType> _normals;
         DynamicArray<TexCoordType> _texCoords;
         DynamicArray<IdxType> _indices;
-        DynamicArray<Texture*> _textures;
+        DynamicArray<Texture *> _textures;
 
         SharedPtr<VertexArray> _vertexArray;
         SharedPtr<VertexArray> _normalVertexArray;

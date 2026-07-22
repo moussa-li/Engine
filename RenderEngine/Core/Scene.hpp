@@ -7,6 +7,7 @@
 #include "Definites.hpp"
 #include "RenderEngine/Core/Camera.hpp"
 #include "RenderEngine/Core/Definites.hpp"
+#include "RenderEngineAPI.hpp"
 
 namespace EgLab
 {
@@ -21,10 +22,10 @@ namespace EgLab
         UNKNOWN
     };
 
-    class Scene
+    class RenderEngineAPI Scene
     {
     public:
-        explicit Scene(InteractionModel mode);
+        explicit Scene();
 
         void update(DeltaTime);
 
@@ -33,9 +34,6 @@ namespace EgLab
         EgLab::DynamicArray<SharedPtr<Entity>> getEntities() const;
 
     private:
-        SharedPtr<Camera> _camera;
-        UniquePtr<CameraController> _controller;
-
         EgLab::DynamicArray<SharedPtr<Entity>> _entities;
     };
 } // namespace EgLab

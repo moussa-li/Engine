@@ -64,6 +64,32 @@ namespace EgLab
             return result;
         }
 
+        Matrix<Scalar, Col, Row> operator*(Scalar rat) const
+        {
+            Matrix<Scalar, Col, Row> result;
+            for (int c = 0; c < Col; ++c)
+            {
+                for (int r = 0; r < Row; ++r)
+                {
+                    result._data[c][r] = _data[c][r] * rat;
+                }
+            }
+            return result;
+        }
+
+        Matrix<Scalar, Col, Row> operator-(const Matrix<Scalar, Col, Row>& other) const
+        {
+            Matrix<Scalar, Col, Row> result;
+            for (int c = 0; c < Col; ++c)
+            {
+                for (int r = 0; r < Row; ++r)
+                {
+                    result._data[c][r] = _data[c][r] - other._data[c][r];
+                }
+            }
+            return result;
+        }
+
         const Scalar* data() const
         {
             return &_data[0][0];

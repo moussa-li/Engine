@@ -27,9 +27,54 @@ namespace EgLab
 
         void setWH(unsigned int width, unsigned int height);
 
-        inline CoordType getPosition() const
+        // --- Getters ---
+        CoordType getPosition() const
         {
             return _position;
+        }
+        CoordType getFront() const
+        {
+            return _front;
+        }
+        CoordType getUp() const
+        {
+            return _up;
+        }
+        CoordType getRight() const
+        {
+            return _right;
+        }
+        float getYaw() const
+        {
+            return _yaw;
+        }
+        float getPitch() const
+        {
+            return _pitch;
+        }
+        float getZoom() const
+        {
+            return _zoom;
+        }
+
+        // --- Setters ---
+        void setPosition(const CoordType &pos)
+        {
+            _position = pos;
+        }
+        void setYaw(float yaw)
+        {
+            _yaw = yaw;
+        }
+        void setPitch(float pitch)
+        {
+            _pitch = pitch;
+            if (_pitch > 89.0f) _pitch = 89.0f;
+            if (_pitch < -89.0f) _pitch = -89.0f;
+        }
+        void setZoom(float zoom)
+        {
+            _zoom = zoom;
         }
 
     private:

@@ -99,7 +99,7 @@ namespace EgLab
         _position = position;
         _front = front;
         _up = up;
-        updateCameraVectors();
+        // updateCameraVectors();
     }
 
 } // namespace EgLab

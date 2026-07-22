@@ -149,29 +149,29 @@ namespace EgLab
 
     Return Shader::setUniform1i(const String& name, const int& v0)
     {
-        LOG(INFO) << "value name : " << name;
-        LOG_CALL(glUniform1iv, getUniformLocation(name), 1, &v0);
+        // LOG(INFO) << "value name : " << name;
+        glUniform1iv(getUniformLocation(name), 1, &v0);
         return Return::Succeed;
     }
 
     Return Shader::setUniform1f(const String& name, const float& v0)
     {
-        LOG(INFO) << "value name : " << name;
-        LOG_CALL(glUniform1fv, getUniformLocation(name), 1, &v0);
+        // LOG(INFO) << "value name : " << name;
+        glUniform1fv(getUniformLocation(name), 1, &v0);
         return Return::Succeed;
     }
 
     Return Shader::setUniformMat4f(const String& name, const Matrix4f& mat)
     {
-        LOG(INFO) << "value name : " << name;
-        LOG_CALL(glUniformMatrix4fv, getUniformLocation(name), 1, GL_TRUE, mat.data());
+        // LOG(INFO) << "value name : " << name;
+        glUniformMatrix4fv(getUniformLocation(name), 1, GL_TRUE, mat.data());
         return Return::Succeed;
     }
 
     Return Shader::setUniform3f(const String& name, const Vector3f& vec)
     {
-        LOG(INFO) << "value name : " << name;
-        LOG_CALL(glUniform3fv, getUniformLocation(name), 1, vec.data());
+        // LOG(INFO) << "value name : " << name;
+        glUniform3fv(getUniformLocation(name), 1, vec.data());
         return Return::Succeed;
     }
 
