@@ -101,7 +101,9 @@ namespace EgLab
     Return Shader::parseShader(ShaderProgramSource& source)
     {
         String buffer;
-        ShaderLib::instance().getBasicShader(buffer);
+        // ShaderLib::instance().getBasicShader(buffer);
+
+        ShaderLib::instance().getShader(_shader, buffer);
         StringLineIterator it(buffer);
 
         EgLab::DynamicArray<EgLab::String> lines;

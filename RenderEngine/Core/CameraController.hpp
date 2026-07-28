@@ -45,6 +45,6 @@ namespace EgLab
         }
 
     protected:
-        SharedPtr<EgLab::Camera> _camera;
+        SharedPtr<EgLab::Camera> _camera{nullptr};
     };
 } // namespace EgLab

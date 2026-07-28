@@ -14,7 +14,8 @@ uniform mat4 model;
 
 void main()
 {
-    FragPos = vec3(model * vec4(position, 1.0));
+    //FragPos = vec3(model * vec4(position, 1.0));
+    FragPos = vec3(vec4(position, 1.0));
     Normal = mat3(transpose(inverse(model))) * normal;
     TexCoords = texCoord;
     gl_Position = proj * view * vec4(FragPos, 1.0);

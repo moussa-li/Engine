@@ -47,6 +47,17 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "MatrixLog",
+            "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
+            "args": [
+                "--gtest_filter=TestCommon.logMatrix"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "ListTest",
             "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
             "args": [
@@ -73,6 +84,17 @@
             "program": "${workspaceFolder}/build/win-clangd-debug/bin/common_test.exe",
             "args": [
                 "--gtest_filter=TestCommon.HashMap"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "log",
+            "program": "${workspaceFolder}/build/win-clangd-debug/bin/common_test.exe",
+            "args": [
+                "--gtest_filter=TestCommon.Log"
             ],
             "cwd": "${workspaceFolder}",
             "console": "externalTerminal"

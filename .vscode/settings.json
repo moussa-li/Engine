@@ -110,5 +110,6 @@
         "run": "ctest --output-on-failure",
         "debug": "win-clangd-debug-test"
     },
-    "C_Cpp.errorSquiggles": "disabled"
+    "C_Cpp.errorSquiggles": "disabled",
+    "svn.ignoreMissingSvnWarning": true
 }

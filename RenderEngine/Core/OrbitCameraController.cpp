@@ -49,13 +49,13 @@ namespace EgLab
         _lastXPos = xpos;
         _lastYPos = ypos;
 
-        LOG(INFO) << "xpos : " << xpos;
-        LOG(INFO) << "ypos : " << ypos;
+        // LOG(INFO) << "xpos : " << xpos;
+        // LOG(INFO) << "ypos : " << ypos;
     }
 
     void OrbitCameraController::processMouseScroll(float yoffset)
     {
-        LOG(INFO) << "yoffset : " << yoffset;
+        // LOG(INFO) << "yoffset : " << yoffset;
     }
 
     void OrbitCameraController::recalcuteCameraPostition()

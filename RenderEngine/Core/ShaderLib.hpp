@@ -22,6 +22,7 @@ namespace EgLab
     enum class ShaderId
     {
         Basic,
+        Node,
         Easy
     };
 
@@ -34,6 +35,10 @@ namespace EgLab
         Return getBasicShader(String &buffer);
 
         Return getLightShader(String &buffer);
+
+        Return getNodeShader(String &buffer);
+
+        Return getShader(ShaderId, String &buffer);
 
     private:
         ShaderLib();
@@ -48,6 +53,7 @@ namespace EgLab
     Return ShaderLib(String &buffer)
     {
         RegisterShaderLib(ShaderId::Basic, getBasicShader);
+        RegisterShaderLib(ShaderId::Node, getNodeShader);
     }
 
 } // namespace EgLab

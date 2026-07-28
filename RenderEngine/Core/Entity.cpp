@@ -19,6 +19,14 @@ namespace EgLab
         // _shader->setUniform1f("material.shininess", 32.0f);
     }
 
+    Entity::Entity()
+    {
+        _shader = makeShared<Shader>(ShaderId::Basic);
+        _shader->bind();
+
+        //_shader->unBind();
+    }
+
     void Entity::draw() const
     {
         for (const auto &m : _meshes)
@@ -35,8 +43,11 @@ namespace EgLab
     {
         Matrix4f proj = Matrix4f::Identity();
         proj = camera->perspective();
+        // Matrix4f view = Matrix4f::Identity();
         Matrix4f view = camera->view();
         _shader->bind();
+        LOG(INFO) << proj;
+        LOG(INFO) << view;
 
         _shader->setUniformMat4f("proj", proj);
         _shader->setUniformMat4f("view", view);

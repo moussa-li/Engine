@@ -21,7 +21,7 @@ namespace EgLab
           _height(height),
           _lastX(width * 0.5),
           _lastY(height * 0.5),
-          _front(CoordType(0.0f, 0.0f, 1.0f)),
+          _front(CoordType(0.0f, 0.0f, -1.0f)),
           _position(position),
           _worldUp(up),
           _yaw(yaw),

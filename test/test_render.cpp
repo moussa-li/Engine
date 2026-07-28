@@ -10,6 +10,8 @@
 #include "RenderEngine/Core/ShaderLib.hpp"
 #include "RenderEngine/Core/Window.hpp"
 #include "RenderEngine/Objects/Box.hpp"
+#include "RenderEngine/Objects/Line.hpp"
+#include "RenderEngine/Objects/Vertex.hpp"
 
 class SimpleApp
 {
@@ -25,7 +27,7 @@ public:
 
     SimpleApp() : window(EgLab::makeShared<EgLab::Window>(300, 300))
     {
-        camera = EgLab::makeShared<EgLab::Camera>(300, 300);
+        camera = EgLab::makeShared<EgLab::Camera>(300, 300, EgLab::CoordType(0.0f, 0.0f, 10.0f));
         cameraController = EgLab::makeShared<EgLab::OrbitCameraController>();
         cameraController->setCamera(camera);
         window->setCameraController(cameraController);
@@ -39,13 +41,6 @@ public:
         viewport.width = 300;
         viewport.height = 300;
         renderer->addViewport(viewport);
-
-        EgLab::Vector3f pos(0, 0, 0);
-        EgLab::Vector3f rot(0, 0, 0);
-        EgLab::Vector3f scal(10, 10, 10);
-        auto box = EgLab::makeShared<EgLab::Box>(pos, rot, scal);
-
-        scene->addEntity(box);
     }
 
     ~SimpleApp() = default;
@@ -71,6 +66,58 @@ public:
 TEST_F(TestRender, window)
 {
     SimpleApp app;
+    app.exec();
+}
+
+TEST_F(TestRender, vertex)
+{
+    SimpleApp app;
+
+    EgLab::CoordType coord(0, 0, 0);
+    auto v = EgLab::makeShared<EgLab::Vertex>(coord);
+    app.scene->addEntity(v);
+
+    EgLab::CoordType coord1(0.5, 0, 0);
+    auto v1 = EgLab::makeShared<EgLab::Vertex>(coord1);
+    app.scene->addEntity(v1);
+    app.exec();
+}
+
+TEST_F(TestRender, box)
+{
+    SimpleApp app;
+
+    EgLab::Vector3f pos(0, 0, 0);
+    EgLab::Vector3f rot(0, 0, 0);
+    EgLab::Vector3f scal(1, 1, 1);
+    auto box = EgLab::makeShared<EgLab::Box>(pos, rot, scal);
+
+    app.scene->addEntity(box);
+
+    EgLab::CoordType coord(0, 0, 0);
+    auto v = EgLab::makeShared<EgLab::Vertex>(coord);
+    app.scene->addEntity(v);
+    app.exec();
+}
+
+TEST_F(TestRender, Line)
+{
+    SimpleApp app;
+
+    EgLab::CoordType coord(0, 0, 0);
+    auto v = EgLab::makeShared<EgLab::Vertex>(coord);
+    app.scene->addEntity(v);
+
+    EgLab::CoordType coord1(1, 0, 0);
+    auto v1 = EgLab::makeShared<EgLab::Vertex>(coord1);
+    app.scene->addEntity(v1);
+
+    EgLab::DynamicArray<EgLab::CoordType> lineNodes;
+    lineNodes.pushBack(coord);
+    lineNodes.pushBack(coord1);
+    auto l = EgLab::makeShared<EgLab::Line>(lineNodes);
+    app.scene->addEntity(l);
+
     app.exec();
 }
 

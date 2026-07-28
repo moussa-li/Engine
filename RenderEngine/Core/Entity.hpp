@@ -10,6 +10,7 @@
 namespace EgLab
 {
     class RenderMesh;
+    class RenderNode;
     class Shader;
     class Camera;
 
@@ -21,6 +22,8 @@ namespace EgLab
     {
     public:
         Entity(Vector3f position, Vector3f rotation, Vector3f scale);
+
+        Entity();
 
         /**
          * @brief draw the meshes in the entity
@@ -44,6 +47,8 @@ namespace EgLab
 
     protected:
         DynamicArray<SharedPtr<RenderMesh>> _meshes;
+
+        DynamicArray<SharedPtr<RenderNode>> _nodes;
 
         SharedPtr<Shader> _shader;
 
