@@ -126,6 +126,57 @@ TEST_F(TestRender, line)
     app.exec();
 }
 
+TEST_F(TestRender, face)
+{
+    SimpleApp app;
+
+    EgLab::RE::CoordType coord(0, 0, 0);
+    EgLab::Common::DynamicArray<EgLab::RE::CoordType> coords;
+    coords.pushBack(coord);
+    EgLab::RE::CoordType coord1(0.5, 0, 0);
+    EgLab::RE::CoordType coord2(0.5, 0.5, 0);
+    coords.pushBack(coord1);
+
+    coords.pushBack(coord);
+    coords.pushBack(coord1);
+    coords.pushBack(coord2);
+
+    auto v = EgLab::Common::makeShared<EgLab::RE::RenderNode>();
+    v->setNodes(EgLab::Common::move(coords));
+    v->setup();
+    EgLab::Common::SharedPtr<EgLab::RE::Shader> shader;
+    EgLab::RE::ShaderLib::instance().getNodeShader(shader);
+    app.scene->addPrimitive(shader, v);
+
+    auto l = EgLab::Common::makeShared<EgLab::RE::RenderLine>();
+    l->setNodes(EgLab::Common::move(coords));
+    EgLab::Common::DynamicArray<EgLab::RE::IdxType> idxs;
+    idxs.pushBack(0);
+    idxs.pushBack(1);
+    l->setIndices(EgLab::Common::move(idxs));
+    l->setup();
+
+    EgLab::RE::ShaderLib::instance().getLineShader(shader);
+    app.scene->addPrimitive(shader, l);
+
+    coords.pushBack(coord);
+    coords.pushBack(coord1);
+    coords.pushBack(coord2);
+
+    auto f = EgLab::Common::makeShared<EgLab::RE::RenderFace>();
+    f->setNodes(EgLab::Common::move(coords));
+    idxs.pushBack(0);
+    idxs.pushBack(1);
+    idxs.pushBack(2);
+    f->setIndices(EgLab::Common::move(idxs));
+    f->setup();
+
+    EgLab::RE::ShaderLib::instance().getFaceShader(shader);
+    app.scene->addPrimitive(shader, f);
+
+    app.exec();
+}
+
 TEST_F(TestRender, box)
 {
     SimpleApp app;

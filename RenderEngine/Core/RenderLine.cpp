@@ -13,12 +13,12 @@ namespace EgLab::RE
     }
     void RenderLine::setNodes(Common::DynamicArray<CoordType>&& nodes)
     {
-        _vertices = nodes;
+        _vertices = Common::move(nodes);
     }
 
     void RenderLine::setIndices(Common::DynamicArray<IdxType>&& idxs)
     {
-        _indices = idxs;
+        _indices = Common::move(idxs);
     }
 
     void RenderLine::setup()

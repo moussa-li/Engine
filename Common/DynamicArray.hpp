@@ -16,7 +16,7 @@ namespace EgLab::Common
 
         VALUE_ALIAS(T)
     public:
-        DynamicArray() : _size(0), _capacity(0) {};
+        DynamicArray() {};
 
         inline bool empty() const
         {
@@ -159,6 +159,106 @@ namespace EgLab::Common
             _size--;
         }
 
+        DynamicArray(DynamicArray &&other)
+        {
+            if (this != &other)
+            {
+                allocator.free(_datas, _capacity);
+
+                _datas = other._datas;
+                _start = other._start;
+                _end = other._end;
+                _tail = other._tail;
+                _size = other._size;
+                _capacity = other._capacity;
+                _incraseFactor = other._incraseFactor;
+
+                other._datas = nullptr;
+                other._start = nullptr;
+                other._end = nullptr;
+                other._tail = nullptr;
+                other._size = 0;
+                other._capacity = 0;
+            }
+        }
+
+        DynamicArray(const DynamicArray &other)
+        {
+            if (this != &other)
+            {
+                if (capacity() < other.size())
+                {
+                    ValuePtr newDatas;
+                    allocator.free(_datas, _capacity);
+
+                    newDatas = static_cast<ValuePtr>(allocator.alloc(other.size()));
+                    _datas = newDatas;
+                }
+
+                _capacity = other._size;
+                _start = _datas;
+                _tail = _start + _capacity;
+                _size = other._size;
+                _end = _start + _size;
+                _incraseFactor = other._incraseFactor;
+                for (size_t i = 0; i < _size; i++)
+                {
+                    new (_datas + i) T(*(other._start + i));
+                }
+            }
+        }
+
+        DynamicArray &operator=(DynamicArray &&other) noexcept
+        {
+            if (this != &other)
+            {
+                allocator.free(_datas, _capacity);
+
+                _datas = other._datas;
+                _start = other._start;
+                _end = other._end;
+                _tail = other._tail;
+                _size = other._size;
+                _capacity = other._capacity;
+                _incraseFactor = other._incraseFactor;
+
+                other._datas = nullptr;
+                other._start = nullptr;
+                other._end = nullptr;
+                other._tail = nullptr;
+                other._size = 0;
+                other._capacity = 0;
+            }
+            return *this;
+        }
+
+        DynamicArray &operator=(const DynamicArray &other)
+        {
+            if (this != &other)
+            {
+                if (capacity() < other.size())
+                {
+                    ValuePtr newDatas;
+                    allocator.free(_datas, _capacity);
+
+                    newDatas = static_cast<ValuePtr>(allocator.alloc(other.size()));
+                    _datas = newDatas;
+                }
+
+                _capacity = other._size;
+                _start = _datas;
+                _size = other._size;
+                _tail = _start + _capacity;
+                _end = _start + _size;
+                _incraseFactor = other._incraseFactor;
+                for (size_t i = 0; i < _size; i++)
+                {
+                    new (_datas + i) T(*(other._start + i));
+                }
+            }
+            return *this;
+        }
+
         T &operator[](size_t index)
         {
             return *(_start + index);
@@ -223,8 +323,8 @@ namespace EgLab::Common
         ValuePtr _start{nullptr};
         ValuePtr _end{nullptr};
         ValuePtr _tail{nullptr};
-        size_t _size;
-        size_t _capacity;
+        size_t _size{0};
+        size_t _capacity{0};
 
         size_t _incraseFactor{2};
 

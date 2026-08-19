@@ -40,4 +40,17 @@ namespace EgLab::RE
         shader->unBind();
     }
 
+    void RenderFace::setNodes(Common::DynamicArray<CoordType> &&nodes)
+    {
+        _vertices = Common::move(nodes);
+    }
+    void RenderFace::setIndices(Common::DynamicArray<IdxType> &&idx)
+    {
+        _indices = Common::move(idx);
+    }
+    void RenderFace::setNormals(Common::DynamicArray<CoordType> &&norms)
+    {
+        _normals = Common::move(norms);
+    }
+
 } // namespace EgLab::RE

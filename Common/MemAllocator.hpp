@@ -38,7 +38,14 @@ namespace EgLab::Common
 
         virtual void free(void* data)
         {
+            if (data == nullptr) return;
             popStrategy.pop(data, sizeof(T));
+        }
+
+        virtual void free(void* data, size_t len)
+        {
+            if (data == nullptr) return;
+            popStrategy.pop(data, sizeof(T) * len);
         }
 
         MemAllocatorBase()
