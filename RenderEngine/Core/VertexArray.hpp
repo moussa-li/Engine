@@ -1,10 +1,11 @@
 #pragma once
 
+#include "RenderEngine/Core/RenderEngineAPI.hpp"
 #include "VertexBufferLayout.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
-    class VertexArray
+    class RenderEngineAPI VertexArray
     {
     public:
         VertexArray();
@@ -20,4 +21,4 @@ namespace EgLab
         Impl* _impl;
     };
 
-} // namespace EgLab
+} // namespace EgLab::RE

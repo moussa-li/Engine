@@ -5,7 +5,7 @@
 #include "Definites.hpp"
 #include "GLWrapper.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     class VertexBuffer::Impl
     {
@@ -46,11 +46,11 @@ namespace EgLab
         _impl->genBuffer(data, size);
     }
 
-    VertexBuffer::VertexBuffer(DynamicArray<Vector3f>& v) : _impl(new Impl)
+    VertexBuffer::VertexBuffer(Common::DynamicArray<Common::Vector3f>& v) : _impl(new Impl)
     {
         _impl->genBuffer(&(v[0]), v.size() * sizeof(float) * 3);
     }
-    VertexBuffer::VertexBuffer(DynamicArray<Vector2f>& v) : _impl(new Impl)
+    VertexBuffer::VertexBuffer(Common::DynamicArray<Common::Vector2f>& v) : _impl(new Impl)
     {
         _impl->genBuffer(&(v[0]), v.size() * sizeof(float) * 2);
     }
@@ -74,4 +74,4 @@ namespace EgLab
         }
     }
 
-} // namespace EgLab
+} // namespace EgLab::RE

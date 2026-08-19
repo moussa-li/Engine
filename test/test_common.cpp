@@ -14,7 +14,7 @@
 
 TEST_F(TestCommon, testSingle)
 {
-    class ClassA : public EgLab::Singleton<ClassA>
+    class ClassA : public EgLab::Common::Singleton<ClassA>
     {
     public:
         void setA(int _a)
@@ -69,7 +69,7 @@ TEST_F(TestCommon, Log)
 
 TEST_F(TestCommon, String)
 {
-    EgLab::String str;
+    EgLab::Common::String str;
     str.append("test");
     EXPECT_EQ(str.c_str()[0], "test"[0]);
     str.append("abcdefghijklmn");
@@ -80,8 +80,8 @@ TEST_F(TestCommon, String)
         EXPECT_EQ(cppstr.c_str()[i], str.c_str()[i]);
     }
 
-    EgLab::String a("a");
-    EgLab::String b("b");
+    EgLab::Common::String a("a");
+    EgLab::Common::String b("b");
     auto c = a + b;
     EXPECT_EQ(c.c_str()[0], 'a');
     EXPECT_EQ(c.c_str()[1], 'b');
@@ -144,7 +144,7 @@ TEST_F(TestCommon, anyTest)
 TEST_F(TestCommon, MemAllocateTest)
 {
     // return; // the case cannot pass beacuse of the complier changed
-    EgLab::StaticSizeAllocator<int> allocator;
+    EgLab::Common::StaticSizeAllocator<int> allocator;
     int* b = static_cast<int*>(allocator.alloc());
     size_t testNum = 100000;
     std::vector<int*> p(testNum);
@@ -163,7 +163,7 @@ TEST_F(TestCommon, MemAllocateTest)
 
 TEST_F(TestCommon, DynamicArrayTest)
 {
-    EgLab::DynamicArray<int> arr;
+    EgLab::Common::DynamicArray<int> arr;
     EXPECT_EQ(arr.size(), 0);
     EXPECT_EQ(arr.capacity(), 0);
     EXPECT_TRUE(arr.empty());
@@ -198,7 +198,7 @@ TEST_F(TestCommon, DynamicArrayTest)
         int z;
     };
 
-    EgLab::DynamicArray<AAA> arr2;
+    EgLab::Common::DynamicArray<AAA> arr2;
     arr2.resize(1000);
 
     for (int i = 0; i < arr2.size(); i++)
@@ -217,7 +217,7 @@ TEST_F(TestCommon, DynamicArrayTest)
 
 TEST_F(TestCommon, MatrixTest)
 {
-    EgLab::Matrix<double, 4, 4> m4(3, 4, 1, 2, 3, 4, 5, 4, 7, 1, 5, 4, 1, 6, 5.25, 76);
+    EgLab::Common::Matrix<double, 4, 4> m4(3, 4, 1, 2, 3, 4, 5, 4, 7, 1, 5, 4, 1, 6, 5.25, 76);
     for (int i = 0; i < 4; ++i)
     {
         for (int j = 0; j < 4; ++j)
@@ -229,7 +229,7 @@ TEST_F(TestCommon, MatrixTest)
 
 TEST_F(TestCommon, ListTest)
 {
-    EgLab::List<int> list;
+    EgLab::Common::List<int> list;
     list.pushBack(1);
     list.pushBack(2);
     list.pushBack(3);
@@ -238,7 +238,7 @@ TEST_F(TestCommon, ListTest)
     list.popBack();
     list.popBack();
 
-    EgLab::List<int>::Node* current = list.getHead();
+    EgLab::Common::List<int>::Node* current = list.getHead();
     while (current != nullptr)
     {
         LOG(INFO) << current->data;
@@ -248,7 +248,7 @@ TEST_F(TestCommon, ListTest)
 
 TEST_F(TestCommon, ListItTest)
 {
-    EgLab::List<int> list;
+    EgLab::Common::List<int> list;
     list.pushBack(1);
     list.pushBack(2);
     list.pushBack(3);
@@ -275,7 +275,7 @@ TEST_F(TestCommon, ListItTest)
 
 TEST_F(TestCommon, HashSet)
 {
-    EgLab::HashSet<int> HashSet;
+    EgLab::Common::HashSet<int> HashSet;
     int data[] = {1,       3,    2,    1,   4,     5,       6,     6,   7,     1,     12,
                   2,       34,   5314, 5,   13246, 1346,    1346,  134, 6134,  513,   45123,
                   423,     412,  312,  412, 534,   61,      326,   134, 51345, 12233, 2431,
@@ -304,7 +304,7 @@ TEST_F(TestCommon, HashSet)
 
 TEST_F(TestCommon, HashMap)
 {
-    EgLab::HashMap<int, int> map;
+    EgLab::Common::HashMap<int, int> map;
     map.insert({1, 1});
     map.insert({1, 2});
     map.insert({1, 4});
@@ -323,7 +323,7 @@ TEST_F(TestCommon, HashMap)
 
 TEST_F(TestCommon, HashMap_operator)
 {
-    EgLab::HashMap<int, EgLab::String> map;
+    EgLab::Common::HashMap<int, EgLab::Common::String> map;
     map[0] = "aaa";
     EXPECT_EQ(map[0], "aaa");
     map[0] = "bbb";
@@ -340,10 +340,10 @@ TEST_F(TestCommon, mix)
                   2548769, 758,  9,    79,  5768,  3657,    6245,  6,   423,   5321,  4,
                   21,      312,  4,    125, 34,    7626243, 5,     13};
 
-    EgLab::DynamicArray<EgLab::List<int>> test;
+    EgLab::Common::DynamicArray<EgLab::Common::List<int>> test;
     for (int i = 0; i < 73; i++)
     {
-        EgLab::List<int> l;
+        EgLab::Common::List<int> l;
         test.resize(i + 1);
         l.pushBack(data[i]);
         test.pushBack(move(l));
@@ -353,7 +353,7 @@ TEST_F(TestCommon, mix)
 TEST_F(TestCommon, logMatrix)
 {
     // clang-format off
-    EgLab::Matrix4f m(
+    EgLab::Common::Matrix4f m(
         1,0,0,351236501,
         0,565125125,0,0,
         0,0,1.12412515,0,
@@ -388,11 +388,11 @@ TEST_F(TestCommon, sharedPtr)
         int _v;
     };
 
-    EgLab::SharedPtr<A> a(1);
-    EgLab::SharedPtr<A> e = EgLab::makeShared<A>(2);
-    EgLab::SharedPtr<A> b(a);
-    EgLab::SharedPtr<A> c(2);
-    EgLab::SharedPtr<A> d(3);
+    EgLab::Common::SharedPtr<A> a(1);
+    EgLab::Common::SharedPtr<A> e = EgLab::Common::makeShared<A>(2);
+    EgLab::Common::SharedPtr<A> b(a);
+    EgLab::Common::SharedPtr<A> c(2);
+    EgLab::Common::SharedPtr<A> d(3);
     a = nullptr;
     b = nullptr;
     c = d;
@@ -424,13 +424,13 @@ TEST_F(TestCommon, uniquePtr)
     private:
         int _v;
     };
-    EgLab::UniquePtr<A> cc;
-    cc = EgLab::makeUnique<A>(5);
+    EgLab::Common::UniquePtr<A> cc;
+    cc = EgLab::Common::makeUnique<A>(5);
 }
 
 TEST_F(TestCommon, Matrix_Identity)
 {
-    EgLab::Matrix4f mat = EgLab::Matrix4f::Identity();
+    EgLab::Common::Matrix4f mat = EgLab::Common::Matrix4f::Identity();
     for (int i = 0; i < 4; i++)
     {
         for (int j = 0; j < 4; j++)

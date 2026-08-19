@@ -3,7 +3,7 @@
 #include "Property.hpp"
 #include "RenderEngineAPI.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     class RenderEngineAPI RenderConfigure
     {
@@ -26,4 +26,4 @@ namespace EgLab
         ~RenderConfigure() = default;
     };
 
-} // namespace EgLab
+} // namespace EgLab::RE

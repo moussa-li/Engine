@@ -1,10 +1,8 @@
 #pragma once
 
-
-namespace Eglab
+namespace EgLab::RE
 {
     class Light
     {
-
     };
-}
+} // namespace EgLab::RE

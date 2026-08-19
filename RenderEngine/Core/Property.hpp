@@ -1,6 +1,6 @@
 #pragma once
 
-namespace EgLab
+namespace EgLab::RE
 {
     template <typename T>
     class Property
@@ -35,4 +35,4 @@ namespace EgLab
     private:
         T value;
     };
-} // namespace EgLab
+} // namespace EgLab::RE

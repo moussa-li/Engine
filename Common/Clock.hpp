@@ -13,7 +13,7 @@
 #include <Common/String.hpp>
 #include <chrono>
 
-namespace EgLab
+namespace EgLab::Common
 {
     class Clock
     {
@@ -61,4 +61,4 @@ namespace EgLab
     private:
     };
 
-} // namespace EgLab
+} // namespace EgLab::Common

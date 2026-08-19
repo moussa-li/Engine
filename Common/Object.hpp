@@ -1,7 +1,7 @@
 #pragma once
 #include <cstddef>
 
-namespace EgLab
+namespace EgLab::Common
 {
     template <typename T>
     class SharedPtr;
@@ -29,4 +29,4 @@ namespace EgLab
         friend class SharedPtr;
     };
 
-} // namespace EgLab
+} // namespace EgLab::Common

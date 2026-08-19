@@ -4,7 +4,7 @@
 #include "RenderEngine/Core/Camera.hpp"
 #include "RenderEngine/Core/Definites.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     class Camera;
     class RenderEngineAPI CameraController
@@ -15,12 +15,13 @@ namespace EgLab
         CameraController() = default;
         virtual ~CameraController() = default;
 
-        inline void setCamera(SharedPtr<EgLab::Camera> camera)
+        inline void setCamera(Common::SharedPtr<EgLab::RE::Camera> camera)
         {
             _camera = camera;
         }
 
-        inline const SharedPtr<EgLab::Camera> getCamera(SharedPtr<EgLab::Camera>) const
+        inline const Common::SharedPtr<EgLab::RE::Camera> getCamera(
+            Common::SharedPtr<EgLab::RE::Camera>) const
         {
             return _camera;
         }
@@ -45,6 +46,6 @@ namespace EgLab
         }
 
     protected:
-        SharedPtr<EgLab::Camera> _camera{nullptr};
+        Common::SharedPtr<EgLab::RE::Camera> _camera{nullptr};
     };
-} // namespace EgLab
+} // namespace EgLab::RE

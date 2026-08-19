@@ -18,15 +18,20 @@
 #define LOG(severity) COMPACT_IS_LOG_##severity.stream()
 
 #define LOG_CALL(FUNC, ...)                                                                   \
-    (EgLab::LogScope(__FILE__, __LINE__, EgLab::LogSeverity::LOG_INFO, #FUNC, ##__VA_ARGS__), \
+    (EgLab::Common::LogScope(__FILE__, __LINE__, EgLab::Common::LogSeverity::LOG_INFO, #FUNC, \
+                             ##__VA_ARGS__),                                                  \
      FUNC(__VA_ARGS__))
 
-#define COMPACT_IS_LOG_INFO EgLab::Logger(__FILE__, __LINE__, EgLab::LogSeverity::LOG_INFO)
-#define COMPACT_IS_LOG_WARNING EgLab::Logger(__FILE__, __LINE__, EgLab::LogSeverity::LOG_WARNING)
-#define COMPACT_IS_LOG_ERROR EgLab::Logger(__FILE__, __LINE__, EgLab::LogSeverity::LOG_ERROR)
-#define COMPACT_IS_LOG_FATAL EgLab::Logger(__FILE__, __LINE__, EgLab::LogSeverity::LOG_FATAL)
+#define COMPACT_IS_LOG_INFO \
+    EgLab::Common::Logger(__FILE__, __LINE__, EgLab::Common::LogSeverity::LOG_INFO)
+#define COMPACT_IS_LOG_WARNING \
+    EgLab::Common::Logger(__FILE__, __LINE__, EgLab::Common::LogSeverity::LOG_WARNING)
+#define COMPACT_IS_LOG_ERROR \
+    EgLab::Common::Logger(__FILE__, __LINE__, EgLab::Common::LogSeverity::LOG_ERROR)
+#define COMPACT_IS_LOG_FATAL \
+    EgLab::Common::Logger(__FILE__, __LINE__, EgLab::Common::LogSeverity::LOG_FATAL)
 #define COMPACT_IS_LOG_EDEBUG \
-    EgLab::Logger(__FILE__, __LINE__, EgLab::LogSeverity::LOG_ENGINE_DEBUG)
+    EgLab::Common::Logger(__FILE__, __LINE__, EgLab::Common::LogSeverity::LOG_ENGINE_DEBUG)
 
 #define ENABLE_LOG_FILE
 #ifdef ENABLE_LOG_FILE
@@ -35,7 +40,7 @@
 #endif
 #endif // ENABLE_LOG_FILE
 
-namespace EgLab
+namespace EgLab::Common
 {
     enum class LogSeverity
     {
@@ -79,7 +84,7 @@ namespace EgLab
         LogScope(const char* file, size_t line, LogSeverity severity, const char* func,
                  Args&&... args)
         {
-            auto log = EgLab::Logger(file, line, severity);
+            auto log = EgLab::Common::Logger(file, line, severity);
             auto& stream = log.stream();
             stream << func << "(";
 
@@ -114,4 +119,4 @@ namespace EgLab
         }
     };
 
-} // namespace EgLab
+} // namespace EgLab::Common

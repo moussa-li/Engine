@@ -1,7 +1,7 @@
 #pragma once
 #include "Common/String.hpp"
 
-namespace EgLab
+namespace EgLab::Common
 {
     class Exception
     {
@@ -29,4 +29,4 @@ namespace EgLab
     private:
         String _msg;
     };
-} // namespace EgLab
+} // namespace EgLab::Common

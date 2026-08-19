@@ -4,7 +4,7 @@
 
 // #include "Utils.hpp"
 
-namespace EgLab
+namespace EgLab::Common
 {
     // 存储第 Index 个元素的类模板
     template <size_t Index, typename T>
@@ -80,4 +80,4 @@ namespace EgLab
             .value;
     }
 
-} // namespace EgLab
+} // namespace EgLab::Common

@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <type_traits>
 
-namespace EgLab
+namespace EgLab::Common
 {
     template <class T>
     struct TypeTrait
@@ -376,4 +376,4 @@ namespace EgLab
     {
     };
 
-} // namespace EgLab
+} // namespace EgLab::Common

@@ -154,11 +154,69 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "RenderVertex",
+            "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
+            "args": [
+                "--gtest_filter=TestRender.vertex"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal",
+            "initCommands": [
+                "command script import ${workspaceFolder}/debug/dynamic_array.py",
+                "type category enable EgLab"
+            ]
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "RenderLine",
+            "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
+            "args": [
+                "--gtest_filter=TestRender.line"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal",
+            "initCommands": [
+                "command script import ${workspaceFolder}/debug/dynamic_array.py",
+                "type category enable EgLab"
+            ]
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "RenderBox",
+            "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
+            "args": [
+                "--gtest_filter=TestRender.box"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal",
+            "initCommands": [
+                "command script import ${workspaceFolder}/debug/dynamic_array.py",
+                "type category enable EgLab"
+            ]
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "ShaderLib",
             "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
             "args": [
                 "--gtest_filter=TestRender.ShaderLib"
             ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal",
+            "initCommands": [
+                "command script import ${workspaceFolder}/debug/dynamic_array.py",
+                "type category enable EgLab"
+            ]
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "TestMesh",
+            "program": "${workspaceFolder}/build/win-clangd-debug/bin/mesh_test.exe",
+            "args": [],
             "cwd": "${workspaceFolder}",
             "console": "externalTerminal",
             "initCommands": [

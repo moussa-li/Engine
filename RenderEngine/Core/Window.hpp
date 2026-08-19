@@ -6,8 +6,7 @@
 #include "Core/Definites.hpp"
 #include "RenderEngineAPI.hpp"
 
-
-namespace EgLab
+namespace EgLab::RE
 {
 
     class CameraController;
@@ -26,11 +25,11 @@ namespace EgLab
 
         void deal() const;
 
-        void setCameraController(SharedPtr<CameraController>);
+        void setCameraController(Common::SharedPtr<CameraController>);
 
     private:
         class Impl;
         Impl *_impl;
     };
 
-} // namespace EgLab
+} // namespace EgLab::RE

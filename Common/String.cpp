@@ -7,7 +7,7 @@
 #include "Common/DynamicArray.hpp"
 #include "Common/Log.hpp"
 
-namespace EgLab
+namespace EgLab::Common
 {
     constexpr size_t expansionCoefficient = 2;
 
@@ -191,4 +191,4 @@ namespace EgLab
         return lhs + rhs;
     }
 
-} // namespace EgLab
+} // namespace EgLab::Common

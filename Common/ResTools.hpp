@@ -2,36 +2,36 @@
 
 #ifdef WNT
 #include <windows.h>
+
 #include <string>
+
 #endif
 
-
-namespace EgLab
+namespace EgLab::Common
 {
 #ifdef WNT
     /**
      * @brief export the res to file
-     * 
-     * @param exportFilePath 
-     * @param pBuffer 
-     * @param bufferLength 
-     * @return true 
-     * @return false 
+     *
+     * @param exportFilePath
+     * @param pBuffer
+     * @param bufferLength
+     * @return true
+     * @return false
      */
     bool ExportToFile(const std::wstring& exportFilePath, const void* pBuffer, DWORD bufferLength);
 
     /**
      * @brief export the resouce files
-     * 
-     * @param exportPath 
-     * @param resourceId 
-     * @return true 
-     * @return false 
+     *
+     * @param exportPath
+     * @param resourceId
+     * @return true
+     * @return false
      */
     bool ExportRes(const std::wstring& exportPath, DWORD resourceId);
-    
 
 #else
 
 #endif
-}
+} // namespace EgLab::Common

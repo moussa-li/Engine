@@ -13,7 +13,7 @@
 
 #include "Log.hpp"
 
-namespace EgLab
+namespace EgLab::Common
 {
     class PushStrategy;
     class PopStrategy;
@@ -26,11 +26,20 @@ namespace EgLab
     class MemAllocatorBase
     {
     public:
-        virtual void* alloc() { return pushStrategy.push_back(sizeof(T)); }
+        virtual void* alloc()
+        {
+            return pushStrategy.push_back(sizeof(T));
+        }
 
-        virtual void* alloc(size_t len) { return pushStrategy.push_back(sizeof(T) * len); }
+        virtual void* alloc(size_t len)
+        {
+            return pushStrategy.push_back(sizeof(T) * len);
+        }
 
-        virtual void free(void* data) { popStrategy.pop(data, sizeof(T)); }
+        virtual void free(void* data)
+        {
+            popStrategy.pop(data, sizeof(T));
+        }
 
         MemAllocatorBase()
         {
@@ -38,7 +47,9 @@ namespace EgLab
             popStrategy.setPushStrategy(&pushStrategy);
         }
 
-        ~MemAllocatorBase() {}
+        ~MemAllocatorBase()
+        {
+        }
 
     private:
         PushStrategyT pushStrategy;
@@ -99,7 +110,10 @@ namespace EgLab
     class BlockPrinter
     {
     public:
-        BlockPrinter(Block* b) { _b = b; };
+        BlockPrinter(Block* b)
+        {
+            _b = b;
+        };
 
         void print()
         {
@@ -141,7 +155,10 @@ namespace EgLab
     public:
         virtual void* push_back(size_t length) = 0;
 
-        void setPopStrategy(PopStrategy* popStrategy) { _popStrategy = popStrategy; }
+        void setPopStrategy(PopStrategy* popStrategy)
+        {
+            _popStrategy = popStrategy;
+        }
 
     protected:
         friend class PopStrategy;
@@ -248,9 +265,14 @@ namespace EgLab
     public:
         virtual void pop(void* ptr, size_t length) = 0;
 
-        virtual ~PopStrategy() {}
+        virtual ~PopStrategy()
+        {
+        }
 
-        void setPushStrategy(PushStrategy* pushStrategy) { _pushStrategy = pushStrategy; }
+        void setPushStrategy(PushStrategy* pushStrategy)
+        {
+            _pushStrategy = pushStrategy;
+        }
 
     protected:
         PushStrategy* _pushStrategy;
@@ -261,16 +283,30 @@ namespace EgLab
     class BlockPopStrategy : public PopStrategy
     {
     public:
-        void setPushStrategy(BlockPushStrategy* pushStrategy) { _pushStrategy = pushStrategy; }
+        void setPushStrategy(BlockPushStrategy* pushStrategy)
+        {
+            _pushStrategy = pushStrategy;
+        }
 
-        virtual ~BlockPopStrategy() {}
+        virtual ~BlockPopStrategy()
+        {
+        }
 
     protected:
-        inline Block* getHeadBlock() const { return getBlockPushStrategy()->headBlock; };
+        inline Block* getHeadBlock() const
+        {
+            return getBlockPushStrategy()->headBlock;
+        };
 
-        inline void getHeadBlock(Block**& b) const { b = &(getBlockPushStrategy()->headBlock); }
+        inline void getHeadBlock(Block**& b) const
+        {
+            b = &(getBlockPushStrategy()->headBlock);
+        }
 
-        inline Block* getCurrentBlock() const { return getBlockPushStrategy()->currentBlock; }
+        inline Block* getCurrentBlock() const
+        {
+            return getBlockPushStrategy()->currentBlock;
+        }
 
         inline void getCurrentBlock(Block**& b) const
         {
@@ -361,4 +397,4 @@ namespace EgLab
     private:
     };
 
-} // namespace EgLab
+} // namespace EgLab::Common

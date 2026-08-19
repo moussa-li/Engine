@@ -4,10 +4,10 @@
 #include "Pair.hpp"
 
 // std::unordered_map<int, int> m;
-namespace EgLab
+namespace EgLab::Common
 {
     template <class F, class S>
-    struct pairHash : public hash<F>
+    struct pairHash : public EgLab::Common::hash<F>
     {
         size_t operator()(Pair<F, S> data) const
         {
@@ -151,4 +151,4 @@ namespace EgLab
         }
     };
 
-} // namespace EgLab
+} // namespace EgLab::Common

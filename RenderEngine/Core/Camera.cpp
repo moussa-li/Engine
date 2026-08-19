@@ -2,7 +2,7 @@
 
 #include <math.h>
 
-namespace EgLab
+namespace EgLab::RE
 {
     /**
      * @brief from degress get the radians
@@ -49,7 +49,7 @@ namespace EgLab
         _up.normalize();
     }
 
-    Matrix4f Camera::perspective() const
+    Common::Matrix4f Camera::perspective() const
     {
         const float fovy = radians(_zoom);
         const float tanHalfFovy = std::tan(fovy * 0.5); // fovy : Field of View Y
@@ -57,7 +57,7 @@ namespace EgLab
         static const float zNear = 0.1f;
         static const float zFar = 100.0f;
 
-        Matrix4f result;
+        Common::Matrix4f result;
         result[0][0] = 1 / (aspect * tanHalfFovy);
         result[1][1] = 1 / (tanHalfFovy);
         result[2][2] = -(zFar + zNear) / (zFar - zNear);
@@ -67,7 +67,7 @@ namespace EgLab
         return result;
     }
 
-    Matrix4f Camera::view() const
+    Common::Matrix4f Camera::view() const
     {
         CoordType f(_front);
         CoordType s(_front.cross(_up));
@@ -76,7 +76,7 @@ namespace EgLab
         s.normalize();
         u.normalize();
 
-        Matrix4f result = Matrix4f::Identity();
+        Common::Matrix4f result = Common::Matrix4f::Identity();
         result[0][0] = s.x();
         result[0][1] = s.y();
         result[0][2] = s.z();
@@ -102,4 +102,4 @@ namespace EgLab
         // updateCameraVectors();
     }
 
-} // namespace EgLab
+} // namespace EgLab::RE

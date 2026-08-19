@@ -2,7 +2,7 @@
 
 #include "Common/HashTable.hpp"
 
-namespace EgLab
+namespace EgLab::Common
 {
 
     template <class T, typename Hash = hash<T>, typename Equal = equal<T>,
@@ -54,4 +54,4 @@ namespace EgLab
         }
     };
 
-} // namespace EgLab
+} // namespace EgLab::Common

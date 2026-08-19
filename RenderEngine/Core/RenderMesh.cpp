@@ -12,15 +12,17 @@
 #include "VertexBuffer.hpp"
 #include "VertexBufferLayout.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     RenderMesh::RenderMesh()
     {
     }
 
-    RenderMesh::RenderMesh(DynamicArray<CoordType> &vertices, DynamicArray<CoordType> &normals,
-                           DynamicArray<TexCoordType> &texCoords, DynamicArray<IdxType> &indices,
-                           DynamicArray<Texture *> &textures)
+    RenderMesh::RenderMesh(Common::DynamicArray<CoordType> &vertices,
+                           Common::DynamicArray<CoordType> &normals,
+                           Common::DynamicArray<TexCoordType> &texCoords,
+                           Common::DynamicArray<IdxType> &indices,
+                           Common::DynamicArray<Texture *> &textures)
     {
         _vertices = vertices;
         _normals = normals;
@@ -30,26 +32,30 @@ namespace EgLab
         setup();
     }
 
+    RenderMesh::~RenderMesh()
+    {
+    }
+
     void RenderMesh::setup()
     {
-        _vertexArray = makeShared<VertexArray>();
+        _vertexArray = Common::makeShared<VertexArray>();
 
         VertexBufferLayout layout;
-        _vertexBuffer = makeShared<VertexBuffer>(_vertices);
+        _vertexBuffer = Common::makeShared<VertexBuffer>(_vertices);
         layout.pushBack<float>(3, _vertexBuffer);
 
-        _normalVertexBuffer = makeShared<VertexBuffer>(_normals);
+        _normalVertexBuffer = Common::makeShared<VertexBuffer>(_normals);
         layout.pushBack<float>(3, _normalVertexBuffer);
 
-        _textureVertexBuffer = makeShared<VertexBuffer>(_texCoords);
+        _textureVertexBuffer = Common::makeShared<VertexBuffer>(_texCoords);
         layout.pushBack<float>(2, _textureVertexBuffer);
 
         _vertexArray->addBuffer(layout);
-        _indexBuffer = makeShared<IndexBuffer>(_indices);
+        _indexBuffer = Common::makeShared<IndexBuffer>(_indices);
         _vertexArray->unBind();
     }
 
-    void RenderMesh::draw(SharedPtr<Shader> shader, Transform transform)
+    void RenderMesh::draw(Common::SharedPtr<Shader> shader, Transform transform)
     {
         shader->bind();
         shader->setUniformMat4f("model", transform.getMatrix());
@@ -68,4 +74,4 @@ namespace EgLab
     {
     }
 
-} // namespace EgLab
+} // namespace EgLab::RE

@@ -4,7 +4,7 @@
 #include "Definites.hpp"
 #include "RenderEngineAPI.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     constexpr float YAW = -90.0f;
     constexpr float PITCH = 0.0f;
@@ -19,9 +19,9 @@ namespace EgLab
                CoordType position = CoordType(0.0f, 0.0f, 100.0f),
                CoordType up = CoordType(0.0f, 1.0f, 0.0f), float yaw = YAW, float pitch = PITCH);
 
-        Matrix4f perspective() const;
+        Common::Matrix4f perspective() const;
 
-        Matrix4f view() const;
+        Common::Matrix4f view() const;
 
         void lookAt(const CoordType &position, const CoordType &front, const CoordType &up);
 
@@ -102,4 +102,4 @@ namespace EgLab
         unsigned int _height;
     };
 
-} // namespace EgLab
+} // namespace EgLab::RE

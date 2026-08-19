@@ -3,10 +3,11 @@
 #include "RenderEngine/Core/Camera.hpp"
 #include "RenderEngine/Core/Entity.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"
+#include "RenderEngine/Core/RenderPrimitive.hpp"
 #include "RenderEngine/Core/Scene.hpp"
 #include "RenderEngine/Core/Window.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     void Renderer::clear()
     {
@@ -42,28 +43,51 @@ namespace EgLab
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
-    void Renderer::draw(const SharedPtr<Scene> &scene, const SharedPtr<Camera> &camera) const
+    void Renderer::loadCamera(const Common::SharedPtr<Shader> &shader,
+                              const Common::SharedPtr<Camera> &camera) const
+    {
+        Common::Matrix4f proj = Common::Matrix4f::Identity();
+        proj = camera->perspective();
+        Common::Matrix4f view = camera->view();
+        shader->bind();
+
+        shader->setUniformMat4f("proj", proj);
+        shader->setUniformMat4f("view", view);
+
+        shader->unBind();
+    }
+
+    void Renderer::draw(const Common::SharedPtr<Scene> &scene,
+                        const Common::SharedPtr<Camera> &camera) const
     {
         for (IdxType i = 0; i < _viewports.size(); ++i)
         {
             const auto &viewport = _viewports[i];
-            const auto &entities = scene->getEntities();
-            for (IdxType j = 0; j < entities.size(); ++j)
+            const auto &renderBuckets = scene->getRenderBuckets();
+
+            for (auto it = renderBuckets.begin(); it.hasNext(); it.next())
             {
-                auto &e = entities[j];
-                e->loadCamera(camera);
-                e->draw();
+                const auto &shader = it.data().first;
+                const auto &primitives = it.data().second;
+
+                loadCamera(shader, camera);
+
+                for (auto primitiveIt = primitives.begin(); primitiveIt.hasNext();
+                     primitiveIt.next())
+                {
+                    primitiveIt.data()->draw(shader);
+                }
             }
         }
     }
 
-    UniquePtr<RenderConfigure> &Renderer::getConfigure()
+    Common::UniquePtr<RenderConfigure> &Renderer::getConfigure()
     {
         return _configure;
     }
 
-    Renderer::Renderer() : _configure(makeUnique<RenderConfigure>())
+    Renderer::Renderer() : _configure(Common::makeUnique<RenderConfigure>())
     {
     }
 
-} // namespace EgLab
+} // namespace EgLab::RE

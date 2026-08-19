@@ -4,17 +4,17 @@
 #include "Core/Entity.hpp"
 #include "Core/RenderEngineAPI.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     class RenderEngineAPI Box : public Entity
     {
     public:
-        Box(Vector3f position, Vector3f rotation, Vector3f scale);
+        Box();
 
     private:
-        Return createMesh();
+        Common::Return createMesh();
 
         // virtual void draw() const override;
     };
 
-} // namespace EgLab
+} // namespace EgLab::RE

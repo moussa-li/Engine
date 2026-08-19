@@ -4,7 +4,7 @@
 
 #include "GLWrapper.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     class VertexArray::Impl
     {
@@ -23,9 +23,9 @@ namespace EgLab
         {
             switch (bt)
             {
-            case EgLab::BufferType::FLOAT:
+            case EgLab::RE::BufferType::FLOAT:
                 return GL_FLOAT;
-            case EgLab::BufferType::DOUBLE:
+            case EgLab::RE::BufferType::DOUBLE:
                 return GL_DOUBLE;
             }
         }
@@ -94,4 +94,4 @@ namespace EgLab
         }
     }
 
-} // namespace EgLab
+} // namespace EgLab::RE

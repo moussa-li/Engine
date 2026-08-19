@@ -5,7 +5,7 @@
 #include "Common/MacroUtils.hpp"
 #include "Common/MemAllocator.hpp"
 
-namespace EgLab
+namespace EgLab::Common
 {
     template <class T>
     struct ListNode
@@ -428,4 +428,4 @@ namespace EgLab
     template <class T, class Allocator>
     Allocator List<T, Allocator>::allocator;
 
-} // namespace EgLab
+} // namespace EgLab::Common

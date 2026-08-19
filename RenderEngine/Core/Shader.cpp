@@ -6,12 +6,10 @@
 #include "Common/Return.hpp"
 #include "Common/String.hpp"
 #include "Common/StringLineIterator.hpp"
-#include "Core/ShaderLib.hpp"
 #include "GLWrapper.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
-
     enum class ShaderType
     {
         NONE = -1,
@@ -20,10 +18,10 @@ namespace EgLab
         COMPUTE = 2
     };
 
-    Shader::Shader(const ShaderId shader) : _shader(shader), _rendererId(0)
+    Shader::Shader(Common::String& buffer) : _rendererId(0)
     {
         ShaderProgramSource source;
-        parseShader(source);
+        parseShader(buffer, source);
 
         _rendererId = createShader(source);
     }
@@ -32,21 +30,21 @@ namespace EgLab
     {
     }
 
-    Return Shader::bind() const
+    Common::Return Shader::bind() const
     {
-        Return ret = Return::Succeed;
+        Common::Return ret = Common::Return::Succeed;
         glUseProgram(_rendererId);
         return ret;
     }
 
-    Return Shader::unBind() const
+    Common::Return Shader::unBind() const
     {
         glUseProgram(0);
-        Return ret = Return::Succeed;
+        Common::Return ret = Common::Return::Succeed;
         return ret;
     }
 
-    IdType Shader::compileShader(unsigned int type, const String& source)
+    IdType Shader::compileShader(unsigned int type, const Common::String& source)
     {
         unsigned int id = glCreateShader(type);
         const char* src = source.c_str();
@@ -98,22 +96,18 @@ namespace EgLab
         return program;
     }
 
-    Return Shader::parseShader(ShaderProgramSource& source)
+    Common::Return Shader::parseShader(Common::String& buffer, ShaderProgramSource& source)
     {
-        String buffer;
-        // ShaderLib::instance().getBasicShader(buffer);
+        Common::StringLineIterator it(buffer);
 
-        ShaderLib::instance().getShader(_shader, buffer);
-        StringLineIterator it(buffer);
-
-        EgLab::DynamicArray<EgLab::String> lines;
+        Common::DynamicArray<Common::String> lines;
         ShaderType type = ShaderType::NONE;
         for (; it.hasNext(); ++it)
         {
             const char* str;
             size_t len;
             it.getString(str, len);
-            EgLab::String content(str, len);
+            Common::String content(str, len);
             if (content == "#shader vertex\r\n")
             {
                 type = ShaderType::VERTEX;
@@ -146,38 +140,38 @@ namespace EgLab
             }
         }
 
-        return Return::NotImplacementYet;
+        return Common::Return::NotImplacementYet;
     }
 
-    Return Shader::setUniform1i(const String& name, const int& v0)
+    Common::Return Shader::setUniform1i(const Common::String& name, const int& v0)
     {
         // LOG(INFO) << "value name : " << name;
         glUniform1iv(getUniformLocation(name), 1, &v0);
-        return Return::Succeed;
+        return Common::Return::Succeed;
     }
 
-    Return Shader::setUniform1f(const String& name, const float& v0)
+    Common::Return Shader::setUniform1f(const Common::String& name, const float& v0)
     {
         // LOG(INFO) << "value name : " << name;
         glUniform1fv(getUniformLocation(name), 1, &v0);
-        return Return::Succeed;
+        return Common::Return::Succeed;
     }
 
-    Return Shader::setUniformMat4f(const String& name, const Matrix4f& mat)
+    Common::Return Shader::setUniformMat4f(const Common::String& name, const Common::Matrix4f& mat)
     {
         // LOG(INFO) << "value name : " << name;
         glUniformMatrix4fv(getUniformLocation(name), 1, GL_TRUE, mat.data());
-        return Return::Succeed;
+        return Common::Return::Succeed;
     }
 
-    Return Shader::setUniform3f(const String& name, const Vector3f& vec)
+    Common::Return Shader::setUniform3f(const Common::String& name, const Common::Vector3f& vec)
     {
         // LOG(INFO) << "value name : " << name;
         glUniform3fv(getUniformLocation(name), 1, vec.data());
-        return Return::Succeed;
+        return Common::Return::Succeed;
     }
 
-    IdType Shader::getUniformLocation(const String& name)
+    IdType Shader::getUniformLocation(const Common::String& name)
     {
         auto it = _uniformLocationCache.find(name);
         if (it != _uniformLocationCache.end())
@@ -195,4 +189,4 @@ namespace EgLab
 
         return location;
     }
-} // namespace EgLab
+} // namespace EgLab::RE

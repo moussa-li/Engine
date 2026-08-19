@@ -1,12 +1,12 @@
 #pragma once
 #include "Common/DynamicArray.hpp"
-#include "RenderEngine/Core/Definites.hpp"
+#include "Core/Definites.hpp"
 #include "RenderEngine/Core/IndexBuffer.hpp"
+#include "RenderEngine/Core/RenderEngineAPI.hpp"
 #include "RenderEngine/Core/RenderPrimitive.hpp"
 #include "RenderEngine/Core/VertexArray.hpp"
 
-
-namespace EgLab
+namespace EgLab::RE
 {
     class Shader;
     class Transform;
@@ -16,22 +16,22 @@ namespace EgLab
     class ShaderStorageBuffer;
     class IndexBuffer;
 
-    class RenderLine : public RenderPrimitive
+    class RenderEngineAPI RenderLine : public RenderPrimitive
     {
     public:
-        virtual ~RenderLine() {};
+        virtual ~RenderLine();
         virtual void setup() override;
-        virtual void draw(SharedPtr<Shader> shader) override;
+        virtual void draw(Common::SharedPtr<Shader> shader) override;
 
-        void setNodes(DynamicArray<CoordType>&&);
-        void setIndices(DynamicArray<IdxType>&&);
+        void setNodes(Common::DynamicArray<CoordType>&&);
+        void setIndices(Common::DynamicArray<IdxType>&&);
 
     private:
-        DynamicArray<CoordType> _vertices;
-        DynamicArray<IdxType> _indices;
+        Common::DynamicArray<CoordType> _vertices;
+        Common::DynamicArray<IdxType> _indices;
 
-        SharedPtr<VertexArray> _vertexArray;
-        SharedPtr<VertexBuffer> _vertexBuffer;
-        SharedPtr<IndexBuffer> _indexBuffer;
+        Common::SharedPtr<VertexArray> _vertexArray;
+        Common::SharedPtr<VertexBuffer> _vertexBuffer;
+        Common::SharedPtr<IndexBuffer> _indexBuffer;
     };
-} // namespace EgLab
+} // namespace EgLab::RE

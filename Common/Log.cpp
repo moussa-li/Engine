@@ -10,7 +10,7 @@
 
 #include "Common/Clock.hpp"
 
-namespace EgLab
+namespace EgLab::Common
 {
     constexpr size_t LOG_MSG_MAX_LEN = 30000;
     // Define Const Color
@@ -225,4 +225,4 @@ namespace EgLab
         return _impl->_stream;
     }
 
-} // namespace EgLab
+} // namespace EgLab::Common

@@ -2,9 +2,13 @@
 
 #include "Common/Log.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     void OrbitCameraController::update(DeltaTime)
+    {
+    }
+
+    OrbitCameraController::~OrbitCameraController()
     {
     }
 
@@ -74,4 +78,4 @@ namespace EgLab
         _camera->lookAt(pos, _target, _camera->getUp());
     }
 
-} // namespace EgLab
+} // namespace EgLab::RE

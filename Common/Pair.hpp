@@ -1,6 +1,6 @@
 #pragma once
 
-namespace EgLab
+namespace EgLab::Common
 {
     template <typename F, typename S>
     struct Pair
@@ -42,4 +42,4 @@ namespace EgLab
         return Pair<F, S>(f, s);
     }
 
-} // namespace EgLab
+} // namespace EgLab::Common

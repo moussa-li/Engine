@@ -2,20 +2,23 @@
 
 #include "Common/HashMap.hpp"
 #include "Common/String.hpp"
-#include "Definites.hpp"
+#include "Core/Definites.hpp"
 #include "RenderEngine/Core/RenderEngineAPI.hpp"
 
-namespace EgLab
+namespace EgLab::Common
 {
-    class String;
-    enum class ShaderId;
     enum class Return;
+}
+
+namespace EgLab::RE
+{
+    enum class ShaderId;
 
     struct ShaderProgramSource
     {
-        String VertexSource = "";
-        String FragmentSource = "";
-        String ComputeSource = "";
+        Common::String VertexSource = "";
+        Common::String FragmentSource = "";
+        Common::String ComputeSource = "";
     };
 
     // using RendererId = unsigned int;
@@ -24,36 +27,37 @@ namespace EgLab
     {
     public:
         Shader() = default;
+        Shader(Common::String&);
         Shader(const ShaderId);
         ~Shader();
 
-        Return bind() const;
-        Return unBind() const;
+        Common::Return bind() const;
+        Common::Return unBind() const;
 
         // template <typename T>
-        // Return setUniform(const ShaderId& name, T value);
+        // Common::Return setUniform(const ShaderId& name, T value);
 
-        Return setUniform1i(const String& name, const int& v0);
+        Common::Return setUniform1i(const Common::String& name, const int& v0);
 
-        Return setUniform1f(const String& name, const float& v0);
+        Common::Return setUniform1f(const Common::String& name, const float& v0);
 
-        Return setUniformMat4f(const String& name, const Matrix4f& mat);
+        Common::Return setUniformMat4f(const Common::String& name, const Common::Matrix4f& mat);
 
-        Return setUniform3f(const String& name, const Vector3f& vec);
+        Common::Return setUniform3f(const Common::String& name, const Common::Vector3f& vec);
 
     private:
         IdType createShader(const ShaderProgramSource&);
 
-        IdType compileShader(unsigned int type, const String& source);
+        IdType compileShader(unsigned int type, const Common::String& source);
 
-        Return parseShader(ShaderProgramSource&);
+        Common::Return parseShader(Common::String& buffer, ShaderProgramSource&);
 
-        IdType getUniformLocation(const String& name);
+        IdType getUniformLocation(const Common::String& name);
 
     private:
         ShaderId _shader;
         IdType _rendererId;
-        HashMap<String, IdType> _uniformLocationCache;
+        Common::HashMap<Common::String, IdType> _uniformLocationCache;
     };
 
-} // namespace EgLab
+} // namespace EgLab::RE

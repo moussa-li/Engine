@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-namespace EgLab
+namespace EgLab::RE
 {
 
     void GLClearError()
@@ -21,4 +21,4 @@ namespace EgLab
         return true;
     }
 
-} // namespace EgLab
+} // namespace EgLab::RE

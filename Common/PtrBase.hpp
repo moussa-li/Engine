@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-namespace EgLab
+namespace EgLab::Common
 {
     template <class T>
     class PtrBase
@@ -47,4 +47,4 @@ namespace EgLab
     protected:
         T* _ptr;
     };
-} // namespace EgLab
+} // namespace EgLab::Common

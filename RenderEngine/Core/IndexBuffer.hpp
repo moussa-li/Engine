@@ -4,12 +4,12 @@
 #include "Common/Object.hpp"
 #include "Definites.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     class IndexBuffer
     {
     public:
-        IndexBuffer(const DynamicArray<IdxType>& indeices);
+        IndexBuffer(const Common::DynamicArray<IdxType>& indeices);
         ~IndexBuffer();
 
         void bind() const;
@@ -22,4 +22,4 @@ namespace EgLab
         Impl* _impl;
     };
 
-} // namespace EgLab
+} // namespace EgLab::RE

@@ -1,9 +1,9 @@
 #pragma once
 
-namespace EgLab
+namespace EgLab::RE
 {
     template <typename T, int dim>
     class RenderEntity
     {
     };
-} // namespace EgLab
+} // namespace EgLab::RE

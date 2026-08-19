@@ -4,7 +4,7 @@
 #include "RenderEngine/Core/Entity.hpp"
 #include "RenderEngine/Core/OrbitCameraController.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     Scene::Scene()
     {
@@ -12,22 +12,19 @@ namespace EgLab
 
     void Scene::update(DeltaTime deltaTime)
     {
-        for (size_t i = 0; i < _entities.size(); ++i)
-        {
-            _entities[i]->update(deltaTime);
-        }
     }
 
-    EgLab::DynamicArray<SharedPtr<Entity>> Scene::getEntities() const
+    Common::Return Scene::addPrimitive(Common::SharedPtr<Shader> shader,
+                                       Common::SharedPtr<RenderPrimitive> primitive)
     {
-        return _entities;
+        if (shader == nullptr) return Common::Return::Failed;
+
+        _renderPrimitives[shader].pushBack(primitive);
+        return Common::Return::Succeed;
     }
 
-    Return Scene::addEntity(SharedPtr<Entity> entity)
+    const RenderBuckets& Scene::getRenderBuckets() const
     {
-        if (entity == nullptr) return Return::Failed;
-        _entities.pushBack(entity);
-
-        return Return::Succeed;
+        return _renderPrimitives;
     }
-} // namespace EgLab
+} // namespace EgLab::RE

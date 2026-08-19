@@ -1,10 +1,14 @@
+#pragma once
 #include <gtest/gtest.h>
 
-class TestNormal : public testing::Test {
+class TestNormal : public testing::Test
+{
 protected:
     // nothing to setup
-    virtual void SetUp() override {
+    virtual void SetUp() override
+    {
     }
-    virtual void TearDown() override {
+    virtual void TearDown() override
+    {
     }
 };

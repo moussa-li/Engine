@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-namespace EgLab
+namespace EgLab::Common
 {
     template <typename Scalar, size_t Col, size_t Row>
     class Matrix
@@ -104,12 +104,12 @@ namespace EgLab
     typedef Matrix<double, 4, 4> Matrix4d;
     typedef Matrix<double, 3, 3> Matrix3d;
 
-} // namespace EgLab
+} // namespace EgLab::Common
 
 #include <iomanip>
 #include <iostream>
 
-namespace EgLab
+namespace EgLab::Common
 {
     template <typename Scalar, size_t Col, size_t Row>
     std::ostream& operator<<(std::ostream& os, const Matrix<Scalar, Col, Row>& mat)
@@ -135,4 +135,4 @@ namespace EgLab
 
         return os;
     }
-} // namespace EgLab
+} // namespace EgLab::Common

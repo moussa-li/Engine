@@ -8,8 +8,10 @@
 
 #include <cstddef>
 
+#include "Common/SharedPtr.hpp"
 #include "Common/Singleton.hpp"
 #include "Core/RenderEngineAPI.hpp"
+#include "RenderEngine/Core/Shader.hpp"
 
 #define RegisterShaderLib(NAME, RegisterFunc)              \
     if constexpr (shaderId == NAME)                        \
@@ -17,28 +19,42 @@
         return ShaderLib::instance().RegisterFunc(buffer); \
     }
 
-namespace EgLab
+namespace EgLab::Common
+{
+
+    enum class Return;
+
+} // namespace EgLab::Common
+namespace EgLab::RE
 {
     enum class ShaderId
     {
         Basic,
         Node,
+        Line,
         Easy
     };
 
     class String;
-    enum class Return;
 
-    class RenderEngineAPI ShaderLib : public Singleton<ShaderLib>
+    class RenderEngineAPI ShaderLib : public Common::Singleton<ShaderLib>
     {
     public:
-        Return getBasicShader(String &buffer);
+        Common::Return getBasicShader(String &buffer);
 
-        Return getLightShader(String &buffer);
+        Common::Return getLightShader(String &buffer);
 
-        Return getNodeShader(String &buffer);
+        Common::Return getNodeShader(String &buffer);
 
-        Return getShader(ShaderId, String &buffer);
+        Common::Return getShader(ShaderId, String &buffer);
+
+        Common::Return getBasicShader(Common::SharedPtr<Shader> &);
+
+        Common::Return getNodeShader(Common::SharedPtr<Shader> &);
+
+        Common::Return getLineShader(Common::SharedPtr<Shader> &);
+
+        Common::Return getFaceShader(Common::SharedPtr<Shader> &);
 
     private:
         ShaderLib();
@@ -50,10 +66,10 @@ namespace EgLab
     };
 
     template <ShaderId shaderId>
-    Return ShaderLib(String &buffer)
+    Common::Return ShaderLib(String &buffer)
     {
         RegisterShaderLib(ShaderId::Basic, getBasicShader);
         RegisterShaderLib(ShaderId::Node, getNodeShader);
     }
 
-} // namespace EgLab
+} // namespace EgLab::RE

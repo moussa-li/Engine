@@ -2,7 +2,7 @@
 
 #include "RenderEngine/Core/CameraController.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     class RenderEngineAPI OrbitCameraController : public CameraController
     {
@@ -10,7 +10,7 @@ namespace EgLab
         virtual void update(DeltaTime) override;
 
         OrbitCameraController() = default;
-        virtual ~OrbitCameraController() = default;
+        virtual ~OrbitCameraController();
 
         void processMouseButton(int button, int action, float xpos, float ypos) override;
 
@@ -53,6 +53,6 @@ namespace EgLab
         CoordType _target = CoordType(0.0f, 0.0f, 0.0f); // look at center
         float _distance = 100.0f;                        // distance of center
 
-        float _panSensitivity = 1.0f;
+        float _panSensitivity = 0.1f;
     };
-} // namespace EgLab
+} // namespace EgLab::RE

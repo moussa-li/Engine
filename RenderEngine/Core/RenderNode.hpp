@@ -1,10 +1,11 @@
 #pragma once
 #include "Common/DynamicArray.hpp"
-#include "RenderEngine/Core/Definites.hpp"
+#include "Core/Definites.hpp"
+#include "RenderEngine/Core/RenderEngineAPI.hpp"
 #include "RenderEngine/Core/RenderPrimitive.hpp"
-#include "RenderEngine/Core/VertexArray.hpp"
+// #include "RenderEngine/Core/VertexArray.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     class Shader;
     class Transform;
@@ -13,18 +14,18 @@ namespace EgLab
     class VertexBuffer;
     class ShaderStorageBuffer;
 
-    class RenderNode : public RenderPrimitive
+    class RenderEngineAPI RenderNode : public RenderPrimitive
     {
     public:
-        virtual ~RenderNode() {};
+        virtual ~RenderNode();
         virtual void setup() override;
-        virtual void draw(SharedPtr<Shader> shader) override;
+        virtual void draw(Common::SharedPtr<Shader> shader) override;
 
-        void setNodes(DynamicArray<CoordType>&&);
+        void setNodes(Common::DynamicArray<CoordType>&&);
 
     private:
-        DynamicArray<CoordType> _vertices;
-        SharedPtr<VertexArray> _vertexArray;
-        SharedPtr<VertexBuffer> _vertexBuffer;
+        Common::DynamicArray<CoordType> _vertices;
+        Common::SharedPtr<VertexArray> _vertexArray;
+        Common::SharedPtr<VertexBuffer> _vertexBuffer;
     };
-} // namespace EgLab
+} // namespace EgLab::RE

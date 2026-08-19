@@ -5,7 +5,7 @@
 #include "Common/MacroUtils.hpp"
 #include "Common/MemAllocator.hpp"
 
-namespace EgLab
+namespace EgLab::Common
 {
     template <class T, class Allocator = StaticSizeAllocator<T>>
     class DynamicArray : public Container<DynamicArray<T, Allocator>>
@@ -397,4 +397,4 @@ namespace EgLab
 
     template <class T, class Allocator>
     Allocator DynamicArray<T, Allocator>::allocator;
-} // namespace EgLab
+} // namespace EgLab::Common

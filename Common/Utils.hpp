@@ -2,7 +2,7 @@
 
 #include "Common/TypeTraits.hpp"
 
-namespace EgLab
+namespace EgLab::Common
 {
     template <typename T>
     T&& forward(typename RemoveRef<T>::type& arg)
@@ -26,4 +26,4 @@ namespace EgLab
 
     template <typename T, typename = void>
     struct hashFun;
-} // namespace EgLab
+} // namespace EgLab::Common

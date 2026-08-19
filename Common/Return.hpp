@@ -6,13 +6,14 @@
  * @date 2025-10-26
  */
 
-namespace EgLab
+namespace EgLab::Common
 {
     enum class Return
     {
         Succeed,
         Failed,
         NotImplacementYet,
-        FileNotFound
+        FileNotFound,
+        BadInput
     };
 }

@@ -11,7 +11,7 @@
 #include "Common/PtrBase.hpp"
 #include "Common/Utils.hpp"
 
-namespace EgLab
+namespace EgLab::Common
 {
 
     template <class T>
@@ -83,4 +83,4 @@ namespace EgLab
         return UniquePtr<Derived>(nullptr);
     }
 
-} // namespace EgLab
+} // namespace EgLab::Common

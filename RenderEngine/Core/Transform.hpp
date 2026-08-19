@@ -3,7 +3,7 @@
 #include "Common/Vector.hpp"
 #include "Definites.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     class Transform
     {
@@ -16,8 +16,8 @@ namespace EgLab
 
         Transform(const Transform &other);
 
-        Matrix4f getMatrix();
-        Matrix4f getRotationMatrix();
+        Common::Matrix4f getMatrix();
+        Common::Matrix4f getRotationMatrix();
 
         void setPosition(CoordType positoin);
 
@@ -27,4 +27,4 @@ namespace EgLab
         CoordType _scale;
     };
 
-} // namespace EgLab
+} // namespace EgLab::RE

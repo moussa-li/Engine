@@ -7,7 +7,7 @@
 
 #include <thread>
 
-namespace EgLab
+namespace EgLab::Common
 {
     class Thread
     {
@@ -38,4 +38,4 @@ namespace EgLab
         std::thread _thread;
     };
 
-} // namespace EgLab
+} // namespace EgLab::Common

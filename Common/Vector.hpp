@@ -6,7 +6,7 @@
 
 #include "Matrix.hpp"
 
-namespace EgLab
+namespace EgLab::Common
 {
     template <typename Scalar, size_t Dim>
     class Vector : public Matrix<Scalar, 1, Dim>
@@ -161,4 +161,4 @@ namespace EgLab
     typedef Vector<double, 2> Vector2d;
     typedef Vector<float, 2> Vector2f;
 
-} // namespace EgLab
+} // namespace EgLab::Common

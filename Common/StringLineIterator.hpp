@@ -4,7 +4,7 @@
 #include "Common/DynamicArray.hpp"
 #include "Common/String.hpp"
 
-namespace EgLab
+namespace EgLab::Common
 {
     class CommonAPI StringLineIterator
     {
@@ -30,4 +30,4 @@ namespace EgLab
         size_t currentIdx;
     };
 
-} // namespace EgLab
+} // namespace EgLab::Common

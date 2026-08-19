@@ -1,9 +1,9 @@
 #include "Texture.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     Texture::Texture()
     {
     }
 
-} // namespace EgLab
+} // namespace EgLab::RE

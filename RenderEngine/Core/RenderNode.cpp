@@ -4,29 +4,34 @@
 
 #include "Common/Utils.hpp"
 #include "RenderEngine/Core/Shader.hpp"
+#include "RenderEngine/Core/VertexArray.hpp"
 #include "RenderEngine/Core/VertexBufferLayout.hpp"
 
-namespace EgLab
-{
 
-    void RenderNode::setNodes(DynamicArray<CoordType>&& nodes)
+namespace EgLab::RE
+{
+    RenderNode::~RenderNode()
+    {
+    }
+
+    void RenderNode::setNodes(Common::DynamicArray<CoordType>&& nodes)
     {
         _vertices = nodes;
     }
 
     void RenderNode::setup()
     {
-        _vertexArray = makeShared<VertexArray>();
+        _vertexArray = Common::makeShared<VertexArray>();
         _vertexArray->bind();
         VertexBufferLayout layout;
-        _vertexBuffer = makeShared<VertexBuffer>(_vertices);
+        _vertexBuffer = Common::makeShared<VertexBuffer>(_vertices);
         layout.pushBack<float>(3, _vertexBuffer);
 
         _vertexArray->addBuffer(layout);
         _vertexArray->unBind();
     }
 
-    void RenderNode::draw(SharedPtr<Shader> shader)
+    void RenderNode::draw(Common::SharedPtr<Shader> shader)
     {
         shader->bind();
         _vertexArray->bind();
@@ -36,4 +41,4 @@ namespace EgLab
         _vertexArray->unBind();
         shader->unBind();
     }
-} // namespace EgLab
+} // namespace EgLab::RE

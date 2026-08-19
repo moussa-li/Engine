@@ -7,7 +7,7 @@
 #include "Core/IndexBuffer.hpp"
 #include "Core/VertexArray.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
 
     class Shader;
@@ -23,38 +23,38 @@ namespace EgLab
     public:
         RenderMesh();
 
-        RenderMesh(DynamicArray<CoordType> &vertices, DynamicArray<CoordType> &normals,
-                   DynamicArray<TexCoordType> &texCoords, DynamicArray<IdxType> &indices,
-                   DynamicArray<Texture *> &textures);
+        RenderMesh(Common::DynamicArray<CoordType> &vertices,
+                   Common::DynamicArray<CoordType> &normals,
+                   Common::DynamicArray<TexCoordType> &texCoords,
+                   Common::DynamicArray<IdxType> &indices,
+                   Common::DynamicArray<Texture *> &textures);
 
-        ~RenderMesh()
-        {
-        }
+        ~RenderMesh();
 
         void setup();
 
-        void draw(SharedPtr<Shader> shader, Transform transform);
+        void draw(Common::SharedPtr<Shader> shader, Transform transform);
 
         void update();
 
         // void recalculateNormals();
 
     private:
-        DynamicArray<CoordType> _vertices;
-        DynamicArray<CoordType> _normals;
-        DynamicArray<TexCoordType> _texCoords;
-        DynamicArray<IdxType> _indices;
-        DynamicArray<Texture *> _textures;
+        Common::DynamicArray<CoordType> _vertices;
+        Common::DynamicArray<CoordType> _normals;
+        Common::DynamicArray<TexCoordType> _texCoords;
+        Common::DynamicArray<IdxType> _indices;
+        Common::DynamicArray<Texture *> _textures;
 
-        SharedPtr<VertexArray> _vertexArray;
-        SharedPtr<VertexArray> _normalVertexArray;
-        SharedPtr<VertexArray> _textureVertexArray;
-        SharedPtr<VertexBuffer> _vertexBuffer;
-        SharedPtr<VertexBuffer> _normalVertexBuffer;
-        SharedPtr<VertexBuffer> _textureVertexBuffer;
-        SharedPtr<IndexBuffer> _indexBuffer;
+        Common::SharedPtr<VertexArray> _vertexArray;
+        Common::SharedPtr<VertexArray> _normalVertexArray;
+        Common::SharedPtr<VertexArray> _textureVertexArray;
+        Common::SharedPtr<VertexBuffer> _vertexBuffer;
+        Common::SharedPtr<VertexBuffer> _normalVertexBuffer;
+        Common::SharedPtr<VertexBuffer> _textureVertexBuffer;
+        Common::SharedPtr<IndexBuffer> _indexBuffer;
 
         // static Shader* rec
     };
 
-} // namespace EgLab
+} // namespace EgLab::RE

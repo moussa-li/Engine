@@ -4,7 +4,7 @@
 #include "Common/SharedPtr.hpp"
 #include "VertexBuffer.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     enum class BufferType
     {
@@ -17,7 +17,7 @@ namespace EgLab
         BufferType type;
         size_t count;
         bool normalized;
-        SharedPtr<VertexBuffer> VBO;
+        Common::SharedPtr<VertexBuffer> VBO;
     };
 
     class VertexBufferLayout
@@ -26,24 +26,24 @@ namespace EgLab
         VertexBufferLayout() = default;
 
         template <typename T>
-        void pushBack(unsigned int count, SharedPtr<VertexBuffer> vbo)
+        void pushBack(unsigned int count, Common::SharedPtr<VertexBuffer> vbo)
         {
             static_assert(false);
         }
 
         template <>
-        void pushBack<float>(unsigned int count, SharedPtr<VertexBuffer> vbo)
+        void pushBack<float>(unsigned int count, Common::SharedPtr<VertexBuffer> vbo)
         {
             _elements.pushBack({BufferType::FLOAT, count, false, vbo});
         }
 
-        inline const DynamicArray<VertexBufferElement> getElement() const
+        inline const Common::DynamicArray<VertexBufferElement> getElement() const
         {
             return _elements;
         }
 
     private:
-        DynamicArray<VertexBufferElement> _elements;
+        Common::DynamicArray<VertexBufferElement> _elements;
     };
 
-} // namespace EgLab
+} // namespace EgLab::RE

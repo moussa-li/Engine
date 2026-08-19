@@ -8,7 +8,7 @@
 #include "Common/MemAllocator.hpp"
 #include "Common/String.hpp"
 
-namespace EgLab
+namespace EgLab::Common
 {
 
     template <typename T>
@@ -18,6 +18,15 @@ namespace EgLab
     struct hash<int>
     {
         size_t operator()(int x) const
+        {
+            return static_cast<size_t>(x);
+        }
+    };
+
+    template <>
+    struct hash<unsigned int>
+    {
+        size_t operator()(unsigned int x) const
         {
             return static_cast<size_t>(x);
         }
@@ -36,6 +45,18 @@ namespace EgLab
                 hash *= 1099511628211ULL; // FNV prime
             }
             return hash;
+        }
+    };
+
+    template <typename T>
+    class SharedPtr;
+
+    template <typename T>
+    struct hash<SharedPtr<T>>
+    {
+        size_t operator()(const EgLab::Common::SharedPtr<T> &ptr) const noexcept
+        {
+            return std::hash<T *>()(ptr.get());
         }
     };
 
@@ -346,16 +367,17 @@ namespace EgLab
         bool hasNext() const
         {
             size_t bucketIndex = _bucketIndex;
+            auto buckIterator = _bucketIterator;
             while (bucketIndex < _table.bucketsSize())
             {
-                if (_bucketIterator != _table.buckets[bucketIndex].end())
+                if (buckIterator != _table.buckets[bucketIndex].end())
                 {
                     return true;
                 }
                 ++bucketIndex;
                 if (bucketIndex < _table.bucketsSize())
                 {
-                    _bucketIterator = _table.buckets[bucketIndex].begin();
+                    buckIterator = _table.buckets[bucketIndex].begin();
                 }
             }
             return false;
@@ -441,4 +463,4 @@ namespace EgLab
         friend class HashTable<T, Hash, Equal, Allocator>;
     };
 
-} // namespace EgLab
+} // namespace EgLab::Common

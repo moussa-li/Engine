@@ -40,6 +40,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 target_link_libraries(${PROJECT_NAME} PUBLIC Common)
 
+target_link_libraries(${PROJECT_NAME} PUBLIC MeshEngine)
+
 target_link_libraries(${PROJECT_NAME} PUBLIC 
     opengl32
     glew32

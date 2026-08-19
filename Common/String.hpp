@@ -12,7 +12,7 @@
 
 #include "Common/CommonAPI.hpp"
 
-namespace EgLab
+namespace EgLab::Common
 {
     using Length_t = size_t;
     using Capacity_t = size_t;
@@ -108,16 +108,16 @@ namespace EgLab
 
     String operator<<(const char* lhs, const String& rhs);
 
-} // namespace EgLab
+} // namespace EgLab::Common
 
 #include <functional>
 
 namespace std
 {
     template <>
-    struct hash<EgLab::String>
+    struct hash<EgLab::Common::String>
     {
-        size_t operator()(const EgLab::String& s) const
+        size_t operator()(const EgLab::Common::String& s) const
         {
             const char* str = s.c_str();
             size_t hash = 14695981039346656037ull; // offset basis

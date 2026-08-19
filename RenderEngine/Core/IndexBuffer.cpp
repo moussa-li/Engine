@@ -2,12 +2,12 @@
 
 #include <GL/glew.h>
 
-namespace EgLab
+namespace EgLab::RE
 {
     class IndexBuffer::Impl
     {
     public:
-        Impl(const DynamicArray<IdxType>& indeices)
+        Impl(const Common::DynamicArray<IdxType>& indeices)
         {
             glGenBuffers(1, &_rendererId);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _rendererId);
@@ -35,7 +35,8 @@ namespace EgLab
         IdxType _count;
     };
 
-    IndexBuffer::IndexBuffer(const DynamicArray<IdxType>& indeices) : _impl(new Impl(indeices))
+    IndexBuffer::IndexBuffer(const Common::DynamicArray<IdxType>& indeices)
+        : _impl(new Impl(indeices))
     {
     }
 
@@ -62,4 +63,4 @@ namespace EgLab
         return _impl->_count;
     }
 
-} // namespace EgLab
+} // namespace EgLab::RE

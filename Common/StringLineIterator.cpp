@@ -2,7 +2,7 @@
 
 #include <emmintrin.h>
 
-namespace EgLab
+namespace EgLab::Common
 {
     StringLineIterator::StringLineIterator(String& str) : _str(str)
     {
@@ -72,4 +72,4 @@ namespace EgLab
         str = s + _lineStart[currentIdx];
         len = _lineStart[currentIdx + 1] - _lineStart[currentIdx];
     }
-} // namespace EgLab
+} // namespace EgLab::Common

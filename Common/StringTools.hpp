@@ -1,19 +1,20 @@
 #pragma once
+#include <sstream>
+#include <vector>
+
 #include "Common/CommonAPI.hpp"
 #include "Common/String.hpp"
 
-#include <vector>
-#include <sstream>
 
-namespace EgLab
+namespace EgLab::Common
 {
     /**
      * transfer data to string
-     * 
+     *
      * @param t
-     * @return 
+     * @return
      */
-    template<typename T>
+    template <typename T>
     inline String ToString(const T& t)
     {
         std::stringstream ss;
@@ -40,4 +41,4 @@ namespace EgLab
     CommonAPI std::vector<std::string> SplitStrByDot(const std::string&);
 
     CommonAPI std::string gb2312ToUtf8(const std::string&);
-}
+} // namespace EgLab::Common

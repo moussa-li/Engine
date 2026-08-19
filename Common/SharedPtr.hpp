@@ -14,7 +14,7 @@
 #include "Common/PtrBase.hpp"
 #include "Common/Utils.hpp"
 
-namespace EgLab
+namespace EgLab::Common
 {
     template <typename T, typename = void>
     struct HasRefMember : FalseType
@@ -163,6 +163,21 @@ namespace EgLab
             return *this;
         }
 
+        bool operator==(const SharedPtr<T> &other) const noexcept
+        {
+            return this->_ptr == other._ptr;
+        }
+
+        bool operator!=(const SharedPtr<T> &other) const noexcept
+        {
+            return this->_ptr != other._ptr;
+        }
+
+        explicit operator bool() const noexcept
+        {
+            return this->_ptr != nullptr;
+        }
+
     private:
         class TRef : public T, public IntrusiveRef
         {
@@ -210,4 +225,4 @@ namespace EgLab
         return SharedPtr<Derived>(nullptr);
     }
 
-} // namespace EgLab
+} // namespace EgLab::Common

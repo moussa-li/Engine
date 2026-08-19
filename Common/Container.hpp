@@ -3,7 +3,7 @@
 #include "Common/Iterator.hpp"
 #include "Common/UniquePtr.hpp"
 
-namespace EgLab
+namespace EgLab::Common
 {
     template <class T>
     class Container
@@ -35,4 +35,4 @@ namespace EgLab
 
         virtual CIteratorT end() const = 0;
     };
-} // namespace EgLab
+} // namespace EgLab::Common

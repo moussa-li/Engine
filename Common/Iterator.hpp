@@ -2,7 +2,7 @@
 
 #include "Common/TypeTraits.hpp"
 
-namespace EgLab
+namespace EgLab::Common
 {
     template <class Container>
     class Iterator
@@ -45,4 +45,4 @@ namespace EgLab
     // private:
     // };
 
-} // namespace EgLab
+} // namespace EgLab::Common

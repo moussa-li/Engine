@@ -15,6 +15,11 @@ add_executable(common_test
     test_main.cpp
 )
 
+add_executable(mesh_test
+    test_mesh.cpp
+    test_main.cpp
+)
+
 if(MSVC)
     set_target_properties(engine_tests PROPERTIES
         LINK_FLAGS "/SUBSYSTEM:CONSOLE"
@@ -45,6 +50,18 @@ target_link_libraries(engine_tests PRIVATE
     gtest_main
     Common
     RenderEngine
+)
+
+target_include_directories(mesh_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/3rd/gtest/googletest/include
+    ${CMAKE_SOURCE_DIR}
+)
+
+target_link_libraries(mesh_test PRIVATE
+    gtest
+    gtest_main
+    Common
+    MeshEngine
 )
 
 target_link_libraries(common_test PRIVATE

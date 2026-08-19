@@ -2,7 +2,7 @@
 
 #include "Definites.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     class Texture
     {
@@ -10,4 +10,4 @@ namespace EgLab
         Texture();
     };
 
-} // namespace EgLab
+} // namespace EgLab::RE

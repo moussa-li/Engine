@@ -7,10 +7,10 @@
 #define ASSERT(x) \
     if (!(x)) __debugbreak();
 
-#define GLCall(x)          \
-    EgLab::GLClearError(); \
-    x;                     \
-    ASSERT(EgLab::GLLogCall(#x, __FILE__, __LINE__))
+#define GLCall(x)              \
+    EgLab::RE::GLClearError(); \
+    x;                         \
+    ASSERT(EgLab::RE::GLLogCall(#x, __FILE__, __LINE__))
 
 #define GL_CHECK()                                                                          \
     {                                                                                       \
@@ -21,11 +21,11 @@
         }                                                                                   \
     }
 
-namespace EgLab
+namespace EgLab::RE
 {
 
     void GLClearError();
 
     bool GLLogCall(const char* function, const char* file, int line);
 
-} // namespace EgLab
+} // namespace EgLab::RE

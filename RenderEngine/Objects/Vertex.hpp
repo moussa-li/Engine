@@ -4,7 +4,7 @@
 #include "Core/Entity.hpp"
 #include "Core/RenderEngineAPI.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     class RenderNode;
     class RenderEngineAPI Vertex : public Entity
@@ -12,10 +12,5 @@ namespace EgLab
     public:
         Vertex(CoordType &);
         virtual ~Vertex();
-
-        virtual void draw() const override;
-
-    private:
-        UniquePtr<RenderNode> _node;
     };
-} // namespace EgLab
+} // namespace EgLab::RE

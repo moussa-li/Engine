@@ -6,7 +6,7 @@
 #include "RenderEngine/Core/CameraController.hpp"
 #include "RenderEngine/Core/Renderer.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
                                     GLsizei length, const GLchar *message, const void *userParam)
@@ -154,7 +154,7 @@ namespace EgLab
 
     public:
         GLFWwindow *_window;
-        SharedPtr<CameraController> _cameraController;
+        Common::SharedPtr<CameraController> _cameraController;
 
         unsigned int _width;
         unsigned int _height;
@@ -199,7 +199,7 @@ namespace EgLab
         return _impl->deal();
     }
 
-    void Window::setCameraController(SharedPtr<CameraController> cmaeraController)
+    void Window::setCameraController(Common::SharedPtr<CameraController> cmaeraController)
     {
         _impl->_cameraController = cmaeraController;
         if (cmaeraController == nullptr) return;
@@ -237,4 +237,4 @@ namespace EgLab
     //    };
     //}
 
-} // namespace EgLab
+} // namespace EgLab::RE

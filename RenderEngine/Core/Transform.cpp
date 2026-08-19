@@ -1,6 +1,6 @@
 #include "Transform.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     Transform::Transform()
     {
@@ -18,14 +18,14 @@ namespace EgLab
         _scale = other._scale;
     }
 
-    Matrix4f Transform::getMatrix()
+    Common::Matrix4f Transform::getMatrix()
     {
-        Matrix4f pos = Matrix4f::Identity();
+        Common::Matrix4f pos = Common::Matrix4f::Identity();
         pos[0][3] = _position[0];
         pos[1][3] = _position[1];
         pos[2][3] = _position[2];
 
-        Matrix4f scale;
+        Common::Matrix4f scale;
         scale[0][0] = _scale[0];
         scale[1][1] = _scale[1];
         scale[2][2] = _scale[2];
@@ -33,9 +33,9 @@ namespace EgLab
         return pos * scale * getRotationMatrix();
     }
 
-    Matrix4f Transform::getRotationMatrix()
+    Common::Matrix4f Transform::getRotationMatrix()
     {
-        Matrix4f m;
+        Common::Matrix4f m;
         float pitch = _rotation.x();
         float yaw = _rotation.y();
         float roll = _rotation.z();
@@ -75,4 +75,4 @@ namespace EgLab
     void Transform::setPosition(CoordType positoin)
     {
     }
-} // namespace EgLab
+} // namespace EgLab::RE

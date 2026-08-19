@@ -4,7 +4,7 @@
 #include <windows.h>
 #endif
 
-namespace EgLab
+namespace EgLab::Common
 {
     void ToLower(std::string& str)
     {
@@ -28,7 +28,8 @@ namespace EgLab
         std::stringstream ss(str);
         std::string token;
 
-        while (getline(ss, token, splitSymbol)) {
+        while (getline(ss, token, splitSymbol))
+        {
             tokens.push_back(token);
         }
         return tokens;
@@ -52,7 +53,8 @@ namespace EgLab
     std::vector<int> ToInt(const std::vector<std::string>& str)
     {
         std::vector<int> ints;
-        for (auto& s : str) {
+        for (auto& s : str)
+        {
             ints.push_back(ToInt(s));
         }
         return ints;
@@ -70,13 +72,13 @@ namespace EgLab
 
     std::string gb2312ToUtf8(const std::string& gb2312)
     {
-#ifdef _WIN32   
+#ifdef _WIN32
         int len = MultiByteToWideChar(CP_ACP, 0, gb2312.c_str(), -1, NULL, 0);
         wchar_t* wstr = new wchar_t[len + 1];
         memset(wstr, 0, len + 1);
         MultiByteToWideChar(CP_ACP, 0, gb2312.c_str(), -1, wstr, len);
         len = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, NULL, 0, NULL, NULL);
-        std::string utf8(len,0);
+        std::string utf8(len, 0);
         WideCharToMultiByte(CP_UTF8, 0, wstr, -1, &utf8[0], len, NULL, NULL);
         if (wstr) delete[] wstr;
         return utf8;
@@ -85,6 +87,4 @@ namespace EgLab
 #endif
     }
 
-}
-
-
+} // namespace EgLab::Common

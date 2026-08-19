@@ -5,18 +5,19 @@
 #include "Definites.hpp"
 #include "RenderEngineAPI.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     class Window;
     class Camera;
     class Entity;
     class Light;
     class Scene;
+    class Shader;
     class RenderConfigure;
 
     struct RenderViewport
     {
-        SharedPtr<Window> window;
+        Common::SharedPtr<Window> window;
         int x, y;          // start position
         int width, height; // size
     };
@@ -28,24 +29,27 @@ namespace EgLab
 
         void clear();
 
-        void draw(const SharedPtr<Scene> &scene, const SharedPtr<Camera> &camera) const;
-
-        Return addEntity(SharedPtr<Entity> entity);
+        void draw(const Common::SharedPtr<Scene> &scene,
+                  const Common::SharedPtr<Camera> &camera) const;
 
         void update(DeltaTime deltaTime);
 
-        UniquePtr<RenderConfigure> &getConfigure();
+        Common::UniquePtr<RenderConfigure> &getConfigure();
 
         Renderer();
 
         ~Renderer() = default;
 
     private:
-        EgLab::DynamicArray<RenderViewport> _viewports;
+        void loadCamera(const Common::SharedPtr<Shader> &shader,
+                        const Common::SharedPtr<Camera> &camera) const;
 
-        EgLab::DynamicArray<Light *> _lights;
+    private:
+        Common::DynamicArray<RenderViewport> _viewports;
 
-        UniquePtr<RenderConfigure> _configure;
+        Common::DynamicArray<Light *> _lights;
+
+        Common::UniquePtr<RenderConfigure> _configure;
     };
 
-} // namespace EgLab
+} // namespace EgLab::RE

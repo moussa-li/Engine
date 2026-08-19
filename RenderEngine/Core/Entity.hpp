@@ -7,12 +7,13 @@
 #include "Core/Transform.hpp"
 #include "Definites.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     class RenderMesh;
     class RenderNode;
     class Shader;
     class Camera;
+    class RenderPrimitive;
 
     /**
      * @brief the basic of any render object
@@ -21,15 +22,7 @@ namespace EgLab
     class RenderEngineAPI Entity
     {
     public:
-        Entity(Vector3f position, Vector3f rotation, Vector3f scale);
-
         Entity();
-
-        /**
-         * @brief draw the meshes in the entity
-         *
-         */
-        virtual void draw() const;
 
         /**
          * @brief
@@ -43,16 +36,12 @@ namespace EgLab
          *
          * @param camera
          */
-        void loadCamera(const SharedPtr<Camera> &camera);
+        void loadCamera(const Common::SharedPtr<Camera> &camera);
 
     protected:
-        DynamicArray<SharedPtr<RenderMesh>> _meshes;
+        Common::DynamicArray<Common::SharedPtr<RenderPrimitive>> _renderPrimitives;
 
-        DynamicArray<SharedPtr<RenderNode>> _nodes;
-
-        SharedPtr<Shader> _shader;
-
-        Transform _transform;
+        Common::DynamicArray<Common::SharedPtr<Shader>> _shaders;
     };
 
-} // namespace EgLab
+} // namespace EgLab::RE

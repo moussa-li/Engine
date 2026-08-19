@@ -1,19 +1,20 @@
 #pragma once
 
-#include "Common/DynamicArray.hpp"
+#include "Common/HashMap.hpp"
 #include "Common/Return.hpp"
 #include "Common/SharedPtr.hpp"
-#include "Common/UniquePtr.hpp"
 #include "Definites.hpp"
-#include "RenderEngine/Core/Camera.hpp"
 #include "RenderEngine/Core/Definites.hpp"
+#include "RenderEngine/Core/RenderPrimitive.hpp"
 #include "RenderEngineAPI.hpp"
 
-namespace EgLab
+namespace EgLab::RE
 {
     class Camera;
     class CameraController;
     class Entity;
+    class Shader;
+    class RenderPrimitive;
 
     enum class InteractionModel
     {
@@ -22,6 +23,9 @@ namespace EgLab
         UNKNOWN
     };
 
+    using RenderBuckets = Common::HashMap<Common::SharedPtr<Shader>,
+                                          Common::DynamicArray<Common::SharedPtr<RenderPrimitive>>>;
+
     class RenderEngineAPI Scene
     {
     public:
@@ -29,11 +33,11 @@ namespace EgLab
 
         void update(DeltaTime);
 
-        Return addEntity(SharedPtr<Entity> entity);
+        Common::Return addPrimitive(Common::SharedPtr<Shader>, Common::SharedPtr<RenderPrimitive>);
 
-        EgLab::DynamicArray<SharedPtr<Entity>> getEntities() const;
+        const RenderBuckets &getRenderBuckets() const;
 
     private:
-        EgLab::DynamicArray<SharedPtr<Entity>> _entities;
+        RenderBuckets _renderPrimitives;
     };
-} // namespace EgLab
+} // namespace EgLab::RE
