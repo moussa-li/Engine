@@ -199,6 +199,21 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "RenderMesh",
+            "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
+            "args": [
+                "--gtest_filter=TestRender.mesh"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal",
+            "initCommands": [
+                "command script import ${workspaceFolder}/debug/dynamic_array.py",
+                "type category enable EgLab"
+            ]
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "RenderBox",
             "program": "${workspaceFolder}/build/win-clangd-debug/bin/engine_tests.exe",
             "args": [

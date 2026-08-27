@@ -151,6 +151,78 @@ namespace EgLab::Common
             ++_end;
         }
 
+        void pushBack(DynamicArray<T> &datas)
+        {
+            if (_datas == nullptr)
+            {
+                _capacity = datas.capacity();
+                _datas = static_cast<ValuePtr>(allocator.alloc(_capacity));
+                _start = _datas;
+                _tail = _start + _capacity;
+                _end = _start;
+            }
+            if (_end == _tail || _capacity < _size + datas.size())
+            {
+                size_t newCapacity = _capacity + datas.capacity();
+                ValuePtr newDatas = static_cast<ValuePtr>(allocator.alloc(newCapacity));
+                for (size_t i = 0; i < _size; i++)
+                {
+                    new (newDatas + i) T(move(*(_start + i)));
+                    (_start + i)->~T();
+                }
+
+                allocator.free(_datas);
+                _datas = newDatas;
+                _capacity = newCapacity;
+                _start = _datas;
+                _tail = _start + _capacity;
+                _end = _start + _size;
+            }
+
+            for (int i = 0; i < datas.size(); i++)
+            {
+                new (_end + i) T(datas[i]);
+            }
+            _end += datas.size();
+            _size += datas.size();
+        }
+
+        void pushBack(DynamicArray<T> &&datas)
+        {
+            if (_datas == nullptr)
+            {
+                _capacity = datas.capacity();
+                _datas = static_cast<ValuePtr>(allocator.alloc(_capacity));
+                _start = _datas;
+                _tail = _start + _capacity;
+                _end = _start;
+            }
+            if (_end == _tail || _capacity < _size + datas.size())
+            {
+                size_t newCapacity = _capacity + datas.capacity();
+                ValuePtr newDatas = static_cast<ValuePtr>(allocator.alloc(newCapacity));
+                for (size_t i = 0; i < _size; i++)
+                {
+                    new (newDatas + i) T(move(*(_start + i)));
+                    (_start + i)->~T();
+                }
+
+                allocator.free(_datas);
+                _datas = newDatas;
+                _capacity = newCapacity;
+                _start = _datas;
+                _tail = _start + _capacity;
+                _end = _start + _size;
+            }
+
+            for (int i = 0; i < datas.size(); i++)
+            {
+                new (_end + i) T(move(datas[i]));
+            }
+            _end += datas.size();
+            _size += datas.size();
+        }
+
         void popBack()
         {
             if (empty()) return;

@@ -14,4 +14,8 @@ namespace EgLab::ME
 
     using IdxType = unsigned int;
 
+    constexpr IdType MAX_ID = UINT_MAX;
+
+    constexpr IdxType INVALID_IDX = UINT_MAX;
+
 } // namespace EgLab::ME

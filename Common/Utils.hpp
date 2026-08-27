@@ -16,8 +16,19 @@ namespace EgLab::Common
         return static_cast<typename RemoveRef<T>::type&&>(t);
     }
 
+    template <class T>
+    inline const T min(const T& a, const T& b)
+    {
+        return (b < a) ? b : a;
+    }
+    template <class T>
+    inline const T max(const T& a, const T& b)
+    {
+        return (b > a) ? b : a;
+    }
+
     template <typename T>
-    void swap(T& a, T& b)
+    inline void swap(T& a, T& b)
     {
         T temp = move(a);
         a = move(b);

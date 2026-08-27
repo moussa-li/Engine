@@ -20,6 +20,14 @@ namespace EgLab::ME
 
         Common::Return delElem(IdType);
 
+        IdxType getNodeIdx(IdType) const;
+
+        IdxType getElemIdx(IdType) const;
+
+        Elem &getElemById(IdType);
+
+        Node &getNodeById(IdType);
+
     private:
         class Impl;
         Common::UniquePtr<Impl> _impl;

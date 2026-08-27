@@ -70,7 +70,7 @@ namespace EgLab::ME
             LOG(ERROR) << "mesh::elem already added!";
             return Common::Return::BadInput;
         }
-        _impl->_elemIdToIdx[e.getId()] = _impl->_nodes.size();
+        _impl->_elemIdToIdx[e.getId()] = _impl->_elems.size();
         _impl->_elems.pushBack(Common::move(e));
         _impl->_elemStatus.pushBack(ElemStatus::Normal);
 
@@ -88,6 +88,30 @@ namespace EgLab::ME
         _impl->_elemStatus[_impl->_elemIdToIdx[id]] = ElemStatus::Delete;
 
         return Common::Return::Succeed;
+    }
+
+    IdxType Mesh::getNodeIdx(IdType id) const
+    {
+        auto it = _impl->_nodeIdToIdx.find(id);
+        if (it == _impl->_nodeIdToIdx.end()) return INVALID_IDX;
+        return (*it).first;
+    }
+
+    IdxType Mesh::getElemIdx(IdType id) const
+    {
+        auto it = _impl->_elemIdToIdx.find(id);
+        if (it == _impl->_elemIdToIdx.end()) return INVALID_IDX;
+        return (*it).first;
+    }
+
+    Elem &Mesh::getElemById(IdType id)
+    {
+        return _impl->_elems[_impl->_elemIdToIdx[id]];
+    }
+
+    Node &Mesh::getNodeById(IdType id)
+    {
+        return _impl->_nodes[_impl->_nodeIdToIdx[id]];
     }
 
     class MeshIterator::Impl

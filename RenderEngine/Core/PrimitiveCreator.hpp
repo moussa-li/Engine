@@ -18,11 +18,13 @@ namespace EgLab::RE
         template <typename T>
         Common::SharedPtr<RenderPrimitive> getPrimitive()
         {
-            auto primitive = makeShared<T>();
+            Common::SharedPtr<T> primitive = Common::makeShared<T>();
 
-            updateData(primitive);
+            this->updateData(Common::SharedPtr<T>(primitive));
 
             primitive->setup();
+
+            return primitive;
         }
 
     protected:

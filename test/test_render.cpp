@@ -1,8 +1,10 @@
 #include "test_render.h"
 
 #include "Common/StringLineIterator.hpp"
+#include "MeshEngine/MeshData/Mesh.hpp"
 #include "RenderEngine/Core/Camera.hpp"
 #include "RenderEngine/Core/Entity.hpp"
+#include "RenderEngine/Core/MeshPrimitiveCreator.hpp"
 #include "RenderEngine/Core/OrbitCameraController.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"
 #include "RenderEngine/Core/RenderFace.hpp"
@@ -177,6 +179,122 @@ TEST_F(TestRender, face)
     app.exec();
 }
 
+TEST_F(TestRender, trimesh)
+{
+    SimpleApp app;
+    EgLab::Common::SharedPtr<EgLab::ME::Mesh> mesh = EgLab::Common::makeShared<EgLab::ME::Mesh>();
+
+    for (int i = 0; i < 3; i++)
+    {
+        EgLab::ME::Node n;
+        n.setId(i + 1);
+        EgLab::ME::CoordType c(i % 2, i % 3, 0);
+        n.setXYZ(c);
+        mesh->addNode(EgLab::Common::move(n));
+    }
+
+    EgLab::ME::Elem e;
+    e.setId(1);
+    e.setType(EgLab::ME::ElemType::Tri3);
+    e.setNode(0, 1);
+    e.setNode(1, 2);
+    e.setNode(2, 3);
+    mesh->addElem(EgLab::Common::move(e));
+
+    EgLab::ME::MeshIterator meshIt(*mesh);
+
+    int i = 1;
+    do
+    {
+        auto &n = meshIt.currentNode();
+        EXPECT_EQ(n.getId(), i);
+        i++;
+    } while (meshIt.nextNode());
+
+    auto &elem = meshIt.currentElem();
+    EXPECT_EQ(elem.getId(), 1);
+
+    EgLab::RE::MeshPrimitiveCreator creator(mesh);
+    auto nodePrimitive = creator.getPrimitive<EgLab::RE::RenderNode>();
+    auto linePrimitive = creator.getPrimitive<EgLab::RE::RenderLine>();
+    auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();
+
+    EgLab::Common::SharedPtr<EgLab::RE::Shader> shader;
+    EgLab::RE::ShaderLib::instance().getNodeShader(shader);
+    app.scene->addPrimitive(shader, nodePrimitive);
+
+    EgLab::RE::ShaderLib::instance().getLineShader(shader);
+    app.scene->addPrimitive(shader, linePrimitive);
+
+    EgLab::RE::ShaderLib::instance().getFaceShader(shader);
+    app.scene->addPrimitive(shader, facePrimitive);
+
+    app.exec();
+}
+
+TEST_F(TestRender, mesh)
+{
+    SimpleApp app;
+    EgLab::Common::SharedPtr<EgLab::ME::Mesh> mesh = EgLab::Common::makeShared<EgLab::ME::Mesh>();
+
+    int elemId[1] = {1};
+    int nodeId[2][4] = {{1, 2, 3, 4}, {1, 3, 2, 5}};
+    double nodeVec[5][3] = {
+        {0, 0, 0}, {0, 1, 0}, {1, 1, 0}, {0.5, 0.5, 1}, {0.5, 0.5, -1},
+    };
+
+    for (int i = 0; i < 5; i++)
+    {
+        EgLab::ME::Node n;
+        n.setId(i + 1);
+        EgLab::ME::CoordType c(nodeVec[i][0], nodeVec[i][1], nodeVec[i][2]);
+        n.setXYZ(c);
+        mesh->addNode(EgLab::Common::move(n));
+    }
+
+    for (int i = 0; i < 2; i++)
+    {
+        EgLab::ME::Elem e;
+        e.setId(1);
+        e.setType(EgLab::ME::ElemType::Tet4);
+        for (int j = 0; j < 4; j++)
+        {
+            e.setNode(j, nodeId[i][j]);
+        }
+        mesh->addElem(EgLab::Common::move(e));
+    }
+
+    EgLab::ME::MeshIterator meshIt(*mesh);
+
+    int i = 1;
+    do
+    {
+        auto &n = meshIt.currentNode();
+        EXPECT_EQ(n.getId(), i);
+        i++;
+    } while (meshIt.nextNode());
+
+    auto &elem = meshIt.currentElem();
+    EXPECT_EQ(elem.getId(), 1);
+
+    EgLab::RE::MeshPrimitiveCreator creator(mesh);
+    auto nodePrimitive = creator.getPrimitive<EgLab::RE::RenderNode>();
+    auto linePrimitive = creator.getPrimitive<EgLab::RE::RenderLine>();
+    auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();
+
+    EgLab::Common::SharedPtr<EgLab::RE::Shader> shader;
+    EgLab::RE::ShaderLib::instance().getNodeShader(shader);
+    app.scene->addPrimitive(shader, nodePrimitive);
+
+    EgLab::RE::ShaderLib::instance().getLineShader(shader);
+    app.scene->addPrimitive(shader, linePrimitive);
+
+    EgLab::RE::ShaderLib::instance().getFaceShader(shader);
+    app.scene->addPrimitive(shader, facePrimitive);
+
+    app.exec();
+}
+
 TEST_F(TestRender, box)
 {
     SimpleApp app;
@@ -204,7 +322,7 @@ TEST_F(TestRender, ShaderLib)
     EgLab::Common::DynamicArray<EgLab::Common::String> lines;
     for (; it.hasNext(); ++it)
     {
-        const char* str;
+        const char *str;
         size_t len;
         it.getString(str, len);
         lines.pushBack(EgLab::Common::String(str, len));
