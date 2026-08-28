@@ -1,5 +1,7 @@
 #include "Renderer.hpp"
 
+#include <GL/glew.h>
+
 #include "RenderEngine/Core/Camera.hpp"
 #include "RenderEngine/Core/Entity.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"

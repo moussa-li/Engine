@@ -10,7 +10,7 @@ namespace EgLab::RE
     constexpr float PITCH = 0.0f;
     constexpr float SPEED = 2.5f;
     constexpr float SENSITIVITY = 0.1f;
-    constexpr float ZOOM = 45.0f;
+    constexpr float ZOOM = 10.0f;
 
     class RenderEngineAPI Camera
     {
@@ -62,6 +62,12 @@ namespace EgLab::RE
         {
             _position = pos;
         }
+
+        void setFront(const CoordType &front)
+        {
+            _front = front;
+        }
+
         void setYaw(float yaw)
         {
             _yaw = yaw;

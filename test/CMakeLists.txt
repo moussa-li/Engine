@@ -1,6 +1,8 @@
 # add gtest
 add_subdirectory(${CMAKE_SOURCE_DIR}/3rd/gtest ${CMAKE_BINARY_DIR}/3rd/gtest_build) 
 
+set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/3rd/imgui)
+
 set_common_variable()
 
 add_executable(engine_tests
@@ -8,6 +10,13 @@ add_executable(engine_tests
     test_normal.cpp
     test_common.cpp
     test_render.cpp
+    ${IMGUI_DIR}/imgui.cpp
+    ${IMGUI_DIR}/imgui_draw.cpp
+    ${IMGUI_DIR}/imgui_tables.cpp
+    ${IMGUI_DIR}/imgui_widgets.cpp
+    ${IMGUI_DIR}/imgui_demo.cpp                 # 可选：包含官方 Demo 窗口
+    ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp   # GLFW 平台后端
+    ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp# OpenGL3 渲染后端
 )
 
 add_executable(common_test
@@ -38,6 +47,8 @@ endif()
 target_include_directories(engine_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/3rd/gtest/googletest/include
     ${CMAKE_SOURCE_DIR}
+    ${IMGUI_DIR}
+    ${IMGUI_DIR}/backends
 )
 
 target_include_directories(common_test PRIVATE

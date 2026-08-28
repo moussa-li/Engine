@@ -7,6 +7,8 @@ add_library(glfw ${GLFW_LIBRARY_TYPE}
                  egl_context.c osmesa_context.c null_platform.h null_joystick.h
                  null_init.c null_monitor.c null_window.c null_joystick.c)
 
+
+
 # The time, thread and module code is shared between all backends on a given OS,
 # including the null backend, which still needs those bits to be functional
 if (APPLE)
@@ -366,3 +368,4 @@ if (GLFW_INSTALL)
             LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
 endif()
 
+message(STATUS "${CMAKE_CURRENT_BINARY_DIR}")

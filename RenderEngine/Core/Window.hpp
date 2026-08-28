@@ -1,11 +1,10 @@
 #pragma once
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
 
 #include "Common/SharedPtr.hpp"
 #include "Core/Definites.hpp"
 #include "RenderEngineAPI.hpp"
 
+struct GLFWwindow;
 namespace EgLab::RE
 {
 
@@ -21,11 +20,17 @@ namespace EgLab::RE
 
         bool shouldClose() const;
 
+        void maskEvent(bool);
+
         DeltaTime getTime() const;
 
         void deal() const;
 
         void setCameraController(Common::SharedPtr<CameraController>);
+
+        GLFWwindow *getNative() const;
+
+        void terminate();
 
     private:
         class Impl;

@@ -51,6 +51,7 @@ namespace EgLab::RE
 
     Common::Matrix4f Camera::perspective() const
     {
+#if 0
         const float fovy = radians(_zoom);
         const float tanHalfFovy = std::tan(fovy * 0.5); // fovy : Field of View Y
         const float aspect = _width / _height;          // maybe could remain. and update by setHW
@@ -65,6 +66,29 @@ namespace EgLab::RE
         result[2][3] = -(2 * zFar * zNear) / (zFar - zNear);
 
         return result;
+#else
+
+        float halfHeight = _zoom;
+        float halfWidth = halfHeight * (_width / _height); // 保持宽高比
+
+        float left = -halfWidth;
+        float right = halfWidth;
+        float bottom = -halfHeight;
+        float top = halfHeight;
+
+        static const float zNear = 0.1f;
+        static const float zFar = 100.0f;
+
+        Common::Matrix4f result; // 注意：正交矩阵初始化为 0，而不是单位矩阵
+
+        result[0][0] = 2.0f / (right - left);
+        result[1][1] = 2.0f / (top - bottom);
+        result[2][2] = -2.0f / (zFar - zNear);
+        result[2][3] = -(zFar + zNear) / (zFar - zNear);
+        result[3][3] = 1.0f;
+
+        return result;
+#endif
     }
 
     Common::Matrix4f Camera::view() const

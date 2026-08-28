@@ -179,7 +179,7 @@ namespace EgLab::Common
         }
 
     private:
-        class TRef : public T, public IntrusiveRef
+        class TRef : public T, virtual public IntrusiveRef
         {
         public:
             template <typename... Args>
@@ -214,12 +214,11 @@ namespace EgLab::Common
     }
 
     template <class Derived, typename Base>
-    SharedPtr<Derived> dynamicSharedPtrCast(SharedPtr<Base> &&ptr)
+    SharedPtr<Derived> dynamicSharedPtrCast(SharedPtr<Base> &ptr)
     {
         Derived *derivedPtr = dynamic_cast<Derived *>(ptr.get());
         if (derivedPtr)
         {
-            ptr.release();
             return SharedPtr<Derived>(derivedPtr);
         }
         return SharedPtr<Derived>(nullptr);

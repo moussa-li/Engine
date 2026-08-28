@@ -1,5 +1,7 @@
 #include "test_render.h"
 
+#include <GLFW/glfw3.h>
+
 #include "Common/StringLineIterator.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "RenderEngine/Core/Camera.hpp"
@@ -17,6 +19,9 @@
 #include "RenderEngine/Objects/Box.hpp"
 #include "RenderEngine/Objects/Line.hpp"
 #include "RenderEngine/Objects/Vertex.hpp"
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 
 class SimpleApp
 {
@@ -47,6 +52,43 @@ public:
         viewport.width = 800;
         viewport.height = 600;
         renderer->addViewport(viewport);
+
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGui::StyleColorsDark();
+
+        ImGui_ImplGlfw_InitForOpenGL(window->getNative(), true);
+        ImGui_ImplOpenGL3_Init("#version 330");
+    }
+
+    void execImGui()
+    {
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        static float mouseSensitivity = 1;
+        static float zoomSpeed = 1;
+        ImGui::SliderFloat("Mouse Sensitivity", &mouseSensitivity, 1.f, 5.f, "%.2f");
+
+        // 4. 显示当前值，方便调试
+        ImGui::Text("Current Sensitivity: %.2f", mouseSensitivity);
+
+        ImGui::SliderFloat("Zoom Speed", &zoomSpeed, 1.1f, 5.f, "%.2f");
+
+        ImGui::Text("Current Zoom Speed: %.2f", zoomSpeed);
+
+        auto controller =
+            EgLab::Common::dynamicSharedPtrCast<EgLab::RE::OrbitCameraController>(cameraController);
+        controller->setPanSensitivity(mouseSensitivity * 0.001f);
+        controller->setZoomSpeed(zoomSpeed);
+
+        // 渲染 UI
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        ImGuiIO &io = ImGui::GetIO();
+        window->maskEvent(io.WantCaptureMouse);
     }
 
     ~SimpleApp() = default;
@@ -64,8 +106,14 @@ public:
 
             renderer->draw(scene, camera);
 
+            execImGui();
             window->deal();
         };
+
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+        window->terminate();
     }
 };
 
@@ -255,7 +303,7 @@ TEST_F(TestRender, mesh)
     for (int i = 0; i < 2; i++)
     {
         EgLab::ME::Elem e;
-        e.setId(1);
+        e.setId(i + 1);
         e.setType(EgLab::ME::ElemType::Tet4);
         for (int j = 0; j < 4; j++)
         {

@@ -1,5 +1,7 @@
 #include "RenderEngine/Core/Window.hpp"
 
+#include <GL/glew.h>
+
 #include "Common/Log.hpp"
 #include "GLFW/glfw3.h"
 #include "RenderEngine/Core/Camera.hpp"
@@ -39,6 +41,7 @@ namespace EgLab::RE
 
             /* Create a windowed mode window and its OpenGL context */
             _window = glfwCreateWindow(_width, _height, "Hello World", NULL, NULL);
+            glfwMakeContextCurrent(_window);
 
             /* set user control */
             // glfwSetCursorPosCallback(_window, mouse_callback);
@@ -100,7 +103,7 @@ namespace EgLab::RE
             Impl *impl = static_cast<Impl *>(glfwGetWindowUserPointer(window));
             if (impl)
             {
-                // if (ImGui::GetIO().WantCaptureMouse) return;
+                if (impl->_maskCallBack) return;
 
                 double xpos, ypos;
                 glfwGetCursorPos(window, &xpos, &ypos);
@@ -113,7 +116,7 @@ namespace EgLab::RE
             Impl *impl = static_cast<Impl *>(glfwGetWindowUserPointer(window));
             if (impl)
             {
-                // if (ImGui::GetIO().WantCaptureMouse) return;
+                if (impl->_maskCallBack) return;
 
                 double xpos, ypos;
                 glfwGetCursorPos(window, &xpos, &ypos);
@@ -123,13 +126,11 @@ namespace EgLab::RE
 
         static void mouseScrollCallback(GLFWwindow *window, double xoffset, double yoffset)
         {
-            // ImGuiIO &io = ImGui::GetIO();
-            // if (io.WantCaptureMouse) return; // 防止在 Imgui 窗口上滚轮时，场景也跟着缩放
-
             Impl *impl = static_cast<Impl *>(glfwGetWindowUserPointer(window));
             if (impl)
             {
-                // if (ImGui::GetIO().WantCaptureMouse) return;
+                if (impl->_maskCallBack) return;
+
                 impl->processMouseScroll((float)yoffset);
             }
         }
@@ -161,6 +162,7 @@ namespace EgLab::RE
 
         float lastFrame{0.0f};
         float deltaTime{0.0f};
+        bool _maskCallBack{false};
     };
 
     Window::Window() : _impl(new Impl)
@@ -181,6 +183,11 @@ namespace EgLab::RE
         _impl->_width = width;
         _impl->_height = height;
         _impl->init();
+    }
+
+    GLFWwindow *Window::getNative() const
+    {
+        return _impl->_window;
     }
 
     bool Window::shouldClose() const
@@ -209,32 +216,14 @@ namespace EgLab::RE
             glfwSetInputMode(_impl->_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     }
 
-    // void Window::exec()
-    //{
-    //     if (_renderer == nullptr) return;
-    //     while (!glfwWindowShouldClose(_window))
-    //     {
-    //         glEnable(GL_DEPTH_TEST);
-    //         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    //         float currentFrame = static_cast<float>(glfwGetTime());
-    //         deltaTime = currentFrame - lastFrame;
-    //         lastFrame = currentFrame;
+    void Window::terminate()
+    {
+        glfwTerminate();
+    }
 
-    //        _renderer->update(deltaTime);
-
-    //        _renderer->draw();
-
-    //        /*input*/
-    //        // CAMERA->processInput(window, deltaTime);
-
-    //        /* Swap front and back buffers */
-    //        glfwSwapBuffers(_window);
-
-    //        /* Poll for and process events */
-    //        glfwPollEvents();
-
-    //        // CalculateFrameRate();
-    //    };
-    //}
+    void Window::maskEvent(bool mask)
+    {
+        _impl->_maskCallBack = mask;
+    }
 
 } // namespace EgLab::RE

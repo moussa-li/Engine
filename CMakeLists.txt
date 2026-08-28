@@ -15,6 +15,9 @@ option(BUILD_DOC "generate the documentation with doxygen" OFF)
 
 include(cmake/common.cmake)
 
+set_common_variable()
+find_package(Threads REQUIRED)
+
 # generate asserts include file to 
 gen_assets()
 
