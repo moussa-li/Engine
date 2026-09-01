@@ -22,7 +22,9 @@ namespace EgLab::RE
           _lastX(width * 0.5),
           _lastY(height * 0.5),
           _front(CoordType(0.0f, 0.0f, -1.0f)),
+          _target(CoordType(0.0f, 0.0f, 0.0f)),
           _position(position),
+          _orientation(Quatf(1.0f, 0.0f, 0.0f, 0.0f)),
           _worldUp(up),
           _yaw(yaw),
           _pitch(pitch),
@@ -47,6 +49,12 @@ namespace EgLab::RE
 
         _up = _right.cross(_front);
         _up.normalize();
+    }
+
+    void Camera::setFront(const CoordType &front)
+    {
+        _front = front;
+        //_front.normalize();
     }
 
     Common::Matrix4f Camera::perspective() const

@@ -36,6 +36,11 @@ namespace EgLab::Common
             return this->_data[0][dim];
         }
 
+        const Scalar &operator[](size_t dim) const
+        {
+            return this->_data[0][dim];
+        }
+
         Scalar &x()
         {
             return this->_data[0][0];
@@ -98,17 +103,24 @@ namespace EgLab::Common
 
         Scalar length2() const
         {
-            return this->_data[0][0] * this->_data[0][0] + this->_data[0][1] * this->_data[0][1] +
-                   this->_data[0][2] * this->_data[0][2];
+            Scalar sum = Scalar(0);
+            for (size_t i = 0; i < Dim; ++i)
+            {
+                sum += this->_data[0][i] * this->_data[0][i];
+            }
+            return sum;
         }
 
         void normalize()
         {
             Scalar l = length();
-            if (l == 0) return;
-            this->_data[0][0] /= l;
-            this->_data[0][1] /= l;
-            this->_data[0][2] /= l;
+            if (l < Scalar(1e-8)) return;
+
+            Scalar invL = Scalar(1) / l;
+            for (size_t i = 0; i < Dim; ++i)
+            {
+                this->_data[0][i] *= invL;
+            }
         }
 
         Scalar dot(const Vector<Scalar, Dim> &other) const

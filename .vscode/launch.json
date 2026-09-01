@@ -31,7 +31,11 @@
                 "--gtest_filter=TestCommon.DynamicArrayTest"
             ],
             "cwd": "${workspaceFolder}",
-            "console": "externalTerminal"
+            "console": "externalTerminal",
+            "initCommands": [
+                "command script import ${workspaceFolder}/debug/dynamic_array.py",
+                "type category enable EgLab"
+            ]
         },
         {
             "type": "lldb",

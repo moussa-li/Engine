@@ -1,6 +1,7 @@
 #include "RenderEngine/Core/OrbitCameraController.hpp"
 
 #include "Common/Log.hpp"
+#include "RenderEngine/Core/Quatf.hpp"
 
 namespace EgLab::RE
 {
@@ -67,16 +68,16 @@ namespace EgLab::RE
             CoordType up = _camera->getUp();
             CoordType pos = _camera->getPosition();
             CoordType front = _camera->getFront();
+            CoordType target = _camera->getTarget();
             auto zoom = _camera->getZoom();
 
             pos = pos - right * (xoffset * _panSensitivity) * zoom;
             pos = pos + up * (yoffset * _panSensitivity) * zoom;
-
-            // front = front - right * (xoffset * _panSensitivity);
-            // front = front + up * (yoffset * _panSensitivity);
-
+            target = target - right * (xoffset * _panSensitivity) * zoom;
+            target = target + up * (yoffset * _panSensitivity) * zoom;
             _camera->setPosition(pos);
-            // _camera->setFront(front);
+            _camera->setTarget(target);
+            // _camera->setTarget(target);
         }
 
         if (_rotate)
@@ -86,33 +87,31 @@ namespace EgLab::RE
             xoffset *= _orbitSensitivity;
             yoffset *= _orbitSensitivity;
 
-            yaw += xoffset;
-            pitch += yoffset;
+            auto up = _camera->getUp();
+            auto right = _camera->getRight();
 
-            // 限制 Pitch 角度，防止相机翻转（万向节死锁）
-            if (pitch > 89.0f) pitch = 89.0f;
-            if (pitch < -89.0f) pitch = -89.0f;
+            auto orientation = _camera->getOrientation();
+            CoordType localUp = orientation.rotateVector(CoordType(0, 1, 0));
+            Quatf yawQuat = Quatf::fromAxisAndAngle(localUp, -xoffset);
 
-            _camera->setPitch(pitch);
-            _camera->setYaw(yaw);
+            Quatf pitchQuat = Quatf::fromAxisAndAngle(CoordType(1, 0, 0), -yoffset);
 
-            // 根据 Yaw 和 Pitch 重新计算相机的朝向向量 (Front)
-            CoordType front;
-            front.x() = std::cos(radians(yaw)) * std::cos(radians(pitch));
-            front.y() = std::sin(radians(pitch));
-            front.z() = std::sin(radians(yaw)) * std::cos(radians(pitch));
-            front.normalize();
+            orientation = yawQuat * orientation * pitchQuat;
+            orientation.normalize(); // 必须归一化！
+            _camera->setOrientation(orientation);
 
-            _camera->setFront(front);
+            CoordType newFront = orientation.rotateVector(CoordType(0, 0, -1));
+            newFront.normalize();
+            _camera->setFront(newFront);
 
-            // 核心：重新计算相机位置，使其始终保持在目标点后方距离为 zoom 的地方
-            // 假设你的相机有 getTarget() 方法，如果没有，可以用 pos + front * zoom 来推导
-            // auto target = _camera->getPosition() + _camera->getFront() * _camera->getZoom();
-            CoordType target(0, 0, 0);
-            auto zoom = _camera->getZoom();
+            _camera->setRigth(orientation.rotateVector(CoordType(1, 0, 0)));
+            _camera->setUp(orientation.rotateVector(CoordType(0, 1, 0)));
 
-            CoordType newPos = target - front * zoom;
-            _camera->setPosition(newPos);
+            CoordType target = _camera->getTarget();
+            CoordType position = _camera->getPosition();
+            float distance = (target - position).length();
+            position = target - newFront * distance;
+            _camera->setPosition(position);
         }
 
         recalcuteCameraPostition();

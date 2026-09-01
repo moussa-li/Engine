@@ -63,7 +63,7 @@ namespace EgLab::RE
 
         float _panSensitivity = 0.001f;
 
-        float _orbitSensitivity = 0.1f;
+        float _orbitSensitivity = 0.001f;
 
         float _zoomSpeed = 1.1f;
     };

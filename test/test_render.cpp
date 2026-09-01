@@ -68,7 +68,8 @@ public:
         ImGui::NewFrame();
 
         static float mouseSensitivity = 1;
-        static float zoomSpeed = 1;
+        static float zoomSpeed = 1.1;
+        static float orbitSensitivity = 1;
         ImGui::SliderFloat("Mouse Sensitivity", &mouseSensitivity, 1.f, 5.f, "%.2f");
 
         // 4. 显示当前值，方便调试
@@ -78,10 +79,15 @@ public:
 
         ImGui::Text("Current Zoom Speed: %.2f", zoomSpeed);
 
+        ImGui::SliderFloat("Orbit Sensitivity", &orbitSensitivity, 1.1f, 5.f, "%.2f");
+
+        ImGui::Text("Current Orbit Sensitivity: %.2f", orbitSensitivity);
+
         auto controller =
             EgLab::Common::dynamicSharedPtrCast<EgLab::RE::OrbitCameraController>(cameraController);
         controller->setPanSensitivity(mouseSensitivity * 0.001f);
         controller->setZoomSpeed(zoomSpeed);
+        controller->setOrbitSensitivity(orbitSensitivity * 0.01f);
 
         // 渲染 UI
         ImGui::Render();

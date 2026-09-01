@@ -2,6 +2,7 @@
 
 #include "Common/Matrix.hpp"
 #include "Definites.hpp"
+#include "RenderEngine/Core/Quatf.hpp"
 #include "RenderEngineAPI.hpp"
 
 namespace EgLab::RE
@@ -44,6 +45,17 @@ namespace EgLab::RE
         {
             return _right;
         }
+
+        CoordType getTarget() const
+        {
+            return _target;
+        }
+
+        Quatf getOrientation() const
+        {
+            return _orientation;
+        }
+
         float getYaw() const
         {
             return _yaw;
@@ -63,9 +75,21 @@ namespace EgLab::RE
             _position = pos;
         }
 
-        void setFront(const CoordType &front)
+        void setTarget(const CoordType &target)
         {
-            _front = front;
+            _target = target;
+        }
+
+        void setFront(const CoordType &front);
+
+        void setRigth(const CoordType &right)
+        {
+            _right = right;
+        }
+
+        void setUp(const CoordType &up)
+        {
+            _up = up;
         }
 
         void setYaw(float yaw)
@@ -75,12 +99,17 @@ namespace EgLab::RE
         void setPitch(float pitch)
         {
             _pitch = pitch;
-            if (_pitch > 89.0f) _pitch = 89.0f;
-            if (_pitch < -89.0f) _pitch = -89.0f;
+            // if (_pitch > 89.0f) _pitch = 89.0f;
+            // if (_pitch < -89.0f) _pitch = -89.0f;
         }
         void setZoom(float zoom)
         {
             _zoom = zoom;
+        }
+
+        void setOrientation(Quatf orientation)
+        {
+            _orientation = orientation;
         }
 
     private:
@@ -92,6 +121,10 @@ namespace EgLab::RE
         CoordType _up;
         CoordType _right;
         CoordType _worldUp;
+
+        CoordType _target;
+
+        Quatf _orientation;
 
         float _yaw;
         float _pitch;
