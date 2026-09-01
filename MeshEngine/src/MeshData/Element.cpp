@@ -106,7 +106,8 @@ namespace EgLab::ME
             res.resize(nodeNumber);
             for (int i = 0; i < nodeNumber; i++)
             {
-                res[i] = _elemFaceMap[_elemFaceOffset[elemFaceIdx] + i];
+                auto node = _elemFaceMap[_elemFaceOffset[elemFaceIdx] + i];
+                res[i] = _elem.getNodes()[node];
             }
         }
         else if (nodeNumber == 4)
@@ -115,7 +116,8 @@ namespace EgLab::ME
             res.resize(6);
             for (int i = 0; i < 6; i++)
             {
-                res[i] = _elemFaceMap[_elemFaceOffset[elemFaceIdx] + quadFaceMap[i]];
+                auto node = _elemFaceMap[_elemFaceOffset[elemFaceIdx] + quadFaceMap[i]];
+                res[i] = _elem.getNodes()[node];
             }
         }
         else
@@ -134,7 +136,8 @@ namespace EgLab::ME
             res.resize(6);
             for (int i = 0; i < 6; i++)
             {
-                res[i] = _elemFaceMap[_elemFaceOffset[elemFaceIdx] + triLineMap[i]];
+                auto node = _elemFaceMap[_elemFaceOffset[elemFaceIdx] + triLineMap[i]];
+                res[i] = _elem.getNodes()[node];
             }
         }
         else if (nodeNumber == 4)
@@ -143,7 +146,8 @@ namespace EgLab::ME
             res.resize(8);
             for (int i = 0; i < 8; i++)
             {
-                res[i] = _elemFaceMap[_elemFaceOffset[elemFaceIdx] + quadLineMap[i]];
+                auto node = _elemFaceMap[_elemFaceOffset[elemFaceIdx] + quadLineMap[i]];
+                res[i] = _elem.getNodes()[node];
             }
         }
         else
