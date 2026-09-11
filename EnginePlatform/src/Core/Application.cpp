@@ -1,5 +1,6 @@
 #include "Core/Application.hpp"
 
+#include "Core/MainMenuBar.hpp"
 #include "RenderEngine/Core/OrbitCameraController.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"
 #include "Work/RenderWork.hpp"
@@ -48,6 +49,7 @@ namespace EgLab::Platform
             scene->update(deltaTime);
             renderer->update(deltaTime);
 
+            renderRibbonToolbar(this);
             renderer->draw(scene, camera);
 
             UIWork::instance().renderFrame();
