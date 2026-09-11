@@ -18,6 +18,17 @@ namespace EgLab::Common
     public:
         DynamicArray() {};
 
+        ~DynamicArray()
+        {
+            clear();
+            allocator.free(_datas);
+            _capacity = 0;
+            _datas = nullptr;
+            _start = nullptr;
+            _end = nullptr;
+            _tail = nullptr;
+        }
+
         inline bool empty() const
         {
             return _size == 0;
@@ -45,7 +56,7 @@ namespace EgLab::Common
                 ValuePtr newDatas = (ValuePtr)(allocator.alloc(newCapacity));
                 for (size_t i = 0; i < _size; i++)
                 {
-                    new (newDatas + i) ValueType(move(*(_start + i)));
+                    new (newDatas + i) ValueType(Common::move(*(_start + i)));
                     //(_start + i)->~ValueType();
                 }
                 if (_datas != nullptr) allocator.free(_datas);
@@ -75,7 +86,7 @@ namespace EgLab::Common
                 ValuePtr newDatas = static_cast<ValuePtr>(allocator.alloc(newCapacity));
                 for (size_t i = 0; i < _size; i++)
                 {
-                    new (newDatas + i) T(move(*(_start + i)));
+                    new (newDatas + i) T(Common::move(*(_start + i)));
                     (_start + i)->~T();
                 }
                 allocator.free(_datas);
@@ -85,6 +96,16 @@ namespace EgLab::Common
                 _tail = _start + _capacity;
                 _end = _start + _size;
             }
+        }
+
+        void clear()
+        {
+            for (size_t i = 0; i < _size; ++i)
+            {
+                (_start + i)->~T();
+            }
+            _size = 0;
+            _end = _start;
         }
 
         void pushBack(T &data)
@@ -103,7 +124,7 @@ namespace EgLab::Common
                 ValuePtr newDatas = static_cast<ValuePtr>(allocator.alloc(newCapacity));
                 for (size_t i = 0; i < _size; i++)
                 {
-                    new (newDatas + i) T(move(*(_start + i)));
+                    new (newDatas + i) T(Common::move(*(_start + i)));
                     (_start + i)->~T();
                 }
                 allocator.free(_datas);
@@ -135,7 +156,7 @@ namespace EgLab::Common
                 ValuePtr newDatas = static_cast<ValuePtr>(allocator.alloc(newCapacity));
                 for (size_t i = 0; i < _size; i++)
                 {
-                    new (newDatas + i) T(move(*(_start + i)));
+                    new (newDatas + i) T(Common::move(*(_start + i)));
                     (_start + i)->~T();
                 }
                 allocator.free(_datas);
@@ -146,7 +167,7 @@ namespace EgLab::Common
                 _end = _start + _size;
             }
 
-            new (_end) T(move(data));
+            new (_end) T(Common::move(data));
             ++_size;
             ++_end;
         }
@@ -221,6 +242,47 @@ namespace EgLab::Common
             }
             _end += datas.size();
             _size += datas.size();
+        }
+
+        void pushBack(const T *data, size_t size)
+        {
+            if (data == nullptr || size == 0) return;
+
+            if (_datas == nullptr)
+            {
+                _capacity = size;
+                _datas = static_cast<ValuePtr>(allocator.alloc(_capacity));
+                _start = _datas;
+                _tail = _start + _capacity;
+                _end = _start;
+            }
+
+            if (_end == _tail || _capacity < _size + size)
+            {
+                size_t newCapacity = _capacity + size;
+                ValuePtr newDatas = static_cast<ValuePtr>(allocator.alloc(newCapacity));
+
+                for (size_t i = 0; i < _size; i++)
+                {
+                    new (newDatas + i) T(move(*(_start + i)));
+                    (_start + i)->~T();
+                }
+
+                allocator.free(_datas);
+                _datas = newDatas;
+                _capacity = newCapacity;
+                _start = _datas;
+                _tail = _start + _capacity;
+                _end = _start + _size;
+            }
+
+            for (size_t i = 0; i < size; i++)
+            {
+                new (_end + i) T(data[i]);
+            }
+
+            _end += size;
+            _size += size;
         }
 
         void popBack()
@@ -363,26 +425,26 @@ namespace EgLab::Common
 
         Iterator<DynamicArray<T, Allocator>> begin() override
         {
-            return move(DynamicArrayIterator(*this));
+            return Common::move(DynamicArrayIterator(*this));
         }
 
         Iterator<DynamicArray<T, Allocator>> end() override
         {
             DynamicArrayIterator it(*this);
             it.current = _end;
-            return move(it);
+            return Common::move(it);
         }
 
         CIterator<DynamicArray<T, Allocator>> begin() const override
         {
-            return move(DynamicArrayCIterator(*this));
+            return Common::move(DynamicArrayCIterator(*this));
         }
 
         CIterator<DynamicArray<T, Allocator>> end() const override
         {
             DynamicArrayCIterator it(*this);
             it.current = _end;
-            return move(it);
+            return Common::move(it);
         }
 
         ValuePtr data() const

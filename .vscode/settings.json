@@ -98,7 +98,7 @@
     "clangd.path": "C://msys64//mingw64//bin//clangd.exe",
     // clangd启动参数，常用参数如下：
     "clangd.arguments": [
-        "--compile-commands-dir=${workspaceFolder}/build/win-clangd-debug",
+        "--compile-commands-dir=${workspaceFolder}/build/clang-debug",
         "--header-insertion=never", // 禁止自动插入头文件
         "--clang-tidy", // 启用clang-tidy检查
         "--completion-style=detailed", // 详细的代码补全

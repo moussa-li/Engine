@@ -33,6 +33,7 @@ add_subdirectory(3rd/glfw-3.4)
 add_subdirectory(Common)
 add_subdirectory(RenderEngine)
 add_subdirectory(MeshEngine)
+add_subdirectory(EnginePlatform)
 
 
 if(BUILD_DOC)

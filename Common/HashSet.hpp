@@ -52,6 +52,41 @@ namespace EgLab::Common
             }
             return false;
         }
+
+        Iterator<HashTable<T, Hash, Equal, Allocator>> find(const T &key)
+        {
+            if (this->bucketsSize() == 0) return this->end();
+            size_t index = this->hasher(key) % this->bucketsSize();
+            const auto &bucket = this->buckets[index];
+
+            for (auto it = bucket.begin(); it != bucket.end(); ++it)
+            {
+                if (this->equaler(*it, key))
+                {
+                    Iterator<HashTable<T, Hash, Equal, Allocator>> ret(*this);
+                    this->setItData(ret, index, it);
+                    return ret;
+                }
+            }
+            return this->end();
+        }
+
+        CIterator<HashTable<T, Hash, Equal, Allocator>> find(const T &key) const
+        {
+            size_t index = this->hasher(key) % this->bucketsSize();
+            auto &bucket = this->buckets[index];
+
+            for (auto it = bucket.begin(); it != bucket.end(); ++it)
+            {
+                if (this->equaler(*it, key))
+                {
+                    CIterator<HashTable<T, Hash, Equal, Allocator>> ret(*this);
+                    this->setItData(ret, index, it);
+                    return ret;
+                }
+            }
+            return this->end();
+        }
     };
 
 } // namespace EgLab::Common

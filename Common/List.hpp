@@ -26,14 +26,25 @@ namespace EgLab::Common
         using ListCIterator = CIterator<List<T, Allocator>>;
         using Node = ListNode<T>;
 
-        List() : head(nullptr), tail(nullptr)
+        List() : head(nullptr), tail(nullptr), _size(0)
         {
+        }
+
+        List(List& other) : head(nullptr), tail(nullptr), _size(0)
+        {
+            auto it = other.begin();
+            while (it != other.end())
+            {
+                pushBack(*it);
+                ++it;
+            }
         }
 
         List(List&& other)
         {
             head = other.head;
             tail = other.tail;
+            _size = other._size;
             other.head = nullptr;
             other.tail = nullptr;
         }
@@ -54,6 +65,21 @@ namespace EgLab::Common
             return head == nullptr;
         }
 
+        void clear()
+        {
+            Node* current = head;
+            while (current != nullptr)
+            {
+                Node* nextNode = current->next;
+                current->data.~T();
+                allocator.free(current);
+                current = nextNode;
+            }
+            head = nullptr;
+            tail = nullptr;
+            _size = 0;
+        }
+
         void pushBack(const T& value)
         {
             Node* newNode = static_cast<Node*>(allocator.alloc());
@@ -71,6 +97,27 @@ namespace EgLab::Common
             {
                 head = newNode;
             }
+
+            _size++;
+        }
+
+        void pushBack(Node* newNode)
+        {
+            newNode->next = nullptr;
+            newNode->prev = tail;
+
+            if (tail != nullptr)
+            {
+                tail->next = newNode;
+            }
+            tail = newNode;
+
+            if (head == nullptr)
+            {
+                head = newNode;
+            }
+
+            _size++;
         }
 
         void popBack()
@@ -91,6 +138,7 @@ namespace EgLab::Common
 
             nodeToRemove->data.~T();
             allocator.free(nodeToRemove);
+            _size--;
         }
 
         bool erase(Iterator<List<T, Allocator>>& it)
@@ -118,6 +166,8 @@ namespace EgLab::Common
 
             // nodeToRemove->data.~T();
             allocator.free(nodeToRemove);
+
+            _size--;
             return true;
         }
 
@@ -146,24 +196,10 @@ namespace EgLab::Common
 
             nodeToPop->prev = nullptr;
             nodeToPop->next = nullptr;
+
+            _size--;
+
             return nodeToPop;
-        }
-
-        void pushBack(Node* newNode)
-        {
-            newNode->next = nullptr;
-            newNode->prev = tail;
-
-            if (tail != nullptr)
-            {
-                tail->next = newNode;
-            }
-            tail = newNode;
-
-            if (head == nullptr)
-            {
-                head = newNode;
-            }
         }
 
         Node* getHead() const
@@ -213,9 +249,15 @@ namespace EgLab::Common
             return it;
         }
 
+        inline size_t size() const
+        {
+            return _size;
+        }
+
     private:
         Node* head;
         Node* tail;
+        size_t _size;
         static Allocator allocator;
         friend class Iterator<List<T, Allocator>>;
         friend class CIterator<List<T, Allocator>>;

@@ -3,6 +3,7 @@
 #include "Common/DynamicArray.hpp"
 #include "Common/SharedPtr.hpp"
 #include "Core/RenderEngineAPI.hpp"
+#include "Core/RenderPrimitive.hpp"
 #include "Core/Shader.hpp"
 #include "Core/Transform.hpp"
 #include "Definites.hpp"

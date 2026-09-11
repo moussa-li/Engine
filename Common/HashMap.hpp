@@ -94,8 +94,7 @@ namespace EgLab::Common
                 if (this->equaler(*it, key))
                 {
                     CIterator<HashTable<Pair<Key, Value>, Hash, Equal, Allocator>> ret(*this);
-                    ret._bucketIndex = index;
-                    ret._bucketIterator = it;
+                    this->setItData(ret, index, it);
                     return ret;
                 }
             }
@@ -128,7 +127,7 @@ namespace EgLab::Common
                 }
             }
             this->buckets[index].pushBack(data);
-            ++this->_size;
+            ++(this->_size);
             Iterator<HashTable<Pair<Key, Value>, Hash, Equal, Allocator>> it(*this);
             this->setItData(it, index, bucket.last());
             return it;

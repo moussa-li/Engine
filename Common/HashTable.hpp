@@ -86,9 +86,18 @@ namespace EgLab::Common
             return _size == 0;
         }
 
+        void clear()
+        {
+            for (size_t i = 0; i < buckets.size(); ++i)
+            {
+                buckets[i].clear();
+            }
+            _size = 0;
+        }
+
         Iterator<HashTable<T, Hash, Equal, Allocator>> begin() override
         {
-            return move(HashTableIterator(*this));
+            return Common::move(HashTableIterator(*this));
         }
 
         Iterator<HashTable<T, Hash, Equal, Allocator>> end() override
@@ -100,12 +109,12 @@ namespace EgLab::Common
                 it._bucketIterator =
                     this->buckets[this->bucketsSize() - 1].end(); // TODO: change to back()
             }
-            return (move(it));
+            return (Common::move(it));
         }
 
         CIterator<HashTable<T, Hash, Equal, Allocator>> begin() const override
         {
-            return move(HashTableCIterator(*this));
+            return Common::move(HashTableCIterator(*this));
         }
 
         CIterator<HashTable<T, Hash, Equal, Allocator>> end() const override
@@ -117,11 +126,20 @@ namespace EgLab::Common
                 it._bucketIterator =
                     this->buckets[this->bucketsSize() - 1].end(); // TODO: change to back()
             }
-            return (move(it));
+            return (Common::move(it));
         }
 
         HashTable() : _size(0), buckets()
         {
+        }
+
+        HashTable(const HashTable &other)
+        {
+            _size = other._size;
+
+            buckets.clear();
+
+            buckets = other.buckets;
         }
 
     protected:
@@ -171,7 +189,7 @@ namespace EgLab::Common
                     }
                     else
                     {
-                        swap(*it, *newIt);
+                        Common::swap(*it, *newIt);
                         ++it;
                     }
                 }
@@ -186,9 +204,10 @@ namespace EgLab::Common
             it._bucketIterator = bucketIterator;
         }
 
-        void setItData(
-            CIterator<HashTable<T, Hash, Equal, Allocator>> &it, const size_t &bucketIndex,
-            const List<ValueType, StaticSizeAllocator<ListNode<T>>>::ListCIterator &bucketIterator)
+        void setItData(CIterator<HashTable<T, Hash, Equal, Allocator>> &it,
+                       const size_t &bucketIndex,
+                       const List<ValueType, StaticSizeAllocator<ListNode<T>>>::ListCIterator
+                           &bucketIterator) const
         {
             it._bucketIndex = bucketIndex;
             it._bucketIterator = bucketIterator;
@@ -269,7 +288,7 @@ namespace EgLab::Common
             return *this;
         }
 
-        ValueRef data()
+        ValueCRef data()
         {
             if (!hasNext())
             {

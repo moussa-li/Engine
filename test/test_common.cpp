@@ -1,5 +1,7 @@
 #include "test_common.h"
 
+#include <thread>
+
 #include "Common/DynamicArray.hpp"
 #include "Common/HashMap.hpp"
 #include "Common/HashSet.hpp"
@@ -8,9 +10,12 @@
 #include "Common/Matrix.hpp"
 #include "Common/MemAllocator.hpp"
 #include "Common/Object.hpp"
+#include "Common/Protocol.hpp"
+#include "Common/Publisher.hpp"
 #include "Common/SharedPtr.hpp"
 #include "Common/Singleton.hpp"
 #include "Common/String.hpp"
+#include "Common/Subscriber.hpp"
 
 TEST_F(TestCommon, testSingle)
 {
@@ -506,3 +511,201 @@ TEST_F(TestCommon, testCache)
     printCacheSize();
 }
 #endif
+
+TEST_F(TestCommon, MemoryQueue)
+{
+    const uint32_t channelId = 101;
+    EgLab::Common::String payload = "Hello MemoryQueue";
+
+    EgLab::Common::String shmName = "TestMemoryQueue";
+
+    // 初始化队列，true 表示如果不存在则创建
+    auto queue = EgLab::Common::makeUnique<EgLab::Common::MemoryQueue>(shmName, true);
+
+    // 写入数据
+    bool pushResult = queue->push(channelId, payload.c_str(), payload.size());
+    EXPECT_TRUE(pushResult) << "Push Operation Succeed";
+
+    // 读取数据
+    uint32_t outChannelId = 0;
+    char buffer[256] = {0};
+    uint32_t actualSize = 0;
+
+    bool popResult = queue->pop(outChannelId, buffer, sizeof(buffer), actualSize);
+
+    EXPECT_TRUE(popResult) << "Pop Operation Succed";
+    EXPECT_EQ(outChannelId, channelId) << "ChannelId Same";
+    EXPECT_EQ(actualSize, payload.size()) << "data size";
+    EXPECT_STREQ(buffer, payload.c_str()) << "data size";
+}
+
+TEST_F(TestCommon, MemoryQueue_ConcurrentStress)
+{
+    const int kMessageCount = 10000;
+    std::atomic<int> consumedCount(0);
+    // const uint32_t channelId = 101;
+    EgLab::Common::String payload = "Hello MemoryQueue";
+
+    EgLab::Common::String shmName = "TestMemoryQueue";
+    auto queue = EgLab::Common::makeUnique<EgLab::Common::MemoryQueue>(shmName, true);
+
+    // 启动消费者线程
+    std::thread consumer([&queue, &consumedCount]() {
+        char buffer[256];
+        uint32_t outChannelId;
+        uint32_t actualSize;
+
+        while (consumedCount.load() < kMessageCount)
+        {
+            if (queue->pop(outChannelId, buffer, sizeof(buffer), actualSize))
+            {
+                consumedCount++;
+            }
+        }
+    });
+
+    // 生产者（当前线程）全速写入
+    for (int i = 0; i < kMessageCount; ++i)
+    {
+        while (!queue->push(1, &i, sizeof(i)))
+        {
+            // 队列满时自旋等待
+            std::this_thread::yield();
+        }
+    }
+
+    consumer.join();
+    EXPECT_EQ(consumedCount.load(), kMessageCount) << "消费者应该收到所有消息";
+}
+
+class TestPubSub : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        // 使用带时间戳的唯一名称，确保高并发执行测试套件时不会发生命名冲突
+        auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+        _shmName = "TestPubSub_" + EgLab::Common::String(std::to_string(now).c_str());
+
+        // 初始化底层共享内存队列
+        _queue = EgLab::Common::makeUnique<EgLab::Common::MemoryQueue>(_shmName, true);
+    }
+
+    void TearDown() override
+    {
+        // 释放当前进程对共享内存的映射
+        _queue = nullptr;
+
+        // 注意：如果是 POSIX 环境，这里通常需要调用 shm_unlink(_shmName.c_str()) 来彻底清理。
+    }
+
+    EgLab::Common::UniquePtr<EgLab::Common::MemoryQueue> _queue;
+    EgLab::Common::String _shmName;
+};
+
+struct MeshData
+{
+    uint32_t meshId;
+    float qualityScore;
+};
+
+// 2. 多线程测试：验证同一进程内，多线程并发读写的事件路由正确性
+TEST_F(TestPubSub, MultiThreadedPubSub)
+{
+    const int kMessageCount = 10000;
+    std::atomic<int> consumedCount(0);
+
+    EgLab::Common::Subscriber subscriber(*_queue);
+    subscriber.subscrib(101);
+
+    std::thread consumerThread([&]() {
+        MeshData receivedData;
+        while (consumedCount.load() < kMessageCount)
+        {
+            uint32_t eventId;
+            if (subscriber.tryReceive(eventId, receivedData))
+            {
+                EXPECT_EQ(eventId, 101);
+                consumedCount++;
+            }
+        }
+    });
+
+    EgLab::Common::Publisher publisher(*_queue);
+
+    for (int i = 0; i < kMessageCount; ++i)
+    {
+        MeshData dataToSend{static_cast<uint32_t>(i), 0.95f};
+        while (!publisher.publish(101, dataToSend))
+        {
+            std::this_thread::yield();
+        }
+    }
+
+    consumerThread.join();
+    EXPECT_EQ(consumedCount.load(), kMessageCount) << "消费者应该收到所有消息";
+}
+
+TEST_F(TestPubSub, basic)
+{
+    EgLab::Common::MemoryQueue queue("GlobalEventQueue", true);
+
+    EgLab::Common::Publisher publisher(queue);
+
+    EgLab::Common::Subscriber subscribe(queue);
+    subscribe.subscrib(1);
+
+    int a = 4;
+    int b = 0;
+
+    publisher.publish(1, a);
+
+    uint32_t eventId;
+    if (subscribe.tryReceive(eventId, b))
+    {
+        EXPECT_EQ(eventId, 1);
+        EXPECT_EQ(a, b);
+    }
+
+    MeshData ma, mb;
+    ma.meshId = 4;
+    ma.qualityScore = 4.56;
+
+    publisher.publish(1, ma);
+    if (subscribe.tryReceive(eventId, mb))
+    {
+        EXPECT_EQ(eventId, 1);
+        EXPECT_EQ(ma.meshId, mb.meshId);
+        EXPECT_EQ(ma.qualityScore, mb.qualityScore);
+    }
+}
+
+TEST_F(TestHashMap, clear)
+{
+    EgLab::Common::HashMap<int, int> map;
+    map[1] = 2;
+    map[2] = 3;
+    EXPECT_EQ(map.size(), 2);
+
+    map.clear();
+
+    EXPECT_EQ(map.size(), 0);
+    EXPECT_TRUE(map.empty());
+}
+
+TEST_F(TestList, clear)
+{
+    EgLab::Common::List<int> l;
+    l.pushBack(1);
+    l.pushBack(1);
+    l.pushBack(1);
+    l.pushBack(1);
+
+    EXPECT_EQ(l.size(), 4);
+    auto newL = l;
+    EXPECT_EQ(newL.size(), 4);
+    EXPECT_EQ(newL.begin().data(), 1);
+    EgLab::Common::List<int> newL2(l);
+    EXPECT_EQ(newL2.size(), 4);
+    //  l.clear();
+}

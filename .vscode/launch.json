@@ -288,5 +288,68 @@
                 "type category enable EgLab"
             ]
         },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "runPlatform",
+            "program": "${workspaceFolder}/build/clang-debug/bin/EnginePlatform.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal",
+            "initCommands": [
+                "command script import ${workspaceFolder}/debug/dynamic_array.py",
+                "type category enable EgLab"
+            ]
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "testMemoryQueue",
+            "program": "${workspaceFolder}/build/clang-debug/bin/common_test.exe",
+            "args": [
+                "--gtest_filter=TestCommon.MemoryQueue_ConcurrentStress"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal",
+            "initCommands": [
+                "command script import ${workspaceFolder}/debug/dynamic_array.py",
+                "type category enable EgLab"
+            ]
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "PubSub",
+            "program": "${workspaceFolder}/build/clang-debug/bin/common_test.exe",
+            "args": [
+                "--gtest_filter=TestPubSub.*"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal",
+            "initCommands": [
+                "command script import ${workspaceFolder}/debug/dynamic_array.py",
+                "type category enable EgLab"
+            ]
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "TestHashMap",
+            "program": "${workspaceFolder}/build/clang-debug/bin/common_test.exe",
+            "args": [
+                "--gtest_filter=TestHashMap.*"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "TestList",
+            "program": "${workspaceFolder}/build/clang-debug/bin/common_test.exe",
+            "args": [
+                "--gtest_filter=TestList.*"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
     ]
 }

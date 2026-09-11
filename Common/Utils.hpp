@@ -30,9 +30,9 @@ namespace EgLab::Common
     template <typename T>
     inline void swap(T& a, T& b)
     {
-        T temp = move(a);
-        a = move(b);
-        b = move(temp);
+        T temp = Common::move(a);
+        a = Common::move(b);
+        b = Common::move(temp);
     }
 
     template <typename T, typename = void>

@@ -26,6 +26,9 @@ namespace EgLab::ME
         Common::DynamicArray<Elem> _elems;
         Common::DynamicArray<ElemStatus> _elemStatus;
         Common::HashMap<IdType, IdxType> _elemIdToIdx;
+
+        IdxType _nodeNumber{0};
+        IdxType _elemNumber{0};
     };
 
     Mesh::Mesh() : _impl(Common::makeUnique<Impl>())
@@ -47,6 +50,7 @@ namespace EgLab::ME
         _impl->_nodes.pushBack(Common::move(n));
         _impl->_nodeStatus.pushBack(NodeStatus::Normal);
 
+        _impl->_nodeNumber++;
         return Common::Return::Succeed;
     }
 
@@ -60,6 +64,7 @@ namespace EgLab::ME
 
         _impl->_nodeStatus[_impl->_nodeIdToIdx[id]] = NodeStatus::Delete;
 
+        _impl->_nodeNumber--;
         return Common::Return::Succeed;
     }
 
@@ -74,6 +79,7 @@ namespace EgLab::ME
         _impl->_elems.pushBack(Common::move(e));
         _impl->_elemStatus.pushBack(ElemStatus::Normal);
 
+        _impl->_elemNumber++;
         return Common::Return::Succeed;
     }
 
@@ -86,7 +92,7 @@ namespace EgLab::ME
         }
 
         _impl->_elemStatus[_impl->_elemIdToIdx[id]] = ElemStatus::Delete;
-
+        _impl->_elemNumber--;
         return Common::Return::Succeed;
     }
 
@@ -112,6 +118,16 @@ namespace EgLab::ME
     Node &Mesh::getNodeById(IdType id)
     {
         return _impl->_nodes[_impl->_nodeIdToIdx[id]];
+    }
+
+    IdxType Mesh::getNodeNumber() const
+    {
+        return _impl->_nodeNumber;
+    }
+
+    IdxType Mesh::getElemNumber() const
+    {
+        return _impl->_elemNumber;
     }
 
     class MeshIterator::Impl

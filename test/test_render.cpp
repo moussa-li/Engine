@@ -354,7 +354,7 @@ TEST_F(TestRender, mesh)
 TEST_F(TestRender, importmesh)
 {
     SimpleApp app;
-    EgLab::ME::GmshImporter importer(EgLab::getTestDataDir("box_quad.msh"));
+    EgLab::ME::GmshImporter importer(EgLab::getTestDataDir("B27234.msh"));
     auto mesh = importer.getMesh();
 
     EgLab::RE::MeshPrimitiveCreator creator(mesh);
