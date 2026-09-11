@@ -17,7 +17,7 @@ namespace EgLab::RE
     {
     public:
         Camera(const unsigned int &width, const unsigned int &height,
-               CoordType position = CoordType(0.0f, 0.0f, 100.0f),
+               CoordType position = CoordType(0.0f, 0.0f, 1000.0f),
                CoordType up = CoordType(0.0f, 1.0f, 0.0f), float yaw = YAW, float pitch = PITCH);
 
         Common::Matrix4f perspective() const;

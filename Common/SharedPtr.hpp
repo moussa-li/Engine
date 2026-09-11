@@ -71,7 +71,9 @@ namespace EgLab::Common
                 ptr->subRef();
                 if (ptr->getRef() == 0)
                 {
-                    delete this->_ptr;
+                    this->_ptr->~T();
+                    ::operator delete(static_cast<void *>(ptr));
+                    // delete this->_ptr;
                     this->_ptr = nullptr;
                 }
             }

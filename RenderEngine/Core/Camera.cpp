@@ -84,8 +84,8 @@ namespace EgLab::RE
         float bottom = -halfHeight;
         float top = halfHeight;
 
-        static const float zNear = 0.1f;
-        static const float zFar = 100.0f;
+        static const float zNear = 0.01f;
+        static const float zFar = 10000.0f;
 
         Common::Matrix4f result; // 注意：正交矩阵初始化为 0，而不是单位矩阵
 

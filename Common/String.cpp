@@ -32,7 +32,7 @@ namespace EgLab::Common
             heap.capacity = other.heap.capacity;
             heap.length = other.heap.length;
             heap._data = new char[other.heap.capacity];
-            memcpy(heap._data, other.heap._data, other.heap.length);
+            memcpy(heap._data, other.heap._data, other.heap.length + 1);
         }
     }
 
@@ -99,7 +99,7 @@ namespace EgLab::Common
             heap.capacity = other.heap.capacity;
             heap.length = other.heap.length;
             heap._data = new char[other.heap.capacity];
-            memcpy(heap._data, other.heap._data, other.heap.length);
+            memcpy(heap._data, other.heap._data, other.heap.length + 1);
         }
         return *this;
     }
@@ -168,6 +168,7 @@ namespace EgLab::Common
             }
             strcat(heap._data, str);
             heap.length = new_len;
+            heap._data[new_len] = '\0';
         }
     }
 

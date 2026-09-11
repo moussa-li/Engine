@@ -2,13 +2,23 @@
 
 namespace EgLab::ME
 {
-    /*********************** Tri4 ****************************/
+    /*********************** Tri3 ****************************/
     int tri3FaceNodeNumber[1] = {3};
 
     int tri3ElemFaceOffset[1] = {0};
 
     IdType tri3elemFaceMap[1][3] = {
         {0, 1, 2},
+    };
+
+    /*********************** Quad4 ****************************/
+    int quad4FaceNodeNumber[1] = {4};
+
+    int quad4ElemFaceOffset[1] = {0};
+
+    IdType quad4elemFaceMap[1][4] = {
+        {0, 1, 2, 3},
+        // {2, 1, 3},
     };
 
     /*********************** Tet4 ****************************/
@@ -29,6 +39,11 @@ namespace EgLab::ME
         return (int)type >> 8 & 0x0F;
     }
 
+    int getNodeNumber(ElemType type)
+    {
+        return (int)type & 0x0F;
+    }
+
     ElemFaceIterator::ElemFaceIterator(const Elem &elem) : _elem(elem)
     {
     }
@@ -44,6 +59,13 @@ namespace EgLab::ME
             _elemFaceMap = tri3elemFaceMap[0];
             break;
         }
+        case ElemType::Quad4:
+        {
+            _elemFaceNodeNumberMap = quad4FaceNodeNumber;
+            _elemFaceOffset = quad4ElemFaceOffset;
+            _elemFaceMap = quad4elemFaceMap[0];
+            break;
+        }
         case ElemType::Tet4:
         {
             _elemFaceNodeNumberMap = tet4FaceNodeNumber;
@@ -52,7 +74,6 @@ namespace EgLab::ME
             break;
         }
         case ElemType::Tri6:
-        case ElemType::Quad4:
         case ElemType::Quad8:
         case ElemType::Tet10:
         case ElemType::Wed6:
@@ -112,7 +133,7 @@ namespace EgLab::ME
         }
         else if (nodeNumber == 4)
         {
-            static int quadFaceMap[6] = {0, 1, 2, 1, 3, 2};
+            static int quadFaceMap[6] = {0, 1, 2, 0, 3, 2};
             res.resize(6);
             for (int i = 0; i < 6; i++)
             {

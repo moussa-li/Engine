@@ -33,8 +33,12 @@ namespace EgLab::RE
         shader->bind();
         _vertexArray->bind();
         _indexBuffer->bind();
+        glEnable(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(1.0f, 1.0f);
         glDrawElements(GL_TRIANGLES, _indexBuffer->getCount(), GL_UNSIGNED_INT, 0);
         glDepthMask(GL_TRUE);
+        glDisable(GL_POLYGON_OFFSET_FILL);
+
         _vertexArray->unBind();
         _indexBuffer->unBind();
         shader->unBind();

@@ -16,10 +16,12 @@ namespace EgLab::ME
         Wed6 = 0x306,
         Prd5 = 0x305,
         Hex8 = 0x308,
-        Hex20 = 0x314
+        Hex20 = 0x314,
+        None = 0xffff
     };
 
     int getTypeDim(ElemType type);
+    int getNodeNumber(ElemType type);
 
     class Elem
     {
@@ -41,7 +43,7 @@ namespace EgLab::ME
 
         void setType(ElemType type)
         {
-            _nodes.resize(getTypeDim(type));
+            _nodes.resize(getNodeNumber(type));
             _type = type;
         }
 

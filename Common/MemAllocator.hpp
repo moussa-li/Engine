@@ -214,7 +214,8 @@ namespace EgLab::Common
         {
             if (length > blockSize)
             { // TODO : assert
-                return nullptr;
+                void* res = new char[length];
+                return res;
             }
             if (currentBlock == nullptr)
             {
@@ -258,6 +259,10 @@ namespace EgLab::Common
                 }
 
                 *b = (*b)->nextBlock;
+                if (*b == nullptr)
+                {
+                    break;
+                }
             }
         }
 
@@ -340,7 +345,11 @@ namespace EgLab::Common
             Block* b;
             ConstExtStrategy* pushStrategy = static_cast<ConstExtStrategy*>(getBlockPushStrategy());
             pushStrategy->getPos(ptr, &b, pos);
-
+            if (b == nullptr)
+            {
+                ::operator delete(static_cast<void*>(ptr));
+                return;
+            }
             Block** headBlock;
             getHeadBlock(headBlock);
 

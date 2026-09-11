@@ -36,6 +36,7 @@ namespace EgLab::RE
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+            glfwWindowHint(GLFW_SAMPLES, 4);
 
             glfwSetErrorCallback(glfwErrorCallback);
 
@@ -82,6 +83,9 @@ namespace EgLab::RE
             glDebugMessageCallback(MessageCallback, 0);
             // 确保同步输出，这样错误发生时会立即触发回调（开发阶段推荐）
             glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+
+            // MASS
+            glEnable(GL_MULTISAMPLE);
 
             LOG(INFO) << glGetString(GL_VERSION);
         }

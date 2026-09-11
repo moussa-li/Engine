@@ -2,7 +2,7 @@
     "version": 8,
     "configurePresets": [
         {
-            "name": "win-clangd-debug",
+            "name": "mingw64-clangd-debug",
             "displayName": "Clang 19.1.7 x86_64-w64-windows-gnu (mingw64)",
             "description": "using complie C = C:\\msys64\\mingw64\\bin\\clang.exe, CXX = C:\\msys64\\mingw64\\bin\\clang++.exe",
             "generator": "Ninja",
@@ -13,6 +13,32 @@
                 "CMAKE_CXX_COMPILER": "C:/msys64/mingw64/bin/clang++.exe",
                 "CMAKE_BUILD_TYPE": "Debug"
             }
+        },
+        {
+            "name": "clang-debug",
+            "displayName": "Clang 19.1.7 x86_64-w64-windows-gnu (clang64)",
+            "description": "using complie C = C:/msys64/clang64/bin/clang.exe, CXX = C:/msys64/clang64/bin/clang++.exe",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_C_COMPILER": "C:/msys64/clang64/bin/clang.exe",
+                "CMAKE_CXX_COMPILER": "C:/msys64/clang64/bin/clang++.exe",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "win-ninja-debug",
+            "displayName": "Ninja using MSVC",
+            "description": "",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_C_COMPILER": "cl",
+                "CMAKE_CXX_COMPILER": "cl",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
         }
     ],
     "buildPresets": [
@@ -20,7 +46,7 @@
             "name": "win-clangd-debug",
             "description": "",
             "displayName": "",
-            "configurePreset": "win-clangd-debug"
+            "configurePreset": "clang-debug"
         }
     ],
     "testPresets": [
@@ -28,7 +54,7 @@
             "name": "win-clangd-debug-test",
             "description": "",
             "displayName": "",
-            "configurePreset": "win-clangd-debug"
+            "configurePreset": "clang-debug"
         }
     ],
     "packagePresets": [
@@ -36,7 +62,7 @@
             "name": "win-clangd-debug-install",
             "description": "",
             "displayName": "",
-            "configurePreset": "win-clangd-debug"
+            "configurePreset": "clang-debug"
         }
     ]
 }

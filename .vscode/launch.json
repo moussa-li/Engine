@@ -258,5 +258,35 @@
                 "type category enable EgLab"
             ]
         },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "TestMeshImporter",
+            "program": "${workspaceFolder}/build/clang-debug/bin/mesh_test.exe",
+            "args": [
+                "--gtest_filter=TestMesh.importgmsh2"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal",
+            "initCommands": [
+                "command script import ${workspaceFolder}/debug/dynamic_array.py",
+                "type category enable EgLab"
+            ]
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "RenderMeshImport",
+            "program": "${workspaceFolder}/build/clang-debug/bin/engine_tests.exe",
+            "args": [
+                "--gtest_filter=TestRender.importmesh"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal",
+            "initCommands": [
+                "command script import ${workspaceFolder}/debug/dynamic_array.py",
+                "type category enable EgLab"
+            ]
+        },
     ]
 }

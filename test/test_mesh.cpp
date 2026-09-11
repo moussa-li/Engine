@@ -2,7 +2,9 @@
 
 #include "Common/SharedPtr.hpp"
 #include "MeshEngine/Algorithm/ExtractSurface.hpp"
+#include "MeshEngine/IO/GmshImporter.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
+#include "test_utils.hpp"
 
 TEST_F(TestMesh, createMesh)
 {
@@ -72,4 +74,18 @@ TEST_F(TestMesh, extraceSurface)
 
     EgLab::ME::ExtractSurface extractor(mesh);
     auto idxs = extractor.getSurface();
+}
+
+TEST_F(TestMesh, importgmsh)
+{
+    EgLab::ME::GmshImporter importer(EgLab::getTestDataDir("daodan.msh"));
+
+    auto mesh = importer.getMesh();
+}
+
+TEST_F(TestMesh, importgmsh2)
+{
+    EgLab::ME::GmshImporter importer(EgLab::getTestDataDir("B27234.msh"));
+
+    auto mesh = importer.getMesh();
 }

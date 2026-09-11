@@ -94,14 +94,14 @@ namespace EgLab::ME
     {
         auto it = _impl->_nodeIdToIdx.find(id);
         if (it == _impl->_nodeIdToIdx.end()) return INVALID_IDX;
-        return (*it).first;
+        return (*it).second;
     }
 
     IdxType Mesh::getElemIdx(IdType id) const
     {
         auto it = _impl->_elemIdToIdx.find(id);
         if (it == _impl->_elemIdToIdx.end()) return INVALID_IDX;
-        return (*it).first;
+        return (*it).second;
     }
 
     Elem &Mesh::getElemById(IdType id)

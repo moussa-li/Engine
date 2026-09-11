@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 
 #include "Common/StringLineIterator.hpp"
+#include "MeshEngine/IO/GmshImporter.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "RenderEngine/Core/Camera.hpp"
 #include "RenderEngine/Core/Entity.hpp"
@@ -22,6 +23,7 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "test_utils.hpp"
 
 class SimpleApp
 {
@@ -38,7 +40,7 @@ public:
     SimpleApp() : window(EgLab::Common::makeShared<EgLab::RE::Window>(800, 600))
     {
         camera = EgLab::Common::makeShared<EgLab::RE::Camera>(
-            800, 600, EgLab::RE::CoordType(0.0f, 0.0f, 10.0f));
+            800, 600, EgLab::RE::CoordType(0.0f, 0.0f, 1000.0f));
         cameraController = EgLab::Common::makeShared<EgLab::RE::OrbitCameraController>();
         cameraController->setCamera(camera);
         window->setCameraController(cameraController);
@@ -330,6 +332,30 @@ TEST_F(TestRender, mesh)
 
     auto &elem = meshIt.currentElem();
     EXPECT_EQ(elem.getId(), 1);
+
+    EgLab::RE::MeshPrimitiveCreator creator(mesh);
+    auto nodePrimitive = creator.getPrimitive<EgLab::RE::RenderNode>();
+    auto linePrimitive = creator.getPrimitive<EgLab::RE::RenderLine>();
+    auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();
+
+    EgLab::Common::SharedPtr<EgLab::RE::Shader> shader;
+    EgLab::RE::ShaderLib::instance().getNodeShader(shader);
+    app.scene->addPrimitive(shader, nodePrimitive);
+
+    EgLab::RE::ShaderLib::instance().getLineShader(shader);
+    app.scene->addPrimitive(shader, linePrimitive);
+
+    EgLab::RE::ShaderLib::instance().getFaceShader(shader);
+    app.scene->addPrimitive(shader, facePrimitive);
+
+    app.exec();
+}
+
+TEST_F(TestRender, importmesh)
+{
+    SimpleApp app;
+    EgLab::ME::GmshImporter importer(EgLab::getTestDataDir("box_quad.msh"));
+    auto mesh = importer.getMesh();
 
     EgLab::RE::MeshPrimitiveCreator creator(mesh);
     auto nodePrimitive = creator.getPrimitive<EgLab::RE::RenderNode>();

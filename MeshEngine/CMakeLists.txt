@@ -5,6 +5,7 @@ set_common_variable()
 
 if((BUILD_MESH_SHARED))
     set(LIB_TYPE SHARED)
+    add_definitions(-DEXPORT_MESHENGINE)
 else()
     set(LIB_TYPE STATIC)
 endif()

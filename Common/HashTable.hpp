@@ -217,28 +217,14 @@ namespace EgLab::Common
     public:
         bool hasNext() const
         {
-            size_t bucketIndex = _bucketIndex;
-            auto bucketIt = _table.buckets[bucketIndex].begin();
-            while (bucketIndex < _table.bucketsSize())
-            {
-                if (bucketIt != _table.buckets[bucketIndex].end())
-                {
-                    return true;
-                }
-                ++bucketIndex;
-                if (bucketIndex < _table.bucketsSize())
-                {
-                    bucketIt = _table.buckets[bucketIndex].begin();
-                }
-            }
-            return false;
+            return _bucketIndex != _table.buckets.size();
         }
         ValueRef next()
         {
-            if (!hasNext())
-            {
-                throw OutOfMemoryException("No more elements in HashTable iterator");
-            }
+            // if (!hasNext())
+            // {
+            //     throw OutOfMemoryException("No more elements in HashTable iterator");
+            // }
             ValueRef value = *_bucketIterator;
             ++*this;
             return value;
@@ -366,30 +352,16 @@ namespace EgLab::Common
     public:
         bool hasNext() const
         {
-            size_t bucketIndex = _bucketIndex;
-            auto buckIterator = _bucketIterator;
-            while (bucketIndex < _table.bucketsSize())
-            {
-                if (buckIterator != _table.buckets[bucketIndex].end())
-                {
-                    return true;
-                }
-                ++bucketIndex;
-                if (bucketIndex < _table.bucketsSize())
-                {
-                    buckIterator = _table.buckets[bucketIndex].begin();
-                }
-            }
-            return false;
+            return _bucketIndex != _table.buckets.size();
         }
         ValueCRef next()
         {
-            if (!hasNext())
-            {
-                throw OutOfMemoryException("No more elements in HashTable iterator");
-            }
+            // if (!hasNext())
+            // {
+            //     throw OutOfMemoryException("No more elements in HashTable iterator");
+            // }
             ValueCRef value = *_bucketIterator;
-            ++_bucketIterator;
+            ++*this;
             return value;
         }
 
@@ -415,6 +387,21 @@ namespace EgLab::Common
         {
             if (_bucketIndex != other._bucketIndex) return false;
             return _bucketIterator == other._bucketIterator;
+        }
+
+        CIterator<HashTable<T, Hash, Equal, Allocator>> operator++()
+        {
+            if (!hasNext())
+            {
+                throw OutOfMemoryException();
+            }
+            ++_bucketIterator;
+            while (_bucketIterator == _table.buckets[_bucketIndex].end() &&
+                   ++_bucketIndex != _table.bucketsSize())
+            {
+                _bucketIterator = _table.buckets[_bucketIndex].begin();
+            }
+            return *this;
         }
 
         ValueCRef data()
@@ -452,6 +439,7 @@ namespace EgLab::Common
                 if (it.empty() == false)
                 {
                     _bucketIterator = it.begin();
+                    break;
                 }
             }
         }

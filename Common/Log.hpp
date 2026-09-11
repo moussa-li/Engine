@@ -12,6 +12,7 @@
  */
 
 #include <memory>
+#include <ostream>
 
 #include "Common/CommonAPI.hpp"
 

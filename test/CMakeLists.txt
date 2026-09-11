@@ -29,6 +29,11 @@ add_executable(mesh_test
     test_main.cpp
 )
 
+target_compile_options(mesh_test PRIVATE -fsanitize=address -fno-omit-frame-pointer -g)
+
+# 链接阶段：同样需要开启 ASan 以链接运行时库
+target_link_options(mesh_test PRIVATE -fsanitize=address)
+
 if(MSVC)
     set_target_properties(engine_tests PROPERTIES
         LINK_FLAGS "/SUBSYSTEM:CONSOLE"
