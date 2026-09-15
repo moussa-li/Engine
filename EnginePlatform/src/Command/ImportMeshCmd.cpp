@@ -2,12 +2,12 @@
 
 #include <cstring>
 
-#include "Command/CommandManager.hpp"
 #include "Common/Log.hpp"
 #include "MeshEngine/IO/GmshImporter.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "MeshEngine/MeshData/MeshPOD.hpp"
 #include "MeshEngine/MeshData/MeshToPOD.hpp"
+#include "Work/RenderWork.hpp"
 
 namespace EgLab::Platform
 {
@@ -68,15 +68,17 @@ namespace EgLab::Platform
         wire.elemDataOffset = pod.elemDataOffset;
         wire.totalDataSize = pod.totalDataSize;
 
-        PacketPOD updatePod{};
-        updatePod.dataSize = static_cast<uint32_t>(sizeof(MeshPODWireHeader) + pod.totalDataSize);
-        std::memcpy(updatePod.data, &wire, sizeof(MeshPODWireHeader));
-        std::memcpy(updatePod.data + sizeof(MeshPODWireHeader), pod.data, pod.totalDataSize);
+        const uint32_t wireSize = static_cast<uint32_t>(sizeof(MeshPODWireHeader));
+        UpdateMeshParam updateParam{};
+        updateParam.dataSize = wireSize + pod.totalDataSize;
+        updateParam.data = new uint8_t[updateParam.dataSize];
+        std::memcpy(updateParam.data, &wire, wireSize);
+        std::memcpy(updateParam.data + wireSize, pod.data, pod.totalDataSize);
 
-        CommandManager::instance().call(EventId::UpdateMesh, updatePod);
+        RenderWork::instance().onUpdateMesh(updateParam);
+        delete[] updateParam.data;
 
-        LOG(INFO) << "ImportMeshCmd::exec() imported mesh file and delegated nested "
-                     "UpdateMeshCmd through CommandManager";
+        LOG(INFO) << "ImportMeshCmd::exec() imported mesh file and queued it for rendering";
         return Common::Return::Succeed;
     }
 

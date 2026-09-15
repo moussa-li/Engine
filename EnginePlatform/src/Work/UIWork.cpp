@@ -5,6 +5,7 @@
 #include <chrono>
 
 #include "Common/Log.hpp"
+#include "Core/MainMenuBar.hpp"
 #include "GLFW/glfw3.h"
 #include "RenderEngine/Core/Window.hpp"
 #include "imgui.h"
@@ -35,26 +36,14 @@ namespace EgLab::Platform
         }
 
         _running = true;
-        initImGui();
-        _thread = std::thread([this]() {
-            makeContextCurrent();
 
-            while (_running.load())
-            {
-                // UIWork owns the UI event lane, such as toolbar, panel, file dialog,
-                // and should not be mixed into the command thread-pool worker lane.
-                std::this_thread::sleep_for(std::chrono::milliseconds(2));
-            }
-        });
+        initImGui();
     }
 
     void UIWork::stop()
     {
         _running = false;
-        if (_thread.joinable())
-        {
-            _thread.join();
-        }
+        shutdownImGui();
     }
 
     void UIWork::subscribe(EventId eventId)
@@ -72,28 +61,40 @@ namespace EgLab::Platform
     {
         if (_window)
         {
-            this->makeContextCurrent();
-            this->beginImGuiFrame();
-            this->renderImGuiFrame();
+            activeContext();
+            glfwPollEvents();
+            beginImGuiFrame();
+            renderImGuiFrame();
+            deactiveContext();
         }
     }
 
-    void UIWork::makeContextCurrent() const
+    void UIWork::activeContext() const
     {
         if (_window != nullptr)
         {
-            glfwMakeContextCurrent(_window->getNative());
+            _window->activeContext();
+        }
+    }
+
+    void UIWork::deactiveContext() const
+    {
+        if (_window != nullptr)
+        {
+            _window->deactiveContext();
         }
     }
 
     void UIWork::initImGui()
     {
+        activeContext();
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGui::StyleColorsDark();
 
         ImGui_ImplGlfw_InitForOpenGL(_window->getNative(), true);
         ImGui_ImplOpenGL3_Init("#version 330");
+        deactiveContext();
     }
 
     void UIWork::beginImGuiFrame()
@@ -105,6 +106,7 @@ namespace EgLab::Platform
 
     void UIWork::renderImGuiFrame()
     {
+        renderRibbonToolbar();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     }

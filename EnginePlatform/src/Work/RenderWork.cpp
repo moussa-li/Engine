@@ -1,20 +1,22 @@
 #include "Work/RenderWork.hpp"
 
-#include <GL/glew.h>
-
 #include <chrono>
 #include <cstring>
 
 #include "Common/Log.hpp"
-#include "GLFW/glfw3.h"
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "MeshEngine/MeshData/MeshPOD.hpp"
 #include "MeshEngine/MeshData/MeshToPOD.hpp"
+#include "RenderEngine/Core/Camera.hpp"
 #include "RenderEngine/Core/MeshPrimitiveCreator.hpp"
 #include "RenderEngine/Core/RenderFace.hpp"
 #include "RenderEngine/Core/RenderLine.hpp"
 #include "RenderEngine/Core/RenderNode.hpp"
+#include "RenderEngine/Core/Renderer.hpp"
+#include "RenderEngine/Core/Scene.hpp"
+#include "RenderEngine/Core/ShaderLib.hpp"
 #include "RenderEngine/Core/Window.hpp"
+#include "Work/UIWork.hpp"
 
 namespace EgLab::Platform
 {
@@ -54,21 +56,56 @@ namespace EgLab::Platform
             return;
         }
 
+        if (_window)
+        {
+            _window->start();
+        }
+
         _running = true;
         _thread = std::thread([this]() {
-            if (_window)
-            {
-                glfwMakeContextCurrent(_window->getNative());
-            }
+            UIWork::instance().start();
 
             while (_running.load())
             {
-                // Dedicated render lane should stay married to UpdateMesh and other
-                // render-only event sources. CommandManager remains the event source,
-                // but RenderWork owns the refresh callback boundary.
+                // Drain the cross-thread mesh packet queue on the render lane.
+                drainMeshUpdateQueue();
+
+                // UI frame draw and ImGui state update move into the render
+                // worker thread where the GL/GLFW context is started and owned.
+                float currentFrame = _window->getTime();
+                deltaTime = currentFrame - lastFrame;
+                lastFrame = currentFrame;
+
+                _window->activeContext();
+                _scene->update(deltaTime);
+                _renderer->update(deltaTime);
+                _renderer->draw(_scene, _camera);
+                _window->deactiveContext();
+
+                UIWork::instance().renderFrame();
+
+                if (_window)
+                {
+                    _window->deal();
+                }
                 std::this_thread::sleep_for(std::chrono::milliseconds(2));
             }
         });
+    }
+
+    void RenderWork::bindRenderer(const Common::SharedPtr<EgLab::RE::Renderer>& renderer)
+    {
+        _renderer = renderer;
+    }
+
+    void RenderWork::bindScene(const Common::SharedPtr<EgLab::RE::Scene>& scene)
+    {
+        _scene = scene;
+    }
+
+    void RenderWork::bindCamera(const Common::SharedPtr<EgLab::RE::Camera>& camera)
+    {
+        _camera = camera;
     }
 
     void RenderWork::stop()
@@ -85,13 +122,42 @@ namespace EgLab::Platform
         (void)eventId;
     }
 
-    void RenderWork::onUpdateMesh(const UpdateMeshParam& params)
+    void RenderWork::queueMeshUpdate(const UpdateMeshParam& params)
     {
-        if (_window)
+        std::lock_guard<std::mutex> lock(_meshUpdateMutex);
+        UpdateMeshParam copy = params;
+        copy.data = new uint8_t[params.dataSize];
+        std::memcpy(copy.data, params.data, params.dataSize);
+        _meshUpdateQueue.pushBack(copy);
+    }
+
+    void RenderWork::drainMeshUpdateQueue()
+    {
+        Common::DynamicArray<UpdateMeshParam> localPackets;
         {
-            glfwMakeContextCurrent(_window->getNative());
+            std::lock_guard<std::mutex> lock(_meshUpdateMutex);
+            while (!_meshUpdateQueue.empty())
+            {
+                localPackets.pushBack(_meshUpdateQueue[0]);
+                for (size_t i = 1; i < _meshUpdateQueue.size(); ++i)
+                {
+                    _meshUpdateQueue[i - 1] = _meshUpdateQueue[i];
+                }
+                _meshUpdateQueue.popBack();
+            }
         }
 
+        _window->activeContext();
+        for (size_t i = 0; i < localPackets.size(); ++i)
+        {
+            materializeMesh(localPackets[i]);
+            delete[] localPackets[i].data;
+        }
+        _window->deactiveContext();
+    }
+
+    void RenderWork::materializeMesh(const UpdateMeshParam& params)
+    {
         if (params.dataSize <= sizeof(MeshPODWireHeader) || params.data == nullptr)
         {
             LOG(WARNING) << "RenderWork::onUpdateMesh() skipped empty or invalid wire payload";
@@ -106,6 +172,20 @@ namespace EgLab::Platform
         {
             LOG(WARNING) << "RenderWork::onUpdateMesh() skipped malformed nested mesh packet";
             return;
+        }
+
+        const uint32_t payloadSize = wire.totalDataSize;
+        const uint32_t offsets[] = {
+            wire.nodeIdsOffset,   wire.nodeDataOffset, wire.elemIdsOffset,
+            wire.elemTypesOffset, wire.elemDataOffset,
+        };
+        for (uint32_t offset : offsets)
+        {
+            if (offset > payloadSize)
+            {
+                LOG(WARNING) << "RenderWork::onUpdateMesh() skipped invalid mesh offset";
+                return;
+            }
         }
 
         EgLab::ME::MeshPOD pod{};
@@ -125,6 +205,7 @@ namespace EgLab::Platform
         if (!mesh)
         {
             LOG(ERROR) << "RenderWork::onUpdateMesh() failed to materialize mesh";
+            delete[] pod.data;
             return;
         }
 
@@ -133,10 +214,19 @@ namespace EgLab::Platform
         auto linePrimitive = creator.getPrimitive<EgLab::RE::RenderLine>();
         auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();
 
-        (void)nodePrimitive;
-        (void)linePrimitive;
-        (void)facePrimitive;
+        EgLab::Common::SharedPtr<EgLab::RE::Shader> nodeShader;
+        EgLab::RE::ShaderLib::instance().getNodeShader(nodeShader);
+        EgLab::Common::SharedPtr<EgLab::RE::Shader> lineShader;
+        EgLab::RE::ShaderLib::instance().getLineShader(lineShader);
+        EgLab::Common::SharedPtr<EgLab::RE::Shader> faceShader;
+        EgLab::RE::ShaderLib::instance().getFaceShader(faceShader);
+        _scene->addPrimitive(nodeShader, nodePrimitive);
+        _scene->addPrimitive(lineShader, linePrimitive);
+        _scene->addPrimitive(faceShader, facePrimitive);
+    }
 
-        LOG(INFO) << "RenderWork::onUpdateMesh() received MeshPOD and refreshed render primitives";
+    void RenderWork::onUpdateMesh(const UpdateMeshParam& params)
+    {
+        queueMeshUpdate(params);
     }
 } // namespace EgLab::Platform

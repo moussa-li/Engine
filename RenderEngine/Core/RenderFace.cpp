@@ -15,13 +15,11 @@ namespace EgLab::RE
     void RenderFace::setup()
     {
         _vertexArray = Common::makeShared<VertexArray>();
+        _vertexArray->bind();
 
         VertexBufferLayout layout;
         _vertexBuffer = Common::makeShared<VertexBuffer>(_vertices);
         layout.pushBack<float>(3, _vertexBuffer);
-
-        _normalVertexBuffer = Common::makeShared<VertexBuffer>(_normals);
-        layout.pushBack<float>(3, _normalVertexBuffer);
 
         _vertexArray->addBuffer(layout);
         _indexBuffer = Common::makeShared<IndexBuffer>(_indices);

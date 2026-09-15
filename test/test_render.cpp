@@ -394,17 +394,6 @@ TEST_F(TestRender, box)
 
 TEST_F(TestRender, ShaderLib)
 {
-    EgLab::Common::String buffer;
     EgLab::Common::SharedPtr<EgLab::RE::Shader> shader;
-    EgLab::RE::ShaderLib::instance().getBasicShader(shader);
-
-    EgLab::Common::StringLineIterator it(buffer);
-    EgLab::Common::DynamicArray<EgLab::Common::String> lines;
-    for (; it.hasNext(); ++it)
-    {
-        const char *str;
-        size_t len;
-        it.getString(str, len);
-        lines.pushBack(EgLab::Common::String(str, len));
-    }
+    EgLab::RE::ShaderLib::instance().getNodeShader(shader);
 }

@@ -4,8 +4,7 @@
 
 namespace EgLab::Platform
 {
-    class Application;
 
-    void renderRibbonToolbar(Application* app);
+    void renderRibbonToolbar();
 
 } // namespace EgLab::Platform

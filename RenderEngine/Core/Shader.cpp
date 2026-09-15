@@ -100,7 +100,7 @@ namespace EgLab::RE
     {
         Common::StringLineIterator it(buffer);
 
-        Common::DynamicArray<Common::String> lines;
+        // Common::DynamicArray<Common::String> lines;
         ShaderType type = ShaderType::NONE;
         for (; it.hasNext(); ++it)
         {
@@ -140,7 +140,7 @@ namespace EgLab::RE
             }
         }
 
-        return Common::Return::NotImplacementYet;
+        return Common::Return::Succeed;
     }
 
     Common::Return Shader::setUniform1i(const Common::String& name, const int& v0)

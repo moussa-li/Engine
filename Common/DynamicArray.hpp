@@ -21,7 +21,7 @@ namespace EgLab::Common
         ~DynamicArray()
         {
             clear();
-            allocator.free(_datas);
+            allocator.free(_datas, _capacity);
             _capacity = 0;
             _datas = nullptr;
             _start = nullptr;
@@ -59,7 +59,7 @@ namespace EgLab::Common
                     new (newDatas + i) ValueType(Common::move(*(_start + i)));
                     //(_start + i)->~ValueType();
                 }
-                if (_datas != nullptr) allocator.free(_datas);
+                if (_datas != nullptr) allocator.free(_datas, _capacity);
                 _datas = newDatas;
                 _capacity = newCapacity;
                 _start = _datas;
@@ -89,7 +89,7 @@ namespace EgLab::Common
                     new (newDatas + i) T(Common::move(*(_start + i)));
                     (_start + i)->~T();
                 }
-                allocator.free(_datas);
+                allocator.free(_datas, _capacity);
                 _datas = newDatas;
                 _capacity = newCapacity;
                 _start = _datas;
@@ -127,7 +127,7 @@ namespace EgLab::Common
                     new (newDatas + i) T(Common::move(*(_start + i)));
                     (_start + i)->~T();
                 }
-                allocator.free(_datas);
+                allocator.free(_datas, _capacity);
                 _datas = newDatas;
                 _capacity = newCapacity;
                 _start = _datas;
@@ -159,7 +159,7 @@ namespace EgLab::Common
                     new (newDatas + i) T(Common::move(*(_start + i)));
                     (_start + i)->~T();
                 }
-                allocator.free(_datas);
+                allocator.free(_datas, _capacity);
                 _datas = newDatas;
                 _capacity = newCapacity;
                 _start = _datas;
@@ -192,7 +192,7 @@ namespace EgLab::Common
                     (_start + i)->~T();
                 }
 
-                allocator.free(_datas);
+                allocator.free(_datas, _capacity);
                 _datas = newDatas;
                 _capacity = newCapacity;
                 _start = _datas;
@@ -228,7 +228,7 @@ namespace EgLab::Common
                     (_start + i)->~T();
                 }
 
-                allocator.free(_datas);
+                allocator.free(_datas, _capacity);
                 _datas = newDatas;
                 _capacity = newCapacity;
                 _start = _datas;
@@ -268,7 +268,7 @@ namespace EgLab::Common
                     (_start + i)->~T();
                 }
 
-                allocator.free(_datas);
+                allocator.free(_datas, _capacity);
                 _datas = newDatas;
                 _capacity = newCapacity;
                 _start = _datas;
@@ -631,4 +631,5 @@ namespace EgLab::Common
 
     template <class T, class Allocator>
     Allocator DynamicArray<T, Allocator>::allocator;
+
 } // namespace EgLab::Common

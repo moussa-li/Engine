@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstring>
+#include <mutex>
 
 #include "Log.hpp"
 
@@ -28,23 +29,27 @@ namespace EgLab::Common
     public:
         virtual void* alloc()
         {
+            std::lock_guard<std::mutex> lock(mutex);
             return pushStrategy.push_back(sizeof(T));
         }
 
         virtual void* alloc(size_t len)
         {
+            std::lock_guard<std::mutex> lock(mutex);
             return pushStrategy.push_back(sizeof(T) * len);
         }
 
         virtual void free(void* data)
         {
             if (data == nullptr) return;
+            std::lock_guard<std::mutex> lock(mutex);
             popStrategy.pop(data, sizeof(T));
         }
 
         virtual void free(void* data, size_t len)
         {
             if (data == nullptr) return;
+            std::lock_guard<std::mutex> lock(mutex);
             popStrategy.pop(data, sizeof(T) * len);
         }
 
@@ -54,11 +59,12 @@ namespace EgLab::Common
             popStrategy.setPushStrategy(&pushStrategy);
         }
 
-        ~MemAllocatorBase()
+        virtual ~MemAllocatorBase()
         {
         }
 
     private:
+        std::mutex mutex;
         PushStrategyT pushStrategy;
         PopStrategyT popStrategy;
     };
@@ -162,6 +168,10 @@ namespace EgLab::Common
     public:
         virtual void* push_back(size_t length) = 0;
 
+        virtual ~PushStrategy()
+        {
+        }
+
         void setPopStrategy(PopStrategy* popStrategy)
         {
             _popStrategy = popStrategy;
@@ -246,15 +256,17 @@ namespace EgLab::Common
 
         virtual void getPos(const void* ptr, Block** b, size_t& pos) override
         {
+            *b = nullptr;
+            pos = 0;
             if (headBlock == nullptr) return;
             *b = headBlock;
             while (1)
             {
-                size_t blockDis =
-                    reinterpret_cast<uintptr_t>(ptr) - reinterpret_cast<uintptr_t>((*b)->data);
-                if (blockDis < blockSize)
+                uintptr_t address = reinterpret_cast<uintptr_t>(ptr);
+                uintptr_t blockStart = reinterpret_cast<uintptr_t>((*b)->data);
+                if (address >= blockStart && address < blockStart + blockSize)
                 {
-                    pos = blockDis % blockSize;
+                    pos = address - blockStart;
                     return;
                 }
 
@@ -264,6 +276,14 @@ namespace EgLab::Common
                     break;
                 }
             }
+        }
+
+        ConstExtStrategy()
+        {
+        }
+
+        virtual ~ConstExtStrategy()
+        {
         }
 
     private:
@@ -347,7 +367,11 @@ namespace EgLab::Common
             pushStrategy->getPos(ptr, &b, pos);
             if (b == nullptr)
             {
-                ::operator delete(static_cast<void*>(ptr));
+                delete[] static_cast<char*>(ptr);
+                return;
+            }
+            if (pos > b->blockSize || length > b->blockSize - pos)
+            {
                 return;
             }
             Block** headBlock;

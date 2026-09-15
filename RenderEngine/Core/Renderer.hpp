@@ -38,7 +38,7 @@ namespace EgLab::RE
 
         Renderer();
 
-        ~Renderer() = default;
+        ~Renderer();
 
     private:
         void loadCamera(const Common::SharedPtr<Shader> &shader,

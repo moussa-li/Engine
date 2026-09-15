@@ -693,6 +693,19 @@ TEST_F(TestHashMap, clear)
     EXPECT_TRUE(map.empty());
 }
 
+TEST_F(TestHashMap, BigData)
+{
+    EgLab::Common::HashMap<int, int> map;
+    map[100000] = 2;
+    map[2] = 3;
+    EXPECT_EQ(map.size(), 2);
+
+    map.clear();
+
+    EXPECT_EQ(map.size(), 0);
+    EXPECT_TRUE(map.empty());
+}
+
 TEST_F(TestList, clear)
 {
     EgLab::Common::List<int> l;

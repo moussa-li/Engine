@@ -75,6 +75,26 @@ namespace EgLab::RE
         delete _data;
     }
 
+    Common::Return ShaderLib::getBasicShader(Common::String &buffer)
+    {
+        return _data->getBasicShader(buffer);
+    }
+
+    Common::Return ShaderLib::getLightShader(Common::String &buffer)
+    {
+        return _data->getShader(ShaderId::Easy, buffer);
+    }
+
+    Common::Return ShaderLib::getNodeShader(Common::String &buffer)
+    {
+        return _data->getNodeShader(buffer);
+    }
+
+    Common::Return ShaderLib::getShader(ShaderId id, Common::String &buffer)
+    {
+        return _data->getShader(id, buffer);
+    }
+
     Common::Return ShaderLib::getBasicShader(Common::SharedPtr<Shader> &shader)
     {
         Common::Return ret = Common::Return::Succeed;

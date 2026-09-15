@@ -1,6 +1,7 @@
 #include "Core/Application.hpp"
 
 #include "Core/MainMenuBar.hpp"
+#include "GLFW/glfw3.h"
 #include "RenderEngine/Core/OrbitCameraController.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"
 #include "Work/RenderWork.hpp"
@@ -11,11 +12,14 @@ namespace EgLab::Platform
 
     Application::Application() : window(EgLab::Common::makeShared<EgLab::RE::Window>(800, 600))
     {
+        window->activeContext();
         camera = EgLab::Common::makeShared<EgLab::RE::Camera>(
             1920, 1080, EgLab::RE::CoordType(0.0f, 0.0f, 1000.0f));
         cameraController = EgLab::Common::makeShared<EgLab::RE::OrbitCameraController>();
         cameraController->setCamera(camera);
         window->setCameraController(cameraController);
+
+        window->deactiveContext();
 
         renderer = EgLab::Common::makeShared<EgLab::RE::Renderer>();
         scene = EgLab::Common::makeShared<EgLab::RE::Scene>();
@@ -28,6 +32,9 @@ namespace EgLab::Platform
         renderer->addViewport(viewport);
 
         RenderWork::instance().bindWindow(window);
+        RenderWork::instance().bindRenderer(renderer);
+        RenderWork::instance().bindScene(scene);
+        RenderWork::instance().bindCamera(camera);
         UIWork::instance().bindWindow(window);
     }
 
@@ -37,7 +44,6 @@ namespace EgLab::Platform
 
     void Application::exec()
     {
-        UIWork::instance().start();
         RenderWork::instance().start();
         while (window->shouldClose() == false)
         {
@@ -45,16 +51,16 @@ namespace EgLab::Platform
             deltaTime = currentFrame - lastFrame;
             lastFrame = currentFrame;
 
+            // Mouse, keyboard and scroll events are already dispatched by the
+            // GLFW callbacks attached in Window::Impl::start(); do not block
+            // the application thread with glfwWaitEvents() here.
+            glfwWaitEvents();
             cameraController->update(deltaTime);
-            scene->update(deltaTime);
-            renderer->update(deltaTime);
 
-            renderRibbonToolbar(this);
-            renderer->draw(scene, camera);
-
-            UIWork::instance().renderFrame();
-            window->deal();
-        };
+            // Main/application thread prepares data only and leaves all GL
+            // draw preparation to the render worker's thread-owned context.
+            // window->deal();
+        }
 
         RenderWork::instance().stop();
         UIWork::instance().stop();

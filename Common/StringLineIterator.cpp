@@ -11,6 +11,10 @@ namespace EgLab::Common
         getLineEnd();
     }
 
+    StringLineIterator::~StringLineIterator()
+    {
+    }
+
     void StringLineIterator::getLineEnd()
     {
         const char* data = _str.c_str();

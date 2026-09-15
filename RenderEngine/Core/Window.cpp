@@ -40,39 +40,21 @@ namespace EgLab::RE
 
             glfwSetErrorCallback(glfwErrorCallback);
 
-            /* Create a windowed mode window and its OpenGL context */
             _window = glfwCreateWindow(_width, _height, "Hello World", NULL, NULL);
-            glfwMakeContextCurrent(_window);
-
-            /* set user control */
-            // glfwSetCursorPosCallback(_window, mouse_callback);
-            // glfwSetScrollCallback(_window, scroll_callback);
-            // glfwSetFramebufferSizeCallback(_window, framebuffer_size_callback);
-
             if (!_window)
             {
                 glfwTerminate();
                 return;
             }
+        }
 
-            /* Make the window's context current */
-
-            /* disable cursor */
-            glfwSetInputMode(_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
+        void start()
+        {
             glfwSetWindowUserPointer(_window, this);
 
-            /* user operator */
-            glfwMakeContextCurrent(_window);
-
             glfwSetMouseButtonCallback(_window, mouseButtonCallback);
-
             glfwSetCursorPosCallback(_window, mouseButtonMoveCallback);
-
             glfwSetScrollCallback(_window, mouseScrollCallback);
-
-            /* v-Sync */
-            // glfwSwapInterval(1);
 
             if (glewInit() != GLEW_OK)
             {
@@ -81,10 +63,7 @@ namespace EgLab::RE
 
             glEnable(GL_DEBUG_OUTPUT);
             glDebugMessageCallback(MessageCallback, 0);
-            // 确保同步输出，这样错误发生时会立即触发回调（开发阶段推荐）
             glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-
-            // MASS
             glEnable(GL_MULTISAMPLE);
 
             LOG(INFO) << glGetString(GL_VERSION);
@@ -158,7 +137,7 @@ namespace EgLab::RE
         }
 
     public:
-        GLFWwindow *_window;
+        GLFWwindow *_window{nullptr};
         Common::SharedPtr<CameraController> _cameraController;
 
         unsigned int _width;
@@ -167,6 +146,7 @@ namespace EgLab::RE
         float lastFrame{0.0f};
         float deltaTime{0.0f};
         bool _maskCallBack{false};
+        std::mutex _mutex;
     };
 
     Window::Window() : _impl(new Impl)
@@ -189,6 +169,13 @@ namespace EgLab::RE
         _impl->init();
     }
 
+    void Window::start()
+    {
+        activeContext();
+        _impl->start();
+        deactiveContext();
+    }
+
     GLFWwindow *Window::getNative() const
     {
         return _impl->_window;
@@ -207,7 +194,9 @@ namespace EgLab::RE
 
     void Window::deal() const
     {
-        return _impl->deal();
+        activeContext();
+        _impl->deal();
+        deactiveContext();
     }
 
     void Window::setCameraController(Common::SharedPtr<CameraController> cmaeraController)
@@ -228,6 +217,18 @@ namespace EgLab::RE
     void Window::maskEvent(bool mask)
     {
         _impl->_maskCallBack = mask;
+    }
+
+    void Window::activeContext() const
+    {
+        _impl->_mutex.lock();
+        glfwMakeContextCurrent(_impl->_window);
+    }
+
+    void Window::deactiveContext() const
+    {
+        glfwMakeContextCurrent(nullptr);
+        _impl->_mutex.unlock();
     }
 
 } // namespace EgLab::RE

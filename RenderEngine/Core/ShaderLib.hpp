@@ -23,6 +23,7 @@ namespace EgLab::Common
 {
 
     enum class Return;
+    class String;
 
 } // namespace EgLab::Common
 namespace EgLab::RE
@@ -35,18 +36,16 @@ namespace EgLab::RE
         Easy
     };
 
-    class String;
-
     class RenderEngineAPI ShaderLib : public Common::Singleton<ShaderLib>
     {
     public:
-        Common::Return getBasicShader(String &buffer);
+        Common::Return getBasicShader(Common::String &buffer);
 
-        Common::Return getLightShader(String &buffer);
+        Common::Return getLightShader(Common::String &buffer);
 
-        Common::Return getNodeShader(String &buffer);
+        Common::Return getNodeShader(Common::String &buffer);
 
-        Common::Return getShader(ShaderId, String &buffer);
+        Common::Return getShader(ShaderId, Common::String &buffer);
 
         Common::Return getBasicShader(Common::SharedPtr<Shader> &);
 
@@ -66,7 +65,7 @@ namespace EgLab::RE
     };
 
     template <ShaderId shaderId>
-    Common::Return ShaderLib(String &buffer)
+    Common::Return ShaderLib(Common::String &buffer)
     {
         RegisterShaderLib(ShaderId::Basic, getBasicShader);
         RegisterShaderLib(ShaderId::Node, getNodeShader);

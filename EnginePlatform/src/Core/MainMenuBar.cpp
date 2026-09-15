@@ -3,7 +3,6 @@
 #include <filesystem>
 
 #include "Command/CommandManager.hpp"
-#include "Core/Application.hpp"
 #include "ImGuiFileDialog.h"
 
 namespace EgLab
@@ -20,7 +19,7 @@ namespace EgLab
 
 namespace EgLab::Platform
 {
-    void renderRibbonToolbar(Application* app)
+    void renderRibbonToolbar()
     {
         bool showWireframe = false;
         bool showGrid = true;

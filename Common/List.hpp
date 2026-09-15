@@ -47,6 +47,7 @@ namespace EgLab::Common
             _size = other._size;
             other.head = nullptr;
             other.tail = nullptr;
+            other._size = 0;
         }
 
         ~List()

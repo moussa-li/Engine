@@ -92,4 +92,8 @@ namespace EgLab::RE
     {
     }
 
+    Renderer::~Renderer()
+    {
+    }
+
 } // namespace EgLab::RE

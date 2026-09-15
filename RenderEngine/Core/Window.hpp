@@ -24,13 +24,19 @@ namespace EgLab::RE
 
         DeltaTime getTime() const;
 
+        void start();
+
         void deal() const;
+
+        void terminate();
 
         void setCameraController(Common::SharedPtr<CameraController>);
 
         GLFWwindow *getNative() const;
 
-        void terminate();
+        void activeContext() const;
+
+        void deactiveContext() const;
 
     private:
         class Impl;

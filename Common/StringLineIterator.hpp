@@ -11,6 +11,8 @@ namespace EgLab::Common
     public:
         StringLineIterator(String& str);
 
+        ~StringLineIterator();
+
         void operator++();
 
         bool operator==(const StringLineIterator&) const;

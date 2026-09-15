@@ -31,12 +31,14 @@ namespace EgLab::Platform
         void onUIEvent(const EventPacket& packet);
         void renderFrame();
 
-    private:
-        void makeContextCurrent() const;
         void initImGui();
+        void shutdownImGui();
+
+        void activeContext() const;
+        void deactiveContext() const;
+
         void beginImGuiFrame();
         void renderImGuiFrame();
-        void shutdownImGui();
 
     private:
         std::thread _thread;
