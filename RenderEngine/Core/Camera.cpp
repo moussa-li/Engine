@@ -58,6 +58,14 @@ namespace EgLab::RE
         //_front.normalize();
     }
 
+    void Camera::setWH(unsigned int width, unsigned int height)
+    {
+        if (width == 0 || height == 0) return;
+
+        _width = width;
+        _height = height;
+    }
+
     Common::Matrix4f Camera::perspective() const
     {
         return perspective(Common::BBox<Scalar, 3>());

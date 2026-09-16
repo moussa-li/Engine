@@ -34,6 +34,8 @@ namespace EgLab::RE
 
         GLFWwindow *getNative() const;
 
+        void getFramebufferSize(unsigned int &width, unsigned int &height) const;
+
         void activeContext() const;
 
         void deactiveContext() const;

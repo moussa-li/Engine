@@ -181,6 +181,15 @@ namespace EgLab::RE
         return _impl->_window;
     }
 
+    void Window::getFramebufferSize(unsigned int &width, unsigned int &height) const
+    {
+        int framebufferWidth = 0;
+        int framebufferHeight = 0;
+        glfwGetFramebufferSize(_impl->_window, &framebufferWidth, &framebufferHeight);
+        width = static_cast<unsigned int>(framebufferWidth);
+        height = static_cast<unsigned int>(framebufferHeight);
+    }
+
     bool Window::shouldClose() const
     {
         return _impl->shouldClose();

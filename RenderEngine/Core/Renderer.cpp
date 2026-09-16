@@ -68,6 +68,24 @@ namespace EgLab::RE
             const auto &viewport = _viewports[i];
             const auto &renderBuckets = scene->getRenderBuckets();
 
+            if (viewport.window == nullptr)
+            {
+                continue;
+            }
+
+            unsigned int framebufferWidth = 0;
+            unsigned int framebufferHeight = 0;
+            viewport.window->getFramebufferSize(framebufferWidth, framebufferHeight);
+            if (framebufferWidth == 0 || framebufferHeight == 0)
+            {
+                continue;
+            }
+
+            glViewport(viewport.x, viewport.y,
+                       static_cast<GLsizei>(framebufferWidth),
+                       static_cast<GLsizei>(framebufferHeight));
+            camera->setWH(framebufferWidth, framebufferHeight);
+
             for (auto it = renderBuckets.begin(); it.hasNext(); it.next())
             {
                 const auto &shader = it.data().first;

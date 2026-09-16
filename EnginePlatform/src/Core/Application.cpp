@@ -27,8 +27,8 @@ namespace EgLab::Platform
         viewport.window = window;
         viewport.x = 0;
         viewport.y = 0;
-        viewport.width = 1000;
-        viewport.height = 1000;
+        viewport.width = 800;
+        viewport.height = 800;
         renderer->addViewport(viewport);
 
         RenderWork::instance().bindWindow(window);

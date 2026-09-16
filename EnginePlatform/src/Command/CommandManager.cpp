@@ -36,7 +36,7 @@ namespace EgLab::Platform
         Common::HashMap<EventId, ICommandCreateFunc> _creator;
         Common::HashMap<EventId, EventPacketToPODCreateFunc> _packetCreator;
 
-        CommandBus _commandBus;
+        CommandBus _commandBus{2};
         CommandBus _renderCommandBus{1}; // render work command bus, for commands that need to be
                                          // executed in the render thread
 
