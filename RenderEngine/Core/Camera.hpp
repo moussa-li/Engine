@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Common/BBox.hpp"
 #include "Common/Matrix.hpp"
 #include "Definites.hpp"
 #include "RenderEngine/Core/Quatf.hpp"
@@ -21,6 +22,8 @@ namespace EgLab::RE
                CoordType up = CoordType(0.0f, 1.0f, 0.0f), float yaw = YAW, float pitch = PITCH);
 
         Common::Matrix4f perspective() const;
+
+        Common::Matrix4f perspective(const Common::BBox<Scalar, 3> &bounds) const;
 
         Common::Matrix4f view() const;
 

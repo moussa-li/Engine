@@ -42,7 +42,8 @@ namespace EgLab::RE
 
     private:
         void loadCamera(const Common::SharedPtr<Shader> &shader,
-                        const Common::SharedPtr<Camera> &camera) const;
+                        const Common::SharedPtr<Camera> &camera,
+                        const Common::SharedPtr<Scene> &scene) const;
 
     private:
         Common::DynamicArray<RenderViewport> _viewports;

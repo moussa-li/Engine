@@ -55,4 +55,14 @@ namespace EgLab::RE
         _normals = Common::move(norms);
     }
 
+    Common::BBox<Scalar, 3> RenderFace::getBounds() const
+    {
+        Common::BBox<Scalar, 3> bounds;
+        for (auto it = _vertices.begin(); it.hasNext(); it.next())
+        {
+            bounds.addPoint(it.data());
+        }
+        return bounds;
+    }
+
 } // namespace EgLab::RE

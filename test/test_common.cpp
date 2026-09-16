@@ -2,6 +2,7 @@
 
 #include <thread>
 
+#include "Common/BBox.hpp"
 #include "Common/DynamicArray.hpp"
 #include "Common/HashMap.hpp"
 #include "Common/HashSet.hpp"
@@ -16,6 +17,45 @@
 #include "Common/Singleton.hpp"
 #include "Common/String.hpp"
 #include "Common/Subscriber.hpp"
+
+TEST_F(TestCommon, BBoxTest)
+{
+    using EgLab::Common::BBox;
+    using EgLab::Common::Vector2d;
+    using EgLab::Common::Vector3d;
+
+    BBox<double, 3> box;
+    EXPECT_TRUE(box.isEmpty());
+    EXPECT_FALSE(box.contains(Vector3d(0.0, 0.0, 0.0)));
+
+    box.addPoint(Vector3d(2.0, -1.0, 4.0));
+    EXPECT_FALSE(box.isEmpty());
+    EXPECT_TRUE(box.contains(Vector3d(2.0, -1.0, 4.0)));
+    EXPECT_FALSE(box.contains(Vector3d(2.1, -1.0, 4.0)));
+
+    box.addPoint(Vector3d(2.0, -1.0, 4.0));
+    box.addPoint(Vector3d(-3.0, 5.0, 1.0));
+    box.addPoint(Vector3d(7.0, -4.0, 9.0));
+
+    EXPECT_EQ(box.min()[0], -3.0);
+    EXPECT_EQ(box.min()[1], -4.0);
+    EXPECT_EQ(box.min()[2], 1.0);
+    EXPECT_EQ(box.max()[0], 7.0);
+    EXPECT_EQ(box.max()[1], 5.0);
+    EXPECT_EQ(box.max()[2], 9.0);
+    EXPECT_TRUE(box.contains(Vector3d(0.0, 0.0, 5.0)));
+    EXPECT_FALSE(box.contains(Vector3d(8.0, 0.0, 5.0)));
+
+    BBox<double, 2> box2;
+    box2.addPoint(Vector2d(-2.0, 3.0));
+    box2.addPoint(Vector2d(4.0, -1.0));
+    EXPECT_TRUE(box2.contains(Vector2d(-2.0, -1.0)));
+    EXPECT_FALSE(box2.contains(Vector2d(-2.1, 0.0)));
+
+    box.reset();
+    EXPECT_TRUE(box.isEmpty());
+    EXPECT_FALSE(box.contains(Vector3d(0.0, 0.0, 0.0)));
+}
 
 TEST_F(TestCommon, testSingle)
 {
@@ -164,60 +204,6 @@ TEST_F(TestCommon, MemAllocateTest)
         allocator.free(p[i]);
     }
     allocator.free(b);
-}
-
-TEST_F(TestCommon, DynamicArrayTest)
-{
-    EgLab::Common::DynamicArray<int> arr;
-    EXPECT_EQ(arr.size(), 0);
-    EXPECT_EQ(arr.capacity(), 0);
-    EXPECT_TRUE(arr.empty());
-
-    int a = 1;
-    arr.pushBack(a);
-    EXPECT_EQ(arr.size(), 1);
-    EXPECT_EQ(arr.capacity(), 2); // 默�?�初始�?�量�?0，�?�加�?2
-
-    int b = 2;
-    arr.pushBack(b);
-    EXPECT_EQ(arr.size(), 2);
-    EXPECT_EQ(arr.capacity(), 2); // 容量不变
-
-    int c = 3;
-    arr.pushBack(c);
-    EXPECT_EQ(arr.size(), 3);
-    EXPECT_GT(arr.capacity(), 2); // 容量应�?��?�加
-
-    EXPECT_EQ(arr[2], 3);
-
-    for (int i = 0; i < arr.size(); i++)
-    {
-        LOG(INFO) << arr[i];
-    }
-
-    class AAA
-    {
-    public:
-        int x;
-        int y;
-        int z;
-    };
-
-    EgLab::Common::DynamicArray<AAA> arr2;
-    arr2.resize(1000);
-
-    for (int i = 0; i < arr2.size(); i++)
-    {
-        arr2[i].x = i;
-        arr2[i].y = i * 2;
-        arr2[i].z = i * 3;
-    }
-
-    for (int i = 0; i < arr2.size(); i++)
-    {
-        LOG(INFO) << "index :" << i << " x : " << arr2[i].x << " y : " << arr2[i].y
-                  << " z : " << arr2[i].z;
-    }
 }
 
 TEST_F(TestCommon, MatrixTest)
@@ -721,4 +707,58 @@ TEST_F(TestList, clear)
     EgLab::Common::List<int> newL2(l);
     EXPECT_EQ(newL2.size(), 4);
     //  l.clear();
+}
+
+TEST_F(TestCommon, DynamicArrayTest)
+{
+    EgLab::Common::DynamicArray<int> arr;
+    EXPECT_EQ(arr.size(), 0);
+    EXPECT_EQ(arr.capacity(), 0);
+    EXPECT_TRUE(arr.empty());
+
+    int a = 1;
+    arr.pushBack(a);
+    EXPECT_EQ(arr.size(), 1);
+    EXPECT_EQ(arr.capacity(), 2); // 默�?�初始�?�量�?0，�?�加�?2
+
+    int b = 2;
+    arr.pushBack(b);
+    EXPECT_EQ(arr.size(), 2);
+    EXPECT_EQ(arr.capacity(), 2); // 容量不变
+
+    int c = 3;
+    arr.pushBack(c);
+    EXPECT_EQ(arr.size(), 3);
+    EXPECT_GT(arr.capacity(), 2); // 容量应�?��?�加
+
+    EXPECT_EQ(arr[2], 3);
+
+    for (int i = 0; i < arr.size(); i++)
+    {
+        LOG(INFO) << arr[i];
+    }
+
+    class AAA
+    {
+    public:
+        int x;
+        int y;
+        int z;
+    };
+
+    EgLab::Common::DynamicArray<AAA> arr2;
+    arr2.resize(1000);
+
+    for (int i = 0; i < arr2.size(); i++)
+    {
+        arr2[i].x = i;
+        arr2[i].y = i * 2;
+        arr2[i].z = i * 3;
+    }
+
+    for (int i = 0; i < arr2.size(); i++)
+    {
+        LOG(INFO) << "index :" << i << " x : " << arr2[i].x << " y : " << arr2[i].y
+                  << " z : " << arr2[i].z;
+    }
 }

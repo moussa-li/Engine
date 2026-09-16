@@ -10,11 +10,11 @@
 namespace EgLab::Platform
 {
 
-    Application::Application() : window(EgLab::Common::makeShared<EgLab::RE::Window>(800, 600))
+    Application::Application() : window(EgLab::Common::makeShared<EgLab::RE::Window>(800, 800))
     {
         window->activeContext();
         camera = EgLab::Common::makeShared<EgLab::RE::Camera>(
-            1920, 1080, EgLab::RE::CoordType(0.0f, 0.0f, 1000.0f));
+            800, 800, EgLab::RE::CoordType(0.0f, 0.0f, 1000.0f));
         cameraController = EgLab::Common::makeShared<EgLab::RE::OrbitCameraController>();
         cameraController->setCamera(camera);
         window->setCameraController(cameraController);
@@ -27,8 +27,8 @@ namespace EgLab::Platform
         viewport.window = window;
         viewport.x = 0;
         viewport.y = 0;
-        viewport.width = 1920;
-        viewport.height = 1080;
+        viewport.width = 1000;
+        viewport.height = 1000;
         renderer->addViewport(viewport);
 
         RenderWork::instance().bindWindow(window);

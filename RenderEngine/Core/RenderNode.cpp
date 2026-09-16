@@ -19,6 +19,16 @@ namespace EgLab::RE
         _vertices = nodes;
     }
 
+    Common::BBox<Scalar, 3> RenderNode::getBounds() const
+    {
+        Common::BBox<Scalar, 3> bounds;
+        for (auto it = _vertices.begin(); it.hasNext(); it.next())
+        {
+            bounds.addPoint(it.data());
+        }
+        return bounds;
+    }
+
     void RenderNode::setup()
     {
         _vertexArray = Common::makeShared<VertexArray>();

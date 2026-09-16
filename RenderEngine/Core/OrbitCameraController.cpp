@@ -77,7 +77,6 @@ namespace EgLab::RE
             target = target + up * (yoffset * _panSensitivity) * zoom;
             _camera->setPosition(pos);
             _camera->setTarget(target);
-            // _camera->setTarget(target);
         }
 
         if (_rotate)
@@ -122,8 +121,13 @@ namespace EgLab::RE
 
     void OrbitCameraController::processMouseScroll(float yoffset)
     {
-        auto zoom = _camera->getZoom();
+        auto target = _camera->getTarget();
+        auto position = _camera->getPosition();
+        auto distance = (target - position).length();
+        auto newPos = position + _camera->getFront() * (yoffset * _zoomSpeed * distance * 0.1f);
+        _camera->setPosition(newPos);
 
+        auto zoom = _camera->getZoom();
         if (yoffset > 0)
         {
             zoom /= _zoomSpeed;
@@ -133,7 +137,7 @@ namespace EgLab::RE
             zoom *= _zoomSpeed;
         }
 
-        zoom = std::max(0.1f, std::min(zoom, 1000.0f));
+        // zoom = std::max(0.1f, std::min(zoom, 1000.0f));
         _camera->setZoom(zoom);
     }
 

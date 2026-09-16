@@ -8,6 +8,8 @@ namespace EgLab::RE
 
     using IdType = unsigned int;
 
+    using Scalar = float;
+
     using CoordType = Common::Vector3f;
 
     using TexCoordType = Common::Vector2f;

@@ -21,6 +21,16 @@ namespace EgLab::RE
         _indices = Common::move(idxs);
     }
 
+    Common::BBox<Scalar, 3> RenderLine::getBounds() const
+    {
+        Common::BBox<Scalar, 3> bounds;
+        for (auto it = _vertices.begin(); it.hasNext(); it.next())
+        {
+            bounds.addPoint(it.data());
+        }
+        return bounds;
+    }
+
     void RenderLine::setup()
     {
         _vertexArray = Common::makeShared<VertexArray>();

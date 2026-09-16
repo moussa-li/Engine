@@ -46,10 +46,11 @@ namespace EgLab::RE
     }
 
     void Renderer::loadCamera(const Common::SharedPtr<Shader> &shader,
-                              const Common::SharedPtr<Camera> &camera) const
+                              const Common::SharedPtr<Camera> &camera,
+                              const Common::SharedPtr<Scene> &scene) const
     {
         Common::Matrix4f proj = Common::Matrix4f::Identity();
-        proj = camera->perspective();
+        proj = camera->perspective(scene->getBounds());
         Common::Matrix4f view = camera->view();
         shader->bind();
 
@@ -72,7 +73,7 @@ namespace EgLab::RE
                 const auto &shader = it.data().first;
                 const auto &primitives = it.data().second;
 
-                loadCamera(shader, camera);
+                loadCamera(shader, camera, scene);
 
                 for (auto primitiveIt = primitives.begin(); primitiveIt.hasNext();
                      primitiveIt.next())

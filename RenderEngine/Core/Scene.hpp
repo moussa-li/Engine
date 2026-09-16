@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Common/BBox.hpp"
 #include "Common/HashMap.hpp"
 #include "Common/Return.hpp"
 #include "Common/SharedPtr.hpp"
@@ -37,7 +38,10 @@ namespace EgLab::RE
 
         const RenderBuckets &getRenderBuckets() const;
 
+        const Common::BBox<Scalar, 3> &getBounds() const;
+
     private:
         RenderBuckets _renderPrimitives;
+        Common::BBox<Scalar, 3> _sceneBounds;
     };
 } // namespace EgLab::RE

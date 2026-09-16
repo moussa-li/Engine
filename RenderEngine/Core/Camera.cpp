@@ -1,5 +1,6 @@
 #include "Camera.hpp"
 
+#include <algorithm>
 #include <math.h>
 
 namespace EgLab::RE
@@ -59,6 +60,11 @@ namespace EgLab::RE
 
     Common::Matrix4f Camera::perspective() const
     {
+        return perspective(Common::BBox<Scalar, 3>());
+    }
+
+    Common::Matrix4f Camera::perspective(const Common::BBox<Scalar, 3> &bounds) const
+    {
 #if 0
         const float fovy = radians(_zoom);
         const float tanHalfFovy = std::tan(fovy * 0.5); // fovy : Field of View Y
@@ -77,15 +83,45 @@ namespace EgLab::RE
 #else
 
         float halfHeight = _zoom;
-        float halfWidth = halfHeight * (_width / _height); // 保持宽高比
+        float halfWidth = halfHeight * (static_cast<float>(_width) / _height); // 保持宽高比
 
         float left = -halfWidth;
         float right = halfWidth;
         float bottom = -halfHeight;
         float top = halfHeight;
 
-        static const float zNear = 0.01f;
-        static const float zFar = 10000.0f;
+        float zNear = 0.01f;
+        float zFar = 10000.0f;
+
+        if (!bounds.isEmpty())
+        {
+            const CoordType min = bounds.min();
+            const CoordType max = bounds.max();
+            float minDepth = INFINITY;
+            float maxDepth = 0.0f;
+
+            for (int x = 0; x < 2; ++x)
+            {
+                for (int y = 0; y < 2; ++y)
+                {
+                    for (int z = 0; z < 2; ++z)
+                    {
+                        const CoordType corner(x ? max.x() : min.x(),
+                                               y ? max.y() : min.y(),
+                                               z ? max.z() : min.z());
+                        const float depth = (corner - _position).dot(_front);
+                        minDepth = std::min(minDepth, depth);
+                        maxDepth = std::max(maxDepth, depth);
+                    }
+                }
+            }
+
+            if (maxDepth > 0.0f)
+            {
+                zNear = std::max(0.01f, minDepth * 0.9f);
+                zFar = std::max(zNear + 0.1f, maxDepth * 1.1f);
+            }
+        }
 
         Common::Matrix4f result; // 注意：正交矩阵初始化为 0，而不是单位矩阵
 

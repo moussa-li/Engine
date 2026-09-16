@@ -20,6 +20,7 @@ namespace EgLab::RE
         virtual ~RenderNode();
         virtual void setup() override;
         virtual void draw(Common::SharedPtr<Shader> shader) override;
+        virtual Common::BBox<Scalar, 3> getBounds() const override;
 
         void setNodes(Common::DynamicArray<CoordType>&&);
 
