@@ -20,7 +20,7 @@ namespace EgLab::Platform
         }
     }
 
-    Common::Return UpdateMeshCmd::exec()
+    Common::Return UpdateMeshCmd::execImpl()
     {
         if (getParams().dataSize == 0 || getParams().data == nullptr)
         {

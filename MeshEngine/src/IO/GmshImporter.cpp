@@ -178,7 +178,7 @@ namespace EgLab::ME
                         LOG(ERROR) << "Element type out of size!";
                         return mesh;
                     }
-                    // if (gmshType == 0 || gmshType == 1) continue;
+                    if (gmshType == 1 || gmshType == 15) continue;
                     ElemType type = _impl->_typeMap[gmshType];
 
                     if (type == ElemType::None)

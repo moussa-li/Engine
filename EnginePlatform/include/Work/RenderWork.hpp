@@ -11,6 +11,11 @@
 #include "Common/Singleton.hpp"
 #include "RenderEngine/Core/Definites.hpp"
 
+namespace EgLab::ME
+{
+    class Mesh;
+}
+
 namespace EgLab::RE
 {
     class Window;
@@ -37,9 +42,11 @@ namespace EgLab::Platform
         // RenderWork is a dedicated render event listener.
         // Only EventId::UpdateMesh is expected to enter this lane.
         void subscribe(EventId eventId);
+        void onUpdateMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
         void onUpdateMesh(const UpdateMeshParam& params);
 
     private:
+        void queueMeshUpdate(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
         void queueMeshUpdate(const UpdateMeshParam& params);
         void drainMeshUpdateQueue();
         void materializeMesh(const UpdateMeshParam& params);

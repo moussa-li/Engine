@@ -12,6 +12,11 @@ namespace EgLab::Platform
         ImportMeshCmd(const ImportMeshParam&);
         ~ImportMeshCmd();
 
-        virtual Common::Return exec() override;
+        virtual Common::String getCmdName() const override
+        {
+            return Common::String("ImportMeshCmd");
+        }
+
+        virtual Common::Return execImpl() override;
     };
 } // namespace EgLab::Platform

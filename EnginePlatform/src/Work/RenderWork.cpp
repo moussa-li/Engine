@@ -4,6 +4,7 @@
 #include <cstring>
 
 #include "Common/Log.hpp"
+#include "Common/Performance.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "MeshEngine/MeshData/MeshPOD.hpp"
 #include "MeshEngine/MeshData/MeshToPOD.hpp"
@@ -115,6 +116,15 @@ namespace EgLab::Platform
         {
             _thread.join();
         }
+
+        std::lock_guard<std::mutex> lock(_meshUpdateMutex);
+        for (auto it = _meshUpdateQueue.begin(); it.hasNext(); it.next())
+        {
+            delete[] it.data().data;
+            it.data().data = nullptr;
+            it.data().dataSize = 0;
+        }
+        _meshUpdateQueue.clear();
     }
 
     void RenderWork::subscribe(EventId eventId)
@@ -122,8 +132,45 @@ namespace EgLab::Platform
         (void)eventId;
     }
 
+    void RenderWork::queueMeshUpdate(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
+    {
+        if (mesh == nullptr)
+        {
+            LOG(WARNING) << "RenderWork::queueMeshUpdate() skipped null mesh";
+            return;
+        }
+
+        const auto pod = EgLab::ME::MeshToPOD::serialize(mesh);
+        if (pod.totalDataSize == 0 || pod.data == nullptr)
+        {
+            LOG(ERROR) << "RenderWork::queueMeshUpdate() failed to serialize mesh";
+            return;
+        }
+
+        MeshPODWireHeader wire{};
+        wire.nodeNumber = pod.nodeNumber;
+        wire.elemNumber = pod.elemNumber;
+        wire.nodeIdsOffset = pod.nodeIdsOffset;
+        wire.nodeDataOffset = pod.nodeDataOffset;
+        wire.elemIdsOffset = pod.elemIdsOffset;
+        wire.elemTypesOffset = pod.elemTypesOffset;
+        wire.elemDataOffset = pod.elemDataOffset;
+        wire.totalDataSize = pod.totalDataSize;
+
+        const uint32_t wireSize = static_cast<uint32_t>(sizeof(MeshPODWireHeader));
+        UpdateMeshParam params{};
+        params.dataSize = wireSize + pod.totalDataSize;
+        params.data = new uint8_t[params.dataSize];
+        std::memcpy(params.data, &wire, wireSize);
+        std::memcpy(params.data + wireSize, pod.data, pod.totalDataSize);
+        queueMeshUpdate(params);
+        delete[] params.data;
+    }
+
     void RenderWork::queueMeshUpdate(const UpdateMeshParam& params)
     {
+        if (params.dataSize == 0 || params.data == nullptr) return;
+
         std::lock_guard<std::mutex> lock(_meshUpdateMutex);
         UpdateMeshParam copy = params;
         copy.data = new uint8_t[params.dataSize];
@@ -205,14 +252,18 @@ namespace EgLab::Platform
         if (!mesh)
         {
             LOG(ERROR) << "RenderWork::onUpdateMesh() failed to materialize mesh";
-            delete[] pod.data;
             return;
         }
 
+        Common::Performance perf;
+        perf.start();
         EgLab::RE::MeshPrimitiveCreator creator(mesh);
         auto nodePrimitive = creator.getPrimitive<EgLab::RE::RenderNode>();
         auto linePrimitive = creator.getPrimitive<EgLab::RE::RenderLine>();
         auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();
+        perf.stop();
+        LOG(INFO) << "RenderWork::onUpdateMesh() materialized mesh in "
+                  << perf.getElapsedMilliseconds() << " ms";
 
         EgLab::Common::SharedPtr<EgLab::RE::Shader> nodeShader;
         EgLab::RE::ShaderLib::instance().getNodeShader(nodeShader);
@@ -229,5 +280,10 @@ namespace EgLab::Platform
     void RenderWork::onUpdateMesh(const UpdateMeshParam& params)
     {
         queueMeshUpdate(params);
+    }
+
+    void RenderWork::onUpdateMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
+    {
+        queueMeshUpdate(mesh);
     }
 } // namespace EgLab::Platform

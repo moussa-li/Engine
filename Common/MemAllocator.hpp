@@ -14,6 +14,8 @@
 
 #include "Log.hpp"
 
+// #define LOG_MEM_ALLOCATOR
+
 namespace EgLab::Common
 {
     class PushStrategy;
@@ -229,7 +231,9 @@ namespace EgLab::Common
             }
             if (currentBlock == nullptr)
             {
+#ifdef LOG_MEM_ALLOCATOR
                 LOG(INFO) << "new BLock";
+#endif
                 currentBlock = new Block(blockSize);
                 headBlock = currentBlock;
                 currentBlock->tail += length;
@@ -238,14 +242,15 @@ namespace EgLab::Common
             }
             if (currentBlock->tail + length > blockSize)
             {
+#ifdef LOG_MEM_ALLOCATOR
                 LOG(INFO) << "append BLock";
+#endif
                 Block* prevBlock = currentBlock;
                 currentBlock = new Block(blockSize);
                 currentBlock->prevBlock = prevBlock;
                 prevBlock->nextBlock = currentBlock;
                 currentBlock->tail += length;
                 memset(currentBlock->isValid, true, length * sizeof(bool));
-                // LOG(INFO) <<(void*)(&currentBlock->data[0]);
                 return (void*)(&currentBlock->data[0]);
             }
             size_t tail = currentBlock->tail;
@@ -394,8 +399,11 @@ namespace EgLab::Common
 
                 Block** headBlock;
                 getHeadBlock(headBlock);
+#ifdef LOG_MEM_ALLOCATOR
+
                 BlockPrinter printer2(*headBlock);
                 printer2.print();
+#endif
                 Block** currentBlock;
                 getCurrentBlock(currentBlock);
                 if (prev == nullptr)
@@ -404,14 +412,18 @@ namespace EgLab::Common
                     {
                         *headBlock = nullptr;
                         *currentBlock = nullptr;
+#ifdef LOG_MEM_ALLOCATOR
                         LOG(INFO) << "Delete All Block";
+#endif
                         delete b;
                         return;
                     }
 
                     *headBlock = next;
                     (*headBlock)->prevBlock = nullptr;
+#ifdef LOG_MEM_ALLOCATOR
                     LOG(INFO) << "Delete First Block";
+#endif
                     delete b;
                     return;
                     // currentBlock
@@ -421,14 +433,18 @@ namespace EgLab::Common
                 {
                     *currentBlock = b->prevBlock;
                     b->prevBlock->nextBlock = nullptr;
+#ifdef LOG_MEM_ALLOCATOR
                     LOG(INFO) << "Delete Last Block";
+#endif
                     delete b;
                     return;
                 }
 
                 b->prevBlock->nextBlock = b->nextBlock;
                 b->nextBlock->prevBlock = b->prevBlock;
+#ifdef LOG_MEM_ALLOCATOR
                 LOG(INFO) << "Delete Block";
+#endif
                 delete b;
                 return;
             }

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Command/ICommand.hpp"
 #include "Command/CommandParam.hpp"
+#include "Command/ICommand.hpp"
 
 namespace EgLab::Platform
 {
@@ -11,6 +11,11 @@ namespace EgLab::Platform
         explicit UpdateMeshCmd(const UpdateMeshParam& params);
         ~UpdateMeshCmd();
 
-        Common::Return exec() override;
+        virtual Common::String getCmdName() const override
+        {
+            return Common::String("UpdateMeshCmd");
+        }
+
+        Common::Return execImpl() override;
     };
 } // namespace EgLab::Platform
