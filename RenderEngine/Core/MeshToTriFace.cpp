@@ -21,6 +21,7 @@ namespace EgLab::RE
             _dirty = false;
             ME::ExtractSurface extractor(_mesh);
             auto faceIndices = extractor.getSurface();
+
             for (const auto& faceIdxPair : faceIndices)
             {
                 auto& elemId = faceIdxPair.first;

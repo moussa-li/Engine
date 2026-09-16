@@ -262,6 +262,9 @@ namespace EgLab::Platform
         auto linePrimitive = creator.getPrimitive<EgLab::RE::RenderLine>();
         auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();
         perf.stop();
+        nodePrimitive->setup();
+        linePrimitive->setup();
+        facePrimitive->setup();
         LOG(INFO) << "RenderWork::onUpdateMesh() materialized mesh in "
                   << perf.getElapsedMilliseconds() << " ms";
 

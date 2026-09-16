@@ -86,6 +86,11 @@ namespace EgLab::Common
             return _size == 0;
         }
 
+        void reserve(size_t n)
+        {
+            rehash(n);
+        }
+
         void clear()
         {
             for (size_t i = 0; i < buckets.size(); ++i)

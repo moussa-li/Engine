@@ -5,6 +5,7 @@
 #include "Common/BBox.hpp"
 #include "Common/DynamicArray.hpp"
 #include "Common/HashMap.hpp"
+#include "Common/HashTable.hpp"
 #include "Common/HashSet.hpp"
 #include "Common/List.hpp"
 #include "Common/Log.hpp"
@@ -692,6 +693,31 @@ TEST_F(TestHashMap, BigData)
     EXPECT_TRUE(map.empty());
 }
 
+TEST_F(TestHashMap, Reserve)
+{
+    EgLab::Common::HashMap<int, int> map;
+
+    map.reserve(64);
+    EXPECT_GE(map.bucketsSize(), 64);
+    EXPECT_EQ(map.size(), 0);
+
+    for (int i = 0; i < 64; ++i)
+    {
+        map.insert({i, i * 2});
+    }
+
+    EXPECT_EQ(map.size(), 64);
+    for (int i = 0; i < 64; ++i)
+    {
+        EXPECT_EQ(map[i], i * 2);
+    }
+
+    const auto bucketCount = map.bucketsSize();
+    map.reserve(8);
+    EXPECT_EQ(map.bucketsSize(), bucketCount);
+    EXPECT_EQ(map.size(), 64);
+}
+
 TEST_F(TestList, clear)
 {
     EgLab::Common::List<int> l;
@@ -761,4 +787,29 @@ TEST_F(TestCommon, DynamicArrayTest)
         LOG(INFO) << "index :" << i << " x : " << arr2[i].x << " y : " << arr2[i].y
                   << " z : " << arr2[i].z;
     }
+}
+
+TEST_F(TestCommon, DynamicArrayReserve)
+{
+    EgLab::Common::DynamicArray<int> arr;
+
+    arr.reserve(32);
+    EXPECT_GE(arr.capacity(), 32);
+    EXPECT_TRUE(arr.empty());
+
+    for (int i = 0; i < 32; ++i)
+    {
+        arr.pushBack(i);
+    }
+
+    EXPECT_EQ(arr.size(), 32);
+    for (int i = 0; i < 32; ++i)
+    {
+        EXPECT_EQ(arr[i], i);
+    }
+
+    const auto capacity = arr.capacity();
+    arr.reserve(8);
+    EXPECT_EQ(arr.capacity(), capacity);
+    EXPECT_EQ(arr.size(), 32);
 }

@@ -78,7 +78,7 @@ namespace EgLab::Common
         {
             if (size > _capacity)
             {
-                size_t newCapacity = _capacity;
+                size_t newCapacity = _capacity ? _capacity : 1;
                 while (newCapacity < size)
                 {
                     newCapacity *= _incraseFactor;

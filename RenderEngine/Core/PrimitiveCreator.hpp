@@ -22,8 +22,6 @@ namespace EgLab::RE
 
             this->updateData(Common::SharedPtr<T>(primitive));
 
-            primitive->setup();
-
             return primitive;
         }
 

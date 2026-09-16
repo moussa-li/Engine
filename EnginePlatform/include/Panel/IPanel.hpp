@@ -12,10 +12,19 @@ namespace EgLab::Platform
 
         virtual Common::String getPanelName() = 0;
 
+        inline bool isShow() const
+        {
+            return _show;
+        }
+
         void show();
         void close();
 
         virtual void render() = 0;
+
+    protected:
+        virtual void abortShow() {};
+        virtual void abortClose() {};
 
     private:
         bool _show{false};

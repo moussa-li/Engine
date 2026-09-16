@@ -18,10 +18,10 @@ namespace EgLab::Platform
 
         Common::Return addPanel(Common::SharedPtr<IPanel>);
 
-        Common::Return showPanel(Common::String&);
-        Common::Return hidePanel(Common::String&);
+        Common::Return showPanel(const Common::String&);
+        Common::Return hidePanel(const Common::String&);
 
-        const Common::SharedPtr<IPanel> getPanel() const;
+        // const Common::SharedPtr<IPanel> getPanel() const;
 
     private:
         Common::HashMap<Common::String, Common::SharedPtr<IPanel>> _panels;

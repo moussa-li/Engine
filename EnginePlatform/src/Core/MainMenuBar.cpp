@@ -3,7 +3,9 @@
 #include <filesystem>
 
 #include "Command/CommandManager.hpp"
+#include "DataBase/Context.hpp"
 #include "ImGuiFileDialog.h"
+
 
 namespace EgLab
 {
@@ -24,17 +26,17 @@ namespace EgLab::Platform
         bool showWireframe = false;
         bool showGrid = true;
 
-        if (ImGuiFileDialog::Instance()->Display("文件选择"))
-        {
-            if (ImGuiFileDialog::Instance()->IsOk())
-            {
-                std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
-                EventPacket packet;
-                packet.setData("fileDir", Common::String(filePath.c_str()));
-                CommandManager::instance().call(EventId::MeshImport, Common::move(packet));
-            }
-            ImGuiFileDialog::Instance()->Close();
-        }
+        // if (ImGuiFileDialog::Instance()->Display("文件选择"))
+        // {
+        //     if (ImGuiFileDialog::Instance()->IsOk())
+        //     {
+        //         std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+        //         EventPacket packet;
+        //         packet.setData("fileDir", Common::String(filePath.c_str()));
+        //         CommandManager::instance().call(EventId::MeshImport, Common::move(packet));
+        //     }
+        //     ImGuiFileDialog::Instance()->Close();
+        // }
 
         if (ImGui::BeginMainMenuBar())
         {
@@ -42,13 +44,7 @@ namespace EgLab::Platform
             {
                 if (ImGui::MenuItem("Open", "Ctrl+O"))
                 { /* ... */
-                    LOG(INFO) << "open";
-
-                    // 1. 触发打开对话框
-                    IGFD::FileDialogConfig config;
-                    config.path = ".";
-                    ImGuiFileDialog::Instance()->OpenDialog("文件选择", "请选择文件", ".msh",
-                                                            config);
+                    Context::instance().getPanelManager().showPanel("MeshImport");
                 }
 
                 // 2. 在渲染循环中显示对话框并获取结果

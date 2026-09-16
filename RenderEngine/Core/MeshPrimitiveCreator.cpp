@@ -21,6 +21,7 @@ namespace EgLab::RE
     {
         ME::MeshIterator meshIt(*_mesh);
         Common::DynamicArray<RE::CoordType> nodes;
+        nodes.reserve(_mesh->getNodeNumber());
 
         do
         {
@@ -36,7 +37,7 @@ namespace EgLab::RE
     {
         ME::MeshIterator meshIt(*_mesh);
         Common::DynamicArray<RE::CoordType> nodes;
-
+        nodes.reserve(_mesh->getNodeNumber());
         do
         {
             auto& n = meshIt.currentNode();
@@ -53,6 +54,7 @@ namespace EgLab::RE
     {
         ME::MeshIterator meshIt(*_mesh);
         Common::DynamicArray<RE::CoordType> nodes;
+        nodes.reserve(_mesh->getNodeNumber());
         do
         {
             auto& n = meshIt.currentNode();
@@ -63,19 +65,6 @@ namespace EgLab::RE
         primitive->setNodes(Common::move(nodes));
 
         primitive->setIndices(_translator.getBoundaryFaceIdx());
-
-        // Common::DynamicArray<RE::IdxType> idxs;
-
-        // do
-        // {
-        //     auto& e = meshIt.currentElem();
-        //     const auto& elemNodes = e.getNodes();
-        //     for (auto node : elemNodes)
-        //     {
-        //     }
-        // } while (meshIt.nextElem());
-
-        // primitive->setIndices(Common::move(idxs));
     }
 
 } // namespace EgLab::RE

@@ -14,6 +14,8 @@ namespace EgLab::Platform
             return "MeshImport";
         }
 
+        virtual void abortShow() override;
+
         virtual void render() override;
     };
 } // namespace EgLab::Platform

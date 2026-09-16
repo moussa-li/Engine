@@ -6,7 +6,9 @@
 
 #include "Common/Log.hpp"
 #include "Core/MainMenuBar.hpp"
+#include "DataBase/Context.hpp"
 #include "GLFW/glfw3.h"
+#include "Panel/PanelManager.hpp"
 #include "RenderEngine/Core/Window.hpp"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -65,6 +67,7 @@ namespace EgLab::Platform
             activeContext();
             glfwPollEvents();
             beginImGuiFrame();
+            Context::instance().getPanelManager().loop();
             renderImGuiFrame();
             deactiveContext();
         }
