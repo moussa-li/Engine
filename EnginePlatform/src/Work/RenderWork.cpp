@@ -223,6 +223,7 @@ namespace EgLab::Platform
         _scene->addPrimitive(nodeShader, nodePrimitive);
         _scene->addPrimitive(lineShader, linePrimitive);
         _scene->addPrimitive(faceShader, facePrimitive);
+        _camera->fitView(_scene->getBounds(), 2);
     }
 
     void RenderWork::onUpdateMesh(const UpdateMeshParam& params)

@@ -25,6 +25,8 @@ namespace EgLab::RE
 
         Common::Matrix4f perspective(const Common::BBox<Scalar, 3> &bounds) const;
 
+        void fitView(const Common::BBox<Scalar, 3> &bounds, float margin = 1.1f);
+
         Common::Matrix4f view() const;
 
         void lookAt(const CoordType &position, const CoordType &front, const CoordType &up);

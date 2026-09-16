@@ -1,7 +1,9 @@
 #include "Camera.hpp"
 
-#include <algorithm>
 #include <math.h>
+
+#include <algorithm>
+
 
 namespace EgLab::RE
 {
@@ -66,6 +68,57 @@ namespace EgLab::RE
         _height = height;
     }
 
+    void Camera::fitView(const Common::BBox<Scalar, 3> &bounds, float margin)
+    {
+        if (bounds.isEmpty()) return;
+
+        const CoordType min = bounds.min();
+        const CoordType max = bounds.max();
+        const CoordType center((min.x() + max.x()) * 0.5f, (min.y() + max.y()) * 0.5f,
+                               (min.z() + max.z()) * 0.5f);
+
+        CoordType front(_front);
+        CoordType right(_right);
+        CoordType up(_up);
+        front.normalize();
+        right.normalize();
+        up.normalize();
+
+        float horizontalExtent = 0.0f;
+        float verticalExtent = 0.0f;
+        float depthExtent = 0.0f;
+        float radius = 0.0f;
+
+        for (int x = 0; x < 2; ++x)
+        {
+            for (int y = 0; y < 2; ++y)
+            {
+                for (int z = 0; z < 2; ++z)
+                {
+                    const CoordType corner(x ? max.x() : min.x(), y ? max.y() : min.y(),
+                                           z ? max.z() : min.z());
+                    const CoordType offset = corner - center;
+                    horizontalExtent = std::max(horizontalExtent, std::abs(offset.dot(right)));
+                    verticalExtent = std::max(verticalExtent, std::abs(offset.dot(up)));
+                    depthExtent = std::max(depthExtent, std::abs(offset.dot(front)));
+                    radius = std::max(radius, offset.length());
+                }
+            }
+        }
+
+        const float safeMargin = std::max(1.0f, margin);
+        const float aspect = static_cast<float>(_width) / static_cast<float>(std::max(1u, _height));
+        const float halfHeight =
+            std::max(verticalExtent, horizontalExtent / std::max(aspect, 0.01f));
+
+        _target = center;
+        _zoom = std::max(0.1f, halfHeight * safeMargin);
+        _position = center - front * std::max(1.0f, std::max(depthExtent + 1.0f, radius * 2.0f));
+        _front = front;
+        _right = right;
+        _up = up;
+    }
+
     Common::Matrix4f Camera::perspective() const
     {
         return perspective(Common::BBox<Scalar, 3>());
@@ -114,8 +167,7 @@ namespace EgLab::RE
                 {
                     for (int z = 0; z < 2; ++z)
                     {
-                        const CoordType corner(x ? max.x() : min.x(),
-                                               y ? max.y() : min.y(),
+                        const CoordType corner(x ? max.x() : min.x(), y ? max.y() : min.y(),
                                                z ? max.z() : min.z());
                         const float depth = (corner - _position).dot(_front);
                         minDepth = std::min(minDepth, depth);
