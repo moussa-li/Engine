@@ -6,6 +6,10 @@ namespace EgLab::Common
     {
     }
 
+    Subscriber::~Subscriber()
+    {
+    }
+
     void Subscriber::subscrib(uint32_t eventId)
     {
         _targetEventId.insert(eventId);

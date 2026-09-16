@@ -13,6 +13,8 @@ namespace EgLab::Common
     public:
         Subscriber(MemoryQueue& queue);
 
+        ~Subscriber();
+
         void subscrib(uint32_t eventId);
 
         template <typename T>

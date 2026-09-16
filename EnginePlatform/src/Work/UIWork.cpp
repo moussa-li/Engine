@@ -42,6 +42,7 @@ namespace EgLab::Platform
 
     void UIWork::stop()
     {
+        if (_running == false) return;
         _running = false;
         shutdownImGui();
     }
