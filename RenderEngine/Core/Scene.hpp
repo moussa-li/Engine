@@ -32,6 +32,8 @@ namespace EgLab::RE
     public:
         explicit Scene();
 
+        ~Scene();
+
         void update(DeltaTime);
 
         Common::Return addPrimitive(Common::SharedPtr<Shader>, Common::SharedPtr<RenderPrimitive>);

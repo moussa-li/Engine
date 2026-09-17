@@ -55,16 +55,22 @@ public:
         viewport.height = 600;
         renderer->addViewport(viewport);
 
+        window->start();
+        window->activeContext();
+
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGui::StyleColorsDark();
 
         ImGui_ImplGlfw_InitForOpenGL(window->getNative(), true);
         ImGui_ImplOpenGL3_Init("#version 330");
+
+        window->deactiveContext();
     }
 
     void execImGui()
     {
+        window->activeContext();
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
@@ -97,6 +103,8 @@ public:
 
         ImGuiIO &io = ImGui::GetIO();
         window->maskEvent(io.WantCaptureMouse);
+
+        window->deactiveContext();
     }
 
     ~SimpleApp() = default;
@@ -105,6 +113,7 @@ public:
         while (window->shouldClose() == false)
         {
             float currentFrame = window->getTime();
+            if (currentFrame > 1) break;
             deltaTime = currentFrame - lastFrame;
             lastFrame = currentFrame;
 
@@ -112,7 +121,9 @@ public:
             scene->update(deltaTime);
             renderer->update(deltaTime);
 
+            window->activeContext();
             renderer->draw(scene, camera);
+            window->deactiveContext();
 
             execImGui();
             window->deal();
@@ -140,10 +151,13 @@ TEST_F(TestRender, vertex)
     coords.pushBack(coord);
     auto v = EgLab::Common::makeShared<EgLab::RE::RenderNode>();
     v->setNodes(EgLab::Common::move(coords));
+    app.window->activeContext();
     v->setup();
+
     EgLab::Common::SharedPtr<EgLab::RE::Shader> shader;
     EgLab::RE::ShaderLib::instance().getNodeShader(shader);
     app.scene->addPrimitive(shader, v);
+    app.window->deactiveContext();
 
     EgLab::RE::CoordType coord1(0.5, 0, 0);
     auto v1 = EgLab::Common::makeShared<EgLab::RE::Vertex>(coord1);
@@ -165,6 +179,8 @@ TEST_F(TestRender, line)
 
     auto v = EgLab::Common::makeShared<EgLab::RE::RenderNode>();
     v->setNodes(EgLab::Common::move(coords));
+
+    app.window->activeContext();
     v->setup();
     EgLab::Common::SharedPtr<EgLab::RE::Shader> shader;
     EgLab::RE::ShaderLib::instance().getNodeShader(shader);
@@ -181,6 +197,7 @@ TEST_F(TestRender, line)
     EgLab::RE::ShaderLib::instance().getLineShader(shader);
     app.scene->addPrimitive(shader, l);
 
+    app.window->deactiveContext();
     app.exec();
 }
 
@@ -201,6 +218,8 @@ TEST_F(TestRender, face)
 
     auto v = EgLab::Common::makeShared<EgLab::RE::RenderNode>();
     v->setNodes(EgLab::Common::move(coords));
+
+    app.window->activeContext();
     v->setup();
     EgLab::Common::SharedPtr<EgLab::RE::Shader> shader;
     EgLab::RE::ShaderLib::instance().getNodeShader(shader);
@@ -231,6 +250,8 @@ TEST_F(TestRender, face)
 
     EgLab::RE::ShaderLib::instance().getFaceShader(shader);
     app.scene->addPrimitive(shader, f);
+
+    app.window->deactiveContext();
 
     app.exec();
 }
@@ -274,6 +295,11 @@ TEST_F(TestRender, trimesh)
     auto nodePrimitive = creator.getPrimitive<EgLab::RE::RenderNode>();
     auto linePrimitive = creator.getPrimitive<EgLab::RE::RenderLine>();
     auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();
+    app.window->activeContext();
+    nodePrimitive->setup();
+    linePrimitive->setup();
+    facePrimitive->setup();
+    app.window->deactiveContext();
 
     EgLab::Common::SharedPtr<EgLab::RE::Shader> shader;
     EgLab::RE::ShaderLib::instance().getNodeShader(shader);
@@ -338,6 +364,12 @@ TEST_F(TestRender, mesh)
     auto linePrimitive = creator.getPrimitive<EgLab::RE::RenderLine>();
     auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();
 
+    app.window->activeContext();
+    nodePrimitive->setup();
+    linePrimitive->setup();
+    facePrimitive->setup();
+    app.window->deactiveContext();
+
     EgLab::Common::SharedPtr<EgLab::RE::Shader> shader;
     EgLab::RE::ShaderLib::instance().getNodeShader(shader);
     app.scene->addPrimitive(shader, nodePrimitive);
@@ -361,6 +393,12 @@ TEST_F(TestRender, importmesh)
     auto nodePrimitive = creator.getPrimitive<EgLab::RE::RenderNode>();
     auto linePrimitive = creator.getPrimitive<EgLab::RE::RenderLine>();
     auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();
+
+    app.window->activeContext();
+    nodePrimitive->setup();
+    linePrimitive->setup();
+    facePrimitive->setup();
+    app.window->deactiveContext();
 
     EgLab::Common::SharedPtr<EgLab::RE::Shader> shader;
     EgLab::RE::ShaderLib::instance().getNodeShader(shader);

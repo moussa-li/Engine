@@ -10,6 +10,10 @@ namespace EgLab::RE
     {
     }
 
+    Scene::~Scene()
+    {
+    }
+
     void Scene::update(DeltaTime deltaTime)
     {
     }
@@ -29,7 +33,7 @@ namespace EgLab::RE
         return _renderPrimitives;
     }
 
-    const Common::BBox<Scalar, 3> &Scene::getBounds() const
+    const Common::BBox<Scalar, 3>& Scene::getBounds() const
     {
         return _sceneBounds;
     }
