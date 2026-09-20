@@ -12,8 +12,8 @@ namespace EgLab::RE
     public:
         virtual void update(DeltaTime){};
 
-        CameraController() = default;
-        virtual ~CameraController() = default;
+        CameraController();
+        virtual ~CameraController();
 
         inline void setCamera(Common::SharedPtr<EgLab::RE::Camera> camera)
         {

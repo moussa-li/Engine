@@ -6,7 +6,6 @@
 #include "DataBase/Context.hpp"
 #include "ImGuiFileDialog.h"
 
-
 namespace EgLab
 {
     inline Common::String getTestDataDir(const Common::String& file)
@@ -60,6 +59,10 @@ namespace EgLab::Platform
             }
             if (ImGui::BeginMenu("View"))
             {
+                if (ImGui::MenuItem("camera setting", "f5"))
+                {
+                    Context::instance().getPanelManager().showPanel("CameraSetting");
+                }
                 ImGui::MenuItem("Wireframe", NULL, &showWireframe);
                 ImGui::MenuItem("Grid", NULL, &showGrid);
                 ImGui::EndMenu();

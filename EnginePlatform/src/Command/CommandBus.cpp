@@ -2,6 +2,7 @@
 
 #include <Common/DynamicArray.hpp>
 #include <queue>
+#include <thread>
 
 namespace EgLab::Platform
 {

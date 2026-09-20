@@ -39,6 +39,8 @@ namespace EgLab::Platform
         void bindScene(const Common::SharedPtr<EgLab::RE::Scene>& scene);
         void bindCamera(const Common::SharedPtr<EgLab::RE::Camera>& camera);
 
+        void fitView();
+
         // RenderWork is a dedicated render event listener.
         // Only EventId::UpdateMesh is expected to enter this lane.
         void subscribe(EventId eventId);

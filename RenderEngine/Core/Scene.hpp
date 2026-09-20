@@ -12,7 +12,7 @@
 namespace EgLab::RE
 {
     class Camera;
-    class CameraController;
+    // class CameraController;
     class Entity;
     class Shader;
     class RenderPrimitive;

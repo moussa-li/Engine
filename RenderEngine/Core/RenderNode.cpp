@@ -7,7 +7,6 @@
 #include "RenderEngine/Core/VertexArray.hpp"
 #include "RenderEngine/Core/VertexBufferLayout.hpp"
 
-
 namespace EgLab::RE
 {
     RenderNode::~RenderNode()

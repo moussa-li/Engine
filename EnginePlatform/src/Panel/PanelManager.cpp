@@ -1,5 +1,6 @@
 #include "Panel/PanelManager.hpp"
 
+#include "Panel/CameraSettingPanel.hpp"
 #include "Panel/IPanel.hpp"
 #include "Panel/MeshImportPanel.hpp"
 
@@ -8,6 +9,7 @@ namespace EgLab::Platform
     PanelManager::PanelManager()
     {
         _panels[MeshImportPanel().getPanelName()] = Common::makeShared<MeshImportPanel>();
+        _panels[CameraSettingPanel().getPanelName()] = Common::makeShared<CameraSettingPanel>();
     }
 
     Common::Return PanelManager::showPanel(const Common::String& name)

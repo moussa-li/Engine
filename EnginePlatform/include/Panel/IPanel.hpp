@@ -26,7 +26,7 @@ namespace EgLab::Platform
         virtual void abortShow() {};
         virtual void abortClose() {};
 
-    private:
+    protected:
         bool _show{false};
     };
 } // namespace EgLab::Platform

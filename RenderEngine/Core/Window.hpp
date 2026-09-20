@@ -2,6 +2,7 @@
 
 #include "Common/SharedPtr.hpp"
 #include "Core/Definites.hpp"
+#include "RenderEngine/Core/CameraController.hpp"
 #include "RenderEngineAPI.hpp"
 
 struct GLFWwindow;

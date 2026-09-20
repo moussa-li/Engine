@@ -280,6 +280,11 @@ namespace EgLab::Platform
         _camera->fitView(_scene->getBounds(), 2);
     }
 
+    void RenderWork::fitView()
+    {
+        _camera->fitView(_scene->getBounds(), 2);
+    }
+
     void RenderWork::onUpdateMesh(const UpdateMeshParam& params)
     {
         queueMeshUpdate(params);

@@ -124,7 +124,7 @@ namespace EgLab::RE
         auto target = _camera->getTarget();
         auto position = _camera->getPosition();
         auto distance = (target - position).length();
-        auto newPos = position + _camera->getFront() * (yoffset * _zoomSpeed * distance * 0.1f);
+        auto newPos = position + _camera->getFront() * (yoffset * _zoomSpeed);
         _camera->setPosition(newPos);
 
         auto zoom = _camera->getZoom();
