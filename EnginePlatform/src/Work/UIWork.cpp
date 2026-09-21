@@ -68,6 +68,7 @@ namespace EgLab::Platform
             glfwPollEvents();
             beginImGuiFrame();
             Context::instance().getPanelManager().loop();
+            _window->maskEvent(ImGui::GetIO().WantCaptureMouse);
             renderImGuiFrame();
             deactiveContext();
         }

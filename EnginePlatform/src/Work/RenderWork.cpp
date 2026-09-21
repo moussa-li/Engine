@@ -256,8 +256,8 @@ namespace EgLab::Platform
         }
 
         Common::Performance perf;
-        perf.start();
         EgLab::RE::MeshPrimitiveCreator creator(mesh);
+        perf.start();
         auto nodePrimitive = creator.getPrimitive<EgLab::RE::RenderNode>();
         auto linePrimitive = creator.getPrimitive<EgLab::RE::RenderLine>();
         auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();

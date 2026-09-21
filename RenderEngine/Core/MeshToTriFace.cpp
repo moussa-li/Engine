@@ -22,6 +22,9 @@ namespace EgLab::RE
             ME::ExtractSurface extractor(_mesh);
             auto faceIndices = extractor.getSurface();
 
+            _boundaryFaceIdx.reserve(faceIndices.size() * 6);
+            _boundaryLineIdx.reserve(faceIndices.size() * 8);
+
             for (const auto& faceIdxPair : faceIndices)
             {
                 auto& elemId = faceIdxPair.first;
