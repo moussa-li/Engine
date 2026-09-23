@@ -4,12 +4,14 @@
 #include <mutex>
 #include <thread>
 
+#include "Command/CommandBus.hpp"
 #include "Command/CommandIds.hpp"
 #include "Command/CommandParam.hpp"
 #include "Common/DynamicArray.hpp"
 #include "Common/SharedPtr.hpp"
 #include "Common/Singleton.hpp"
 #include "RenderEngine/Core/Definites.hpp"
+#include "RenderEngine/Core/RenderPrimitive.hpp"
 
 namespace EgLab::ME
 {
@@ -26,6 +28,14 @@ namespace EgLab::RE
 
 namespace EgLab::Platform
 {
+
+    struct RenderPacket
+    {
+        Common::SharedPtr<RE::RenderPrimitive> renderNode;
+        Common::SharedPtr<RE::RenderPrimitive> renderLine;
+        Common::SharedPtr<RE::RenderPrimitive> renderFace;
+    };
+
     class RenderWork : public EgLab::Common::Singleton<RenderWork>
     {
     public:
@@ -51,6 +61,7 @@ namespace EgLab::Platform
         void queueMeshUpdate(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
         void queueMeshUpdate(const UpdateMeshParam& params);
         void drainMeshUpdateQueue();
+        void drainRenderQueue();
         void materializeMesh(const UpdateMeshParam& params);
 
     private:
@@ -61,8 +72,14 @@ namespace EgLab::Platform
         Common::SharedPtr<EgLab::RE::Scene> _scene;
         Common::SharedPtr<EgLab::RE::Camera> _camera;
 
+        CommandBus _renderUpdateBus{1};
+
         std::mutex _meshUpdateMutex;
         Common::DynamicArray<UpdateMeshParam> _meshUpdateQueue;
+        std::mutex _renderUpdateMutex;
+        Common::DynamicArray<RenderPacket> _renderUpdateQueue;
+
+        friend class RenderUpdate;
 
         EgLab::RE::DeltaTime lastFrame;
         EgLab::RE::DeltaTime deltaTime;

@@ -36,6 +36,35 @@ namespace EgLab::Platform
         };
     } // namespace
 
+    class RenderUpdate : public ICommand
+    {
+    public:
+        RenderUpdate(RenderWork* worker, Common::SharedPtr<ME::Mesh> mesh)
+            : _mesh(mesh), _worker(worker)
+        {
+        }
+
+        Common::Return exec()
+        {
+            Common::Performance perf;
+            EgLab::RE::MeshPrimitiveCreator creator(_mesh);
+            perf.start();
+            auto nodePrimitive = creator.getPrimitive<EgLab::RE::RenderNode>();
+            auto linePrimitive = creator.getPrimitive<EgLab::RE::RenderLine>();
+            auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();
+            std::lock_guard<std::mutex> lock(_worker->_renderUpdateMutex);
+            RenderPacket packet = {nodePrimitive, linePrimitive, facePrimitive};
+            _worker->_renderUpdateQueue.pushBack(packet);
+            perf.stop();
+
+            return Common::Return::Succeed;
+        }
+
+    private:
+        Common::SharedPtr<ME::Mesh> _mesh;
+        RenderWork* _worker;
+    };
+
     RenderWork::RenderWork()
     {
     }
@@ -70,6 +99,8 @@ namespace EgLab::Platform
             {
                 // Drain the cross-thread mesh packet queue on the render lane.
                 drainMeshUpdateQueue();
+
+                drainRenderQueue();
 
                 // UI frame draw and ImGui state update move into the render
                 // worker thread where the GL/GLFW context is started and owned.
@@ -203,6 +234,46 @@ namespace EgLab::Platform
         _window->deactiveContext();
     }
 
+    void RenderWork::drainRenderQueue()
+    {
+        Common::DynamicArray<RenderPacket> localPackets;
+        {
+            std::lock_guard<std::mutex> lock(_renderUpdateMutex);
+            while (!_renderUpdateQueue.empty())
+            {
+                localPackets.pushBack(_renderUpdateQueue[0]);
+                for (size_t i = 1; i < _renderUpdateQueue.size(); ++i)
+                {
+                    _renderUpdateQueue[i - 1] = _renderUpdateQueue[i];
+                }
+                _renderUpdateQueue.popBack();
+            }
+        }
+
+        _window->activeContext();
+        for (size_t i = 0; i < localPackets.size(); ++i)
+        {
+            auto nodePrimitive = localPackets[i].renderNode;
+            auto linePrimitive = localPackets[i].renderLine;
+            auto facePrimitive = localPackets[i].renderFace;
+            nodePrimitive->setup();
+            linePrimitive->setup();
+            facePrimitive->setup();
+
+            EgLab::Common::SharedPtr<EgLab::RE::Shader> nodeShader;
+            EgLab::RE::ShaderLib::instance().getNodeShader(nodeShader);
+            EgLab::Common::SharedPtr<EgLab::RE::Shader> lineShader;
+            EgLab::RE::ShaderLib::instance().getLineShader(lineShader);
+            EgLab::Common::SharedPtr<EgLab::RE::Shader> faceShader;
+            EgLab::RE::ShaderLib::instance().getFaceShader(faceShader);
+            _scene->addPrimitive(nodeShader, nodePrimitive);
+            _scene->addPrimitive(lineShader, linePrimitive);
+            _scene->addPrimitive(faceShader, facePrimitive);
+            _camera->fitView(_scene->getBounds(), 2);
+        }
+        _window->deactiveContext();
+    }
+
     void RenderWork::materializeMesh(const UpdateMeshParam& params)
     {
         if (params.dataSize <= sizeof(MeshPODWireHeader) || params.data == nullptr)
@@ -255,29 +326,8 @@ namespace EgLab::Platform
             return;
         }
 
-        Common::Performance perf;
-        EgLab::RE::MeshPrimitiveCreator creator(mesh);
-        perf.start();
-        auto nodePrimitive = creator.getPrimitive<EgLab::RE::RenderNode>();
-        auto linePrimitive = creator.getPrimitive<EgLab::RE::RenderLine>();
-        auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();
-        perf.stop();
-        nodePrimitive->setup();
-        linePrimitive->setup();
-        facePrimitive->setup();
-        LOG(INFO) << "RenderWork::onUpdateMesh() materialized mesh in "
-                  << perf.getElapsedMilliseconds() << " ms";
-
-        EgLab::Common::SharedPtr<EgLab::RE::Shader> nodeShader;
-        EgLab::RE::ShaderLib::instance().getNodeShader(nodeShader);
-        EgLab::Common::SharedPtr<EgLab::RE::Shader> lineShader;
-        EgLab::RE::ShaderLib::instance().getLineShader(lineShader);
-        EgLab::Common::SharedPtr<EgLab::RE::Shader> faceShader;
-        EgLab::RE::ShaderLib::instance().getFaceShader(faceShader);
-        _scene->addPrimitive(nodeShader, nodePrimitive);
-        _scene->addPrimitive(lineShader, linePrimitive);
-        _scene->addPrimitive(faceShader, facePrimitive);
-        _camera->fitView(_scene->getBounds(), 2);
+        auto updater = Common::SharedPtr<RenderUpdate>(this, mesh);
+        _renderUpdateBus.dispatch(updater);
     }
 
     void RenderWork::fitView()
