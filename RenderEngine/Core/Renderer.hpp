@@ -32,6 +32,10 @@ namespace EgLab::RE
         void draw(const Common::SharedPtr<Scene> &scene,
                   const Common::SharedPtr<Camera> &camera) const;
 
+        void setBackGroundColor(const Common::Vector4f &color);
+
+        Common::Vector4f getBackGroundColor() const;
+
         void update(DeltaTime deltaTime);
 
         Common::UniquePtr<RenderConfigure> &getConfigure();
@@ -51,6 +55,8 @@ namespace EgLab::RE
         Common::DynamicArray<Light *> _lights;
 
         Common::UniquePtr<RenderConfigure> _configure;
+
+        Common::Vector4f _backGroundColor;
     };
 
 } // namespace EgLab::RE

@@ -16,7 +16,6 @@ namespace EgLab::Platform
 
     void CameraSettingPanel::render()
     {
-        bool show = isShow();
         ImGui::SetNextWindowSize(ImVec2(320, 480), ImGuiCond_FirstUseEver);
         if (ImGui::Begin("Camera Setting", &_show))
         {
@@ -77,13 +76,6 @@ namespace EgLab::Platform
             }
 
             ImGui::Separator();
-
-            // ========== Close Button ==========
-            ImGui::Spacing();
-            if (ImGui::Button("Close", ImVec2(-1, 0)))
-            {
-                close();
-            }
         }
         ImGui::End();
     }

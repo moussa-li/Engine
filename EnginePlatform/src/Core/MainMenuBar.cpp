@@ -63,6 +63,11 @@ namespace EgLab::Platform
                 {
                     Context::instance().getPanelManager().showPanel("CameraSetting");
                 }
+
+                if (ImGui::MenuItem("background setting", "f5"))
+                {
+                    Context::instance().getPanelManager().showPanel("BackGroundSetting");
+                }
                 ImGui::MenuItem("Wireframe", NULL, &showWireframe);
                 ImGui::MenuItem("Grid", NULL, &showGrid);
                 ImGui::EndMenu();

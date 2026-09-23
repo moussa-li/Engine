@@ -41,7 +41,8 @@ namespace EgLab::RE
             glDisable(GL_DEPTH_TEST);
         }
 
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(_backGroundColor[0], _backGroundColor[1], _backGroundColor[2],
+                     _backGroundColor[3]);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
@@ -81,8 +82,7 @@ namespace EgLab::RE
                 continue;
             }
 
-            glViewport(viewport.x, viewport.y,
-                       static_cast<GLsizei>(framebufferWidth),
+            glViewport(viewport.x, viewport.y, static_cast<GLsizei>(framebufferWidth),
                        static_cast<GLsizei>(framebufferHeight));
             camera->setWH(framebufferWidth, framebufferHeight);
 
@@ -107,8 +107,19 @@ namespace EgLab::RE
         return _configure;
     }
 
+    void Renderer::setBackGroundColor(const Common::Vector4f &color)
+    {
+        _backGroundColor = color;
+    }
+
+    Common::Vector4f Renderer::getBackGroundColor() const
+    {
+        return _backGroundColor;
+    }
+
     Renderer::Renderer() : _configure(Common::makeUnique<RenderConfigure>())
     {
+        _backGroundColor = Common::Vector4f(1, 1, 1, 1);
     }
 
     Renderer::~Renderer()

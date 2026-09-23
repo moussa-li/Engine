@@ -1,8 +1,10 @@
 #include "Panel/PanelManager.hpp"
 
+#include "Panel/BackGroundSettingPanel.hpp"
 #include "Panel/CameraSettingPanel.hpp"
 #include "Panel/IPanel.hpp"
 #include "Panel/MeshImportPanel.hpp"
+
 
 namespace EgLab::Platform
 {
@@ -10,6 +12,8 @@ namespace EgLab::Platform
     {
         _panels[MeshImportPanel().getPanelName()] = Common::makeShared<MeshImportPanel>();
         _panels[CameraSettingPanel().getPanelName()] = Common::makeShared<CameraSettingPanel>();
+        _panels[BackGroundSettingPanel().getPanelName()] =
+            Common::makeShared<BackGroundSettingPanel>();
     }
 
     Common::Return PanelManager::showPanel(const Common::String& name)
