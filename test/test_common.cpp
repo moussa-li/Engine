@@ -17,6 +17,7 @@
 #include "Common/SharedPtr.hpp"
 #include "Common/Singleton.hpp"
 #include "Common/String.hpp"
+#include "Common/StringLineIterator.hpp"
 #include "Common/Subscriber.hpp"
 
 TEST_F(TestCommon, BBoxTest)
@@ -135,7 +136,36 @@ TEST_F(TestCommon, String)
 
 #include <any>
 #include <chrono>
+#include <string>
 #include <vector>
+
+TEST_F(TestCommon, StringLineIteratorSupportsLfAndCrlf)
+{
+    const auto getLines = [](EgLab::Common::String& text) {
+        std::vector<std::string> lines;
+        EgLab::Common::StringLineIterator it(text);
+        for (; it.hasNext(); ++it)
+        {
+            const char* line;
+            size_t length;
+            it.getString(line, length);
+            lines.emplace_back(line, length);
+        }
+        return lines;
+    };
+
+    EgLab::Common::String lfText("first\nsecond\nlast");
+    EXPECT_EQ(getLines(lfText), (std::vector<std::string>{"first\n", "second\n", "last"}));
+
+    EgLab::Common::String crlfText("first\r\nsecond\r\nlast");
+    EXPECT_EQ(getLines(crlfText), (std::vector<std::string>{"first\r\n", "second\r\n", "last"}));
+
+    EgLab::Common::String singleCharacter("x");
+    EXPECT_EQ(getLines(singleCharacter), (std::vector<std::string>{"x"}));
+
+    EgLab::Common::String emptyText;
+    EXPECT_TRUE(getLines(emptyText).empty());
+}
 
 TEST_F(TestCommon, anyTest)
 {

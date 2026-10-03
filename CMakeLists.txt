@@ -21,7 +21,22 @@ find_package(Threads REQUIRED)
 # generate asserts include file to 
 gen_assets()
 
+set(GLEW_DIR "${CMAKE_SOURCE_DIR}/3rd/glew")
+if(NOT EXISTS "${GLEW_DIR}/include/GL/glew.h" OR NOT EXISTS "${GLEW_DIR}/src/glew.c")
+    find_program(GNU_MAKE_EXECUTABLE NAMES make gmake mingw32-make REQUIRED)
+    message(STATUS "Generating missing GLEW sources in ${GLEW_DIR}")
+    execute_process(
+        COMMAND "${GNU_MAKE_EXECUTABLE}" -C "${GLEW_DIR}" extensions
+        RESULT_VARIABLE GLEW_GENERATE_RESULT
+        OUTPUT_VARIABLE GLEW_GENERATE_OUTPUT
+        ERROR_VARIABLE GLEW_GENERATE_OUTPUT
+    )
+    if(NOT GLEW_GENERATE_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to generate GLEW sources: ${GLEW_GENERATE_OUTPUT}")
+    endif()
+endif()
 
+set(BUILD_UTILS OFF CACHE BOOL "Disable GLEW utility executables" FORCE)
 
 if(BUILD_TESTS)
     enable_testing()
@@ -29,6 +44,7 @@ if(BUILD_TESTS)
 endif()
 
 add_subdirectory(3rd/glfw-3.4)
+add_subdirectory(3rd/glew/build/cmake)
 
 add_subdirectory(Common)
 add_subdirectory(RenderEngine)

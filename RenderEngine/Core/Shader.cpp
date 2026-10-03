@@ -108,17 +108,17 @@ namespace EgLab::RE
             size_t len;
             it.getString(str, len);
             Common::String content(str, len);
-            if (content == "#shader vertex\r\n")
+            if (content == "#shader vertex\r\n" || content == "#shader vertex\n")
             {
                 type = ShaderType::VERTEX;
                 continue;
             }
-            else if (content == "#shader fragment\r\n")
+            else if (content == "#shader fragment\r\n" || content == "#shader fragment\n")
             {
                 type = ShaderType::FRAGMENT;
                 continue;
             }
-            else if (content == "#shader compute\r\n")
+            else if (content == "#shader compute\r\n" || content == "#shader compute\n")
             {
                 type = ShaderType::COMPUTE;
                 continue;

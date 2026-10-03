@@ -4,3 +4,9 @@
 [submodule "3rd/imgui"]
 	path = 3rd/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "3rd/ImGuiFileDialog"]
+	path = 3rd/ImGuiFileDialog
+	url = https://github.com/aiekick/ImGuiFileDialog.git
+[submodule "3rd/glew"]
+	path = 3rd/glew
+	url = https://github.com/nigels-com/glew.git

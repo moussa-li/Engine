@@ -1,7 +1,5 @@
 #include "Common/StringLineIterator.hpp"
 
-#include <emmintrin.h>
-
 namespace EgLab::Common
 {
     StringLineIterator::StringLineIterator(String& str) : _str(str)
@@ -19,40 +17,17 @@ namespace EgLab::Common
     {
         const char* data = _str.c_str();
         size_t len = _str.size();
-        if (_str.size() < 2) return;
+        if (len == 0) return;
 
-        const __m128i cr_char = _mm_set1_epi8('\r');
-        const __m128i nl_char = _mm_set1_epi8('\n');
-
-        size_t i = 0;
-        for (; i + 16 <= len; i += 16)
+        for (size_t i = 0; i < len; ++i)
         {
-            __m128i block = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + i));
-            __m128i cmp = _mm_cmpeq_epi8(block, cr_char);
-
-            int mask = _mm_movemask_epi8(cmp);
-
-            while (mask != 0)
+            if (data[i] == '\n' && i + 1 < len)
             {
-                int bit_pos = __builtin_ctz(mask);
-                size_t pos = i + bit_pos;
-                if (pos + 1 < len && data[pos + 1] == '\n')
-                {
-                    _lineStart.pushBack(pos + 2);
-                }
-                mask &= ~(1 << bit_pos);
+                _lineStart.pushBack(i + 1);
             }
         }
 
-        for (; i + 1 < len; ++i)
-        {
-            if (data[i] == '\r' && data[i + 1] == '\n')
-            {
-                _lineStart.pushBack(i + 2);
-            }
-        }
-        if (_lineStart.back() >= len) _lineStart.popBack();
-        _lineStart.pushBack(_str.size() - 1); // an extra '\0' was added.
+        _lineStart.pushBack(len);
     }
 
     bool StringLineIterator::hasNext() const

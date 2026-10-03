@@ -34,19 +34,24 @@ add_library(${PROJECT_NAME} ${LIB_TYPE}
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/RenderEngine
-    ${CMAKE_SOURCE_DIR}/3rd/glew/include
-    ${CMAKE_SOURCE_DIR}/3rd/glfw-3.4/include
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC Common)
 
 target_link_libraries(${PROJECT_NAME} PUBLIC MeshEngine)
 
-target_link_libraries(${PROJECT_NAME} PUBLIC 
-    opengl32
-    glew32
-    glfw
-)
+target_link_libraries(${PROJECT_NAME} PUBLIC glfw)
+
+if(TARGET glew_s)
+    target_link_libraries(${PROJECT_NAME} PUBLIC glew_s)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC GLEW_STATIC)
+else()
+    find_package(GLEW REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PUBLIC GLEW::GLEW)
+endif()
+
+find_package(OpenGL REQUIRED)
+target_link_libraries(${PROJECT_NAME} PUBLIC OpenGL::GL)
 
 if(WIN32 AND BUILD_RENDER_SHARED)
     target_compile_definitions(${PROJECT_NAME} PRIVATE RenderEngine)
