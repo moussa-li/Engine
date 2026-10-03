@@ -2,6 +2,7 @@
 
 #include "Panel/BackGroundSettingPanel.hpp"
 #include "Panel/CameraSettingPanel.hpp"
+#include "Panel/DataTreePanel.hpp"
 #include "Panel/IPanel.hpp"
 #include "Panel/MeshImportPanel.hpp"
 
@@ -14,6 +15,7 @@ namespace EgLab::Platform
         _panels[CameraSettingPanel().getPanelName()] = Common::makeShared<CameraSettingPanel>();
         _panels[BackGroundSettingPanel().getPanelName()] =
             Common::makeShared<BackGroundSettingPanel>();
+        _panels[DataTreePanel().getPanelName()] = Common::makeShared<DataTreePanel>();
     }
 
     Common::Return PanelManager::showPanel(const Common::String& name)
