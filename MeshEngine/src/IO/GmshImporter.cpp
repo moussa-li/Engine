@@ -1,6 +1,8 @@
 #include "MeshEngine/IO/GmshImporter.hpp"
 
+#include <cstdio>
 #include <fstream>
+#include <string>
 
 #include "Common/Log.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
@@ -71,7 +73,7 @@ namespace EgLab::ME
                 double version;
                 int isBinary;
                 int fSize;
-                if (sscanf(line.c_str(), "%lf %d %d", &version, &isBinary, &fSize) != 3)
+                if (std::sscanf(line.c_str(), "%lf %d %d", &version, &isBinary, &fSize) != 3)
                 {
                     LOG(ERROR) << "Node line parse error: " << line;
                     return mesh;
@@ -113,7 +115,7 @@ namespace EgLab::ME
                     IdType id;
                     Scalar x, y, z;
 
-                    if (sscanf(line.c_str(), "%d %lf %lf %lf", &id, &x, &y, &z) != 4)
+                    if (std::sscanf(line.c_str(), "%d %lf %lf %lf", &id, &x, &y, &z) != 4)
                     {
                         LOG(ERROR) << "Node line parse error: " << line;
                         return mesh;
@@ -152,7 +154,7 @@ namespace EgLab::ME
                     // int n = 0;
                     int offset = 0;
                     IdType id;
-                    if (sscanf(str, "%d %d %d%n", &id, &gmshType, &numTags, &offset) < 3)
+                    if (std::sscanf(str, "%d %d %d%n", &id, &gmshType, &numTags, &offset) < 3)
                     {
                         LOG(ERROR) << "Element head parse error: " << line;
                         return mesh;
@@ -164,7 +166,7 @@ namespace EgLab::ME
                     {
                         int tag = 0;
                         int tagOffset = 0;
-                        if (sscanf(str, "%d%n", &tag, &tagOffset) != 1)
+                        if (std::sscanf(str, "%d%n", &tag, &tagOffset) != 1)
                         {
                             LOG(ERROR) << "Element tag parse error: " << line;
                             return mesh;
@@ -192,7 +194,7 @@ namespace EgLab::ME
                     for (int n = 0; n < npe; ++n)
                     {
                         int nodeId = 0, nodeOffset = 0;
-                        if (sscanf(str, "%d%n", &nodeId, &nodeOffset) != 1)
+                        if (std::sscanf(str, "%d%n", &nodeId, &nodeOffset) != 1)
                         {
                             LOG(ERROR) << "Element node parse error: " << line;
                             return mesh;

@@ -109,6 +109,7 @@ namespace EgLab::Platform
                 lastFrame = currentFrame;
 
                 _window->activeContext();
+                updateMeshHighlight();
                 _scene->update(deltaTime);
                 _renderer->update(deltaTime);
                 _renderer->draw(_scene, _camera);
@@ -343,5 +344,72 @@ namespace EgLab::Platform
     void RenderWork::onUpdateMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
     {
         queueMeshUpdate(mesh);
+    }
+
+    void RenderWork::setHighlightedMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
+    {
+        std::lock_guard<std::mutex> lock(_highlightMutex);
+        _requestedHighlightedMesh = mesh;
+    }
+
+    void RenderWork::updateMeshHighlight()
+    {
+        Common::SharedPtr<ME::Mesh> requestedMesh;
+        {
+            std::lock_guard<std::mutex> lock(_highlightMutex);
+            requestedMesh = _requestedHighlightedMesh;
+        }
+
+        if (requestedMesh == _activeHighlightedMesh)
+        {
+            return;
+        }
+
+        if (_highlightPrimitive)
+        {
+            const Common::Return result =
+                _scene->removePrimitive(_highlightShader, _highlightPrimitive);
+            if (result != Common::Return::Succeed)
+            {
+                LOG(WARNING) << "RenderWork::updateMeshHighlight() could not remove old highlight";
+            }
+            _highlightPrimitive = nullptr;
+        }
+        _activeHighlightedMesh = requestedMesh;
+
+        if (!_activeHighlightedMesh)
+        {
+            return;
+        }
+
+        if (!_highlightShader)
+        {
+            Common::String source(
+                "#shader vertex\n"
+                "#version 330 core\n"
+                "layout(location = 0) in vec3 position;\n"
+                "uniform mat4 proj;\n"
+                "uniform mat4 view;\n"
+                "void main() { gl_Position = proj * view * vec4(position, 1.0); }\n"
+                "#shader fragment\n"
+                "#version 330 core\n"
+                "out vec4 color;\n"
+                "uniform vec4 u_Color;\n"
+                "void main() { color = u_Color; }\n");
+            _highlightShader = Common::makeShared<RE::Shader>(source);
+        }
+
+        RE::MeshPrimitiveCreator creator(_activeHighlightedMesh);
+        auto primitive = creator.getPrimitive<RE::RenderLine>();
+        auto line = Common::dynamicSharedPtrCast<RE::RenderLine>(primitive);
+        line->setColor(Common::Vector4f(1.0f, 0.75f, 0.1f, 1.0f));
+        line->setup();
+        _highlightPrimitive = primitive;
+
+        if (_scene->addPrimitive(_highlightShader, _highlightPrimitive) != Common::Return::Succeed)
+        {
+            LOG(ERROR) << "RenderWork::updateMeshHighlight() failed to add mesh highlight";
+            _highlightPrimitive = nullptr;
+        }
     }
 } // namespace EgLab::Platform

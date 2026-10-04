@@ -21,6 +21,12 @@ namespace EgLab::RE
         _indices = Common::move(idxs);
     }
 
+    void RenderLine::setColor(const Common::Vector4f& color)
+    {
+        _color = color;
+        _hasColor = true;
+    }
+
     Common::BBox<Scalar, 3> RenderLine::getBounds() const
     {
         Common::BBox<Scalar, 3> bounds;
@@ -48,10 +54,21 @@ namespace EgLab::RE
     void RenderLine::draw(Common::SharedPtr<Shader> shader)
     {
         shader->bind();
+        if (_hasColor)
+        {
+            shader->setUniform4f("u_Color", _color);
+            glEnable(GL_POLYGON_OFFSET_LINE);
+            glPolygonOffset(-1.0f, -1.0f);
+        }
         _vertexArray->bind();
         _indexBuffer->bind();
-        glLineWidth(1.0f);
+        glLineWidth(_hasColor ? 2.0f : 1.0f);
         glDrawElements(GL_LINES, _indices.size(), GL_UNSIGNED_INT, 0);
+        if (_hasColor)
+        {
+            glLineWidth(1.0f);
+            glDisable(GL_POLYGON_OFFSET_LINE);
+        }
         glDepthMask(GL_TRUE);
         _vertexArray->unBind();
         _indexBuffer->unBind();

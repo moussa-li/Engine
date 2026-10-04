@@ -4,6 +4,8 @@
 
 namespace EgLab::Platform
 {
+    class DataTree;
+
     class DataTreePanel : public IPanel
     {
     public:
@@ -13,5 +15,8 @@ namespace EgLab::Platform
         }
 
         void render() override;
+
+    private:
+        DataTree* _selectedNode{nullptr};
     };
 } // namespace EgLab::Platform

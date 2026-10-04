@@ -26,10 +26,13 @@ namespace EgLab::RE
 
         void setNodes(Common::DynamicArray<CoordType>&&);
         void setIndices(Common::DynamicArray<IdxType>&&);
+        void setColor(const Common::Vector4f& color);
 
     private:
         Common::DynamicArray<CoordType> _vertices;
         Common::DynamicArray<IdxType> _indices;
+        Common::Vector4f _color;
+        bool _hasColor{false};
 
         Common::SharedPtr<VertexArray> _vertexArray;
         Common::SharedPtr<VertexBuffer> _vertexBuffer;

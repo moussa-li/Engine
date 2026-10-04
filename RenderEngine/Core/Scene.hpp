@@ -37,6 +37,8 @@ namespace EgLab::RE
         void update(DeltaTime);
 
         Common::Return addPrimitive(Common::SharedPtr<Shader>, Common::SharedPtr<RenderPrimitive>);
+        Common::Return removePrimitive(const Common::SharedPtr<Shader>&,
+                                       const Common::SharedPtr<RenderPrimitive>&);
 
         const RenderBuckets &getRenderBuckets() const;
 

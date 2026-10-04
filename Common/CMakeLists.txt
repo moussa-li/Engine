@@ -31,9 +31,12 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}
 )
 
-target_link_libraries(${PROJECT_NAME} PUBLIC pthread Assets)
+if(MSVC)
+    target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads Assets)
+else()
+    target_link_libraries(${PROJECT_NAME} PUBLIC pthread Assets)
+endif()
 
 if(WIN32 AND BUILD_COMMON_SHARED)
     target_compile_definitions(${PROJECT_NAME} PRIVATE EgLabCommon)
 endif()
-

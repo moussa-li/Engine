@@ -3,7 +3,8 @@
 #include "Core/Definites.hpp"
 #include "RenderEngine/Core/RenderEngineAPI.hpp"
 #include "RenderEngine/Core/RenderPrimitive.hpp"
-// #include "RenderEngine/Core/VertexArray.hpp"
+#include "RenderEngine/Core/VertexBuffer.hpp"
+#include "RenderEngine/Core/VertexArray.hpp"
 
 namespace EgLab::RE
 {
@@ -11,7 +12,6 @@ namespace EgLab::RE
     class Transform;
     class Texture;
     class VertexArray;
-    class VertexBuffer;
     class ShaderStorageBuffer;
 
     class RenderEngineAPI RenderNode : public RenderPrimitive

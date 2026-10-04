@@ -24,6 +24,7 @@ namespace EgLab::RE
     class Renderer;
     class Scene;
     class Camera;
+    class Shader;
 } // namespace EgLab::RE
 
 namespace EgLab::Platform
@@ -56,6 +57,7 @@ namespace EgLab::Platform
         void subscribe(EventId eventId);
         void onUpdateMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
         void onUpdateMesh(const UpdateMeshParam& params);
+        void setHighlightedMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
 
     private:
         void queueMeshUpdate(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
@@ -63,6 +65,7 @@ namespace EgLab::Platform
         void drainMeshUpdateQueue();
         void drainRenderQueue();
         void materializeMesh(const UpdateMeshParam& params);
+        void updateMeshHighlight();
 
     private:
         std::thread _thread;
@@ -78,6 +81,12 @@ namespace EgLab::Platform
         Common::DynamicArray<UpdateMeshParam> _meshUpdateQueue;
         std::mutex _renderUpdateMutex;
         Common::DynamicArray<RenderPacket> _renderUpdateQueue;
+
+        std::mutex _highlightMutex;
+        Common::SharedPtr<EgLab::ME::Mesh> _requestedHighlightedMesh;
+        Common::SharedPtr<EgLab::ME::Mesh> _activeHighlightedMesh;
+        Common::SharedPtr<RE::Shader> _highlightShader;
+        Common::SharedPtr<RE::RenderPrimitive> _highlightPrimitive;
 
         friend class RenderUpdate;
 

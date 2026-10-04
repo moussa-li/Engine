@@ -163,7 +163,9 @@ namespace EgLab::Common
             size_t bucketSize = buckets.size();
             buckets.resize(newBucketSize);
 
-            typename Element::IteratorT its[newBucketSize];
+            // typename Element::IteratorT its[newBucketSize];
+            DynamicArray<typename Element::IteratorT, StaticSizeAllocator<typename Element::IteratorT>> its;
+            its.resize(newBucketSize);
             for (size_t i = 0; i < bucketSize; ++i)
             {
                 its[i] = buckets[i].begin();
@@ -203,7 +205,7 @@ namespace EgLab::Common
 
         void setItData(
             Iterator<HashTable<T, Hash, Equal, Allocator>> &it, const size_t &bucketIndex,
-            const List<ValueType, StaticSizeAllocator<ListNode<T>>>::ListCIterator &bucketIterator)
+            const typename List<ValueType, StaticSizeAllocator<ListNode<T>>>::ListCIterator &bucketIterator)
         {
             it._bucketIndex = bucketIndex;
             it._bucketIterator = bucketIterator;
@@ -211,7 +213,7 @@ namespace EgLab::Common
 
         void setItData(CIterator<HashTable<T, Hash, Equal, Allocator>> &it,
                        const size_t &bucketIndex,
-                       const List<ValueType, StaticSizeAllocator<ListNode<T>>>::ListCIterator
+                       const typename List<ValueType, StaticSizeAllocator<ListNode<T>>>::ListCIterator
                            &bucketIterator) const
         {
             it._bucketIndex = bucketIndex;

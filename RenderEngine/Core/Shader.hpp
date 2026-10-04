@@ -45,6 +45,8 @@ namespace EgLab::RE
 
         Common::Return setUniform3f(const Common::String& name, const Common::Vector3f& vec);
 
+        Common::Return setUniform4f(const Common::String& name, const Common::Vector4f& vec);
+
     private:
         IdType createShader(const ShaderProgramSource&);
 

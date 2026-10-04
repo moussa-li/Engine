@@ -65,10 +65,11 @@ namespace EgLab::RE
     };
 
     template <ShaderId shaderId>
-    Common::Return ShaderLib(Common::String &buffer)
+    Common::Return getShader(Common::String &buffer)
     {
         RegisterShaderLib(ShaderId::Basic, getBasicShader);
         RegisterShaderLib(ShaderId::Node, getNodeShader);
+        return Common::Return::Succeed;
     }
 
 } // namespace EgLab::RE

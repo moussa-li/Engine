@@ -171,6 +171,12 @@ namespace EgLab::RE
         return Common::Return::Succeed;
     }
 
+    Common::Return Shader::setUniform4f(const Common::String& name, const Common::Vector4f& vec)
+    {
+        glUniform4fv(getUniformLocation(name), 1, vec.data());
+        return Common::Return::Succeed;
+    }
+
     IdType Shader::getUniformLocation(const Common::String& name)
     {
         auto it = _uniformLocationCache.find(name);

@@ -28,6 +28,33 @@ namespace EgLab::RE
         return Common::Return::Succeed;
     }
 
+    Common::Return Scene::removePrimitive(const Common::SharedPtr<Shader>& shader,
+                                          const Common::SharedPtr<RenderPrimitive>& primitive)
+    {
+        auto& bucket = _renderPrimitives[shader];
+        Common::DynamicArray<Common::SharedPtr<RenderPrimitive>> remaining;
+        bool removed = false;
+        for (auto& item : bucket)
+        {
+            if (item == primitive)
+            {
+                removed = true;
+            }
+            else
+            {
+                remaining.pushBack(item);
+            }
+        }
+
+        if (!removed)
+        {
+            return Common::Return::Failed;
+        }
+
+        bucket = Common::move(remaining);
+        return Common::Return::Succeed;
+    }
+
     const RenderBuckets& Scene::getRenderBuckets() const
     {
         return _renderPrimitives;
