@@ -1,14 +1,10 @@
 #pragma once
 
 #include "Common/HashMap.hpp"
+#include "Common/Return.hpp"
 #include "Common/String.hpp"
 #include "Core/Definites.hpp"
 #include "RenderEngine/Core/RenderEngineAPI.hpp"
-
-namespace EgLab::Common
-{
-    enum class Return;
-}
 
 namespace EgLab::RE
 {

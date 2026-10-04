@@ -423,6 +423,48 @@ TEST_F(TestCommon, sharedPtr)
     LOG(INFO) << "end";
 }
 
+TEST_F(TestCommon, sharedPtrPreservesControlBlockAcrossBaseConversion)
+{
+    class Base
+    {
+    public:
+        virtual ~Base() = default;
+    };
+
+    class Derived : public Base
+    {
+    public:
+        explicit Derived(int& destroyed) : _destroyed(destroyed)
+        {
+        }
+
+        ~Derived()
+        {
+            ++_destroyed;
+        }
+
+    private:
+        int& _destroyed;
+    };
+
+    int destroyed = 0;
+    auto derived = EgLab::Common::makeShared<Derived>(destroyed);
+    EgLab::Common::SharedPtr<Base> base;
+    base = derived;
+
+    EXPECT_EQ(base.get(), static_cast<Base*>(derived.get()));
+    derived = nullptr;
+    EXPECT_EQ(destroyed, 0);
+
+    auto casted = EgLab::Common::dynamicSharedPtrCast<Derived>(base);
+    EXPECT_NE(casted.get(), nullptr);
+    base = nullptr;
+    EXPECT_EQ(destroyed, 0);
+
+    casted = nullptr;
+    EXPECT_EQ(destroyed, 1);
+}
+
 TEST_F(TestCommon, uniquePtr)
 {
     class A

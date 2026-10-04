@@ -157,7 +157,7 @@ namespace EgLab::Common
                 strcpy(heap._data, tmp_buffer);
                 is_sso = false;
             }
-            else if (new_len > heap.capacity)
+            else if (new_len >= heap.capacity)
             {
                 size_t new_capacity = new_len * expansionCoefficient;
                 char* new_data = new char[new_capacity];

@@ -14,6 +14,10 @@ namespace EgLab::Platform
             return "DataTree";
         }
 
+        DataTreePanel();
+
+        virtual ~DataTreePanel();
+
         void render() override;
 
     private:

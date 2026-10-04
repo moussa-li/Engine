@@ -51,6 +51,11 @@ namespace EgLab::Platform
         }
     } // namespace
 
+    DataTreePanel::DataTreePanel()
+    {}
+    
+    DataTreePanel::~DataTreePanel(){}
+
     void DataTreePanel::render()
     {
         ImGui::SetNextWindowSize(ImVec2(320, 480), ImGuiCond_FirstUseEver);

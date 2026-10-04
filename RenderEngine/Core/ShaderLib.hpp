@@ -8,6 +8,7 @@
 
 #include <cstddef>
 
+#include "Common/Return.hpp"
 #include "Common/SharedPtr.hpp"
 #include "Common/Singleton.hpp"
 #include "Core/RenderEngineAPI.hpp"
@@ -21,8 +22,6 @@
 
 namespace EgLab::Common
 {
-
-    enum class Return;
     class String;
 
 } // namespace EgLab::Common

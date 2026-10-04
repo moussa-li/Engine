@@ -35,7 +35,7 @@ namespace EgLab::Common
         }
 
     protected:
-        ~IntrusiveRef() {};
+        virtual ~IntrusiveRef() = default;
 
     private:
         inline void addRef()
@@ -65,24 +65,13 @@ namespace EgLab::Common
 
         ~SharedPtr()
         {
-            if (this->_ptr)
-            {
-                TRef *ptr = static_cast<TRef *>(this->_ptr);
-                ptr->subRef();
-                if (ptr->getRef() == 0)
-                {
-                    this->_ptr->~T();
-                    ::operator delete(static_cast<void *>(ptr));
-                    // delete this->_ptr;
-                    this->_ptr = nullptr;
-                }
-            }
+            releaseRef();
         }
 
-        SharedPtr(SharedPtr &&ptr) noexcept
+        SharedPtr(SharedPtr &&ptr) noexcept : PtrBase<T>(ptr._ptr), _ref(ptr._ref)
         {
-            this->operator=(ptr.get());
-            // return *this;
+            ptr._ptr = nullptr;
+            ptr._ref = nullptr;
         }
 
         // explicit SharedPtr(T *ptr)
@@ -94,25 +83,20 @@ namespace EgLab::Common
         //     }
         // }
 
-        SharedPtr(const SharedPtr &other)
+        SharedPtr(const SharedPtr &other) : PtrBase<T>(other._ptr), _ref(other._ref)
         {
-            // TRef *otherPtr = static_cast<TRef *>(other->_ptr);
-            this->_ptr = other._ptr;
-            TRef *ptr = static_cast<TRef *>(this->_ptr);
-            if (ptr)
+            if (_ref)
             {
-                ptr->addRef();
+                _ref->addRef();
             }
         }
 
         template <typename Derived>
-        SharedPtr(const SharedPtr<Derived> &other)
+        SharedPtr(const SharedPtr<Derived> &other) : PtrBase<T>(other._ptr), _ref(other._ref)
         {
-            this->_ptr = other._ptr;
-            auto *ptr = static_cast<SharedPtr<Derived>::TRef *>(this->_ptr);
-            if (ptr)
+            if (_ref)
             {
-                ptr->addRef();
+                _ref->addRef();
             }
         }
 
@@ -120,48 +104,41 @@ namespace EgLab::Common
                   typename = enableIf_t<!isSame<decay_t<U>, SharedPtr<T>>::value &&
                                         !isSame<decay_t<U>, std::nullptr_t>::value>>
         explicit SharedPtr(U &&firstArg, Args &&...args)
-            : PtrBase<T>(static_cast<T *>(new TRef(forward<U>(firstArg), forward<Args>(args)...)))
+            : PtrBase<T>(static_cast<T *>(new TRef(forward<U>(firstArg), forward<Args>(args)...))),
+              _ref(static_cast<TRef *>(this->_ptr))
         {
-            TRef *ptr = static_cast<TRef *>(this->_ptr);
-            ptr->addRef();
+            _ref->addRef();
         }
 
-        SharedPtr(T *ptr) : PtrBase<T>(ptr)
+        SharedPtr(T *ptr) : PtrBase<T>(ptr), _ref(ptr ? static_cast<TRef *>(ptr) : nullptr)
         {
-            TRef *tptr = static_cast<TRef *>(this->_ptr);
-            if (tptr == nullptr) return;
-            tptr->addRef();
+            if (_ref)
+            {
+                _ref->addRef();
+            }
         }
 
         void operator=(T *ptr)
         {
-            TRef *newPtr = static_cast<TRef *>(ptr);
-            TRef *lastPtr = static_cast<TRef *>(this->_ptr);
-            this->_ptr = ptr;
-            if (this->_ptr)
-            {
-                newPtr->addRef();
-            }
-            if (lastPtr)
-            {
-                lastPtr->subRef();
-                if (lastPtr->getRef() == 0)
-                {
-                    delete lastPtr;
-                    lastPtr = nullptr;
-                }
-            }
+            assign(ptr, ptr ? static_cast<TRef *>(ptr) : nullptr);
         }
 
         SharedPtr<T> &operator=(const SharedPtr<T> &other)
         {
-            this->operator=(other.get());
+            assign(other._ptr, other._ref);
             return *this;
         }
 
-        SharedPtr<T> &operator=(SharedPtr<T> &&other)
+        SharedPtr<T> &operator=(SharedPtr<T> &&other) noexcept
         {
-            this->operator=(other.get());
+            if (this != &other)
+            {
+                releaseRef();
+                this->_ptr = other._ptr;
+                _ref = other._ref;
+                other._ptr = nullptr;
+                other._ref = nullptr;
+            }
             return *this;
         }
 
@@ -181,6 +158,30 @@ namespace EgLab::Common
         }
 
     private:
+        void assign(T *ptr, IntrusiveRef *ref)
+        {
+            if (ref)
+            {
+                ref->addRef();
+            }
+            releaseRef();
+            this->_ptr = ptr;
+            _ref = ref;
+        }
+
+        void releaseRef()
+        {
+            if (_ref)
+            {
+                _ref->subRef();
+                if (_ref->getRef() == 0)
+                {
+                    delete _ref;
+                }
+                _ref = nullptr;
+            }
+        }
+
         class TRef : public T, virtual public IntrusiveRef
         {
         public:
@@ -197,16 +198,27 @@ namespace EgLab::Common
             {
             }
 
-            ~TRef()
-            {
-            }
         };
+
+        IntrusiveRef *_ref{nullptr};
 
         template <typename Derived>
         friend class SharedPtr;
 
+        template <class Derived, typename Base>
+        friend SharedPtr<Derived> dynamicSharedPtrCast(SharedPtr<Base> &ptr);
+
         template <class U, class... Args>
         friend SharedPtr<U> makeShared(Args &&...args);
+
+        template <typename Derived>
+        SharedPtr(Derived *ptr, IntrusiveRef *ref) : PtrBase<T>(ptr), _ref(ref)
+        {
+            if (_ref)
+            {
+                _ref->addRef();
+            }
+        }
     };
 
     template <class T, class... Args>
@@ -221,7 +233,7 @@ namespace EgLab::Common
         Derived *derivedPtr = dynamic_cast<Derived *>(ptr.get());
         if (derivedPtr)
         {
-            return SharedPtr<Derived>(derivedPtr);
+            return SharedPtr<Derived>(derivedPtr, ptr._ref);
         }
         return SharedPtr<Derived>(nullptr);
     }
