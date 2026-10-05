@@ -10,6 +10,7 @@
 #include "Common/DynamicArray.hpp"
 #include "Common/SharedPtr.hpp"
 #include "Common/Singleton.hpp"
+#include "Common/Vector.hpp"
 #include "RenderEngine/Core/Definites.hpp"
 #include "RenderEngine/Core/RenderPrimitive.hpp"
 
@@ -35,6 +36,7 @@ namespace EgLab::Platform
         Common::SharedPtr<RE::RenderPrimitive> renderNode;
         Common::SharedPtr<RE::RenderPrimitive> renderLine;
         Common::SharedPtr<RE::RenderPrimitive> renderFace;
+        Common::SharedPtr<ME::Mesh> sourceMesh;
     };
 
     class RenderWork : public EgLab::Common::Singleton<RenderWork>
@@ -58,16 +60,33 @@ namespace EgLab::Platform
         void onUpdateMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
         void onUpdateMesh(const UpdateMeshParam& params);
         void setHighlightedMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
+        void setMeshColor(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
+                          const Common::Vector4f& color);
 
     private:
         void queueMeshUpdate(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
-        void queueMeshUpdate(const UpdateMeshParam& params);
+        void queueMeshUpdate(const UpdateMeshParam& params,
+                             const Common::SharedPtr<EgLab::ME::Mesh>& sourceMesh = nullptr);
         void drainMeshUpdateQueue();
         void drainRenderQueue();
-        void materializeMesh(const UpdateMeshParam& params);
+        void drainMeshColorUpdates();
+        void materializeMesh(const UpdateMeshParam& params,
+                             const Common::SharedPtr<EgLab::ME::Mesh>& sourceMesh);
         void updateMeshHighlight();
 
     private:
+        struct QueuedMeshUpdate
+        {
+            UpdateMeshParam params;
+            Common::SharedPtr<ME::Mesh> sourceMesh;
+        };
+
+        struct MeshColor
+        {
+            Common::SharedPtr<ME::Mesh> mesh;
+            Common::Vector4f color;
+        };
+
         std::thread _thread;
         std::atomic<bool> _running{false};
         Common::SharedPtr<EgLab::RE::Window> _window;
@@ -78,9 +97,14 @@ namespace EgLab::Platform
         CommandBus _renderUpdateBus{1};
 
         std::mutex _meshUpdateMutex;
-        Common::DynamicArray<UpdateMeshParam> _meshUpdateQueue;
+        Common::DynamicArray<QueuedMeshUpdate> _meshUpdateQueue;
         std::mutex _renderUpdateMutex;
         Common::DynamicArray<RenderPacket> _renderUpdateQueue;
+
+        std::mutex _meshColorMutex;
+        Common::DynamicArray<MeshColor> _meshColors;
+        Common::DynamicArray<Common::SharedPtr<ME::Mesh>> _dirtyMeshColors;
+        Common::DynamicArray<RenderPacket> _activeMeshPackets;
 
         std::mutex _highlightMutex;
         Common::SharedPtr<EgLab::ME::Mesh> _requestedHighlightedMesh;

@@ -65,6 +65,16 @@ namespace EgLab::RE
         primitive->setNodes(Common::move(nodes));
 
         primitive->setIndices(_translator.getBoundaryFaceIdx());
+
+        static int testTime = 0;
+        testTime++;  
+        Common::DynamicArray<Common::Vector4f> colors;
+        for(size_t i = 0; i < _translator.getBoundaryFaceIdx().size(); ++i)
+        {
+            colors.pushBack(Common::Vector4f(testTime * 0.1f, 0.5f, 0.5f, 1.0f));
+        }
+        primitive->setColors(Common::move(colors));
+
     }
 
 } // namespace EgLab::RE

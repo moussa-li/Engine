@@ -14,13 +14,14 @@ namespace EgLab::Platform
                                 bool defaultOpen = false)
         {
             const auto children = node.getChildrens();
+            auto* meshData = dynamic_cast<MeshData*>(&node);
             ImGuiTreeNodeFlags flags =
                 ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
             if (&node == selectedNode)
             {
                 flags |= ImGuiTreeNodeFlags_Selected;
             }
-            if (children.empty())
+            if (children.empty() && meshData == nullptr)
             {
                 flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
             }
@@ -35,12 +36,31 @@ namespace EgLab::Platform
             bool selectionChanged = false;
             if (clicked)
             {
-                selectedNode = dynamic_cast<MeshData*>(&node) != nullptr ? &node : nullptr;
+                selectedNode = meshData != nullptr ? &node : nullptr;
                 selectionChanged = true;
             }
 
-            if (isOpen && !children.empty())
+            if (isOpen && (meshData != nullptr || !children.empty()))
             {
+                if (meshData != nullptr)
+                {
+                    ImGui::PushID(meshData);
+                    ImGui::TreeNodeEx("Color", ImGuiTreeNodeFlags_Leaf |
+                                                   ImGuiTreeNodeFlags_NoTreePushOnOpen);
+                    ImGui::SameLine();
+                    const auto& color = meshData->getColor();
+                    float editableColor[] = {color[0], color[1], color[2], color[3]};
+                    if (ImGui::ColorEdit4("##MeshColor", editableColor,
+                                          ImGuiColorEditFlags_NoInputs |
+                                              ImGuiColorEditFlags_AlphaBar))
+                    {
+                        const Common::Vector4f newColor(editableColor[0], editableColor[1],
+                                                        editableColor[2], editableColor[3]);
+                        meshData->setColor(newColor);
+                        RenderWork::instance().setMeshColor(meshData->getMesh(), newColor);
+                    }
+                    ImGui::PopID();
+                }
                 for (DataTree* child : children)
                 {
                     selectionChanged |= renderDataTreeNode(*child, selectedNode);
