@@ -8,6 +8,7 @@
 #include "Common/HashMap.hpp"
 #include "Easy.shader.h"
 #include "Node.shader.h"
+#include "Highlight.shader.h"
 
 namespace EgLab::Common
 {
@@ -38,6 +39,7 @@ namespace EgLab::RE
                 {ShaderId::Basic, Common::String(BASIC_SHADER__DATA, BASIC_SHADER__SIZE)});
             buffers.insert({ShaderId::Node, Common::String(NODE_SHADER__DATA, NODE_SHADER__SIZE)});
             buffers.insert({ShaderId::Easy, Common::String(EASY_SHADER__DATA, EASY_SHADER__SIZE)});
+            buffers.insert({ShaderId::Highlight, Common::String(HIGHLIGHT_SHADER__DATA, HIGHLIGHT_SHADER__SIZE)});
         }
 
         Common::Return getBasicShader(Common::String &buffer)
@@ -62,6 +64,13 @@ namespace EgLab::RE
             auto it = buffers.find(id);
             if (it == buffers.end()) return Common::Return::Failed;
             buffer = (*it).second;
+            return ret;
+        }
+
+        Common::Return getHighlightShader(Common::String &buffer)
+        {
+            Common::Return ret = Common::Return::Succeed;
+            buffer = buffers[ShaderId::Highlight];
             return ret;
         }
     };
@@ -150,6 +159,21 @@ namespace EgLab::RE
             ret = _data->getBasicShader(buffer);
             if (ret != Common::Return::Succeed) return ret;
             it = _data->shaders.insert({ShaderId::Basic, Common::makeShared<Shader>(buffer)});
+        }
+        shader = (*it).second;
+        return ret;
+    }
+
+    Common::Return ShaderLib::getHighlightShader(Common::SharedPtr<Shader> &shader)
+    {
+        Common::Return ret = Common::Return::Succeed;
+        auto it = _data->shaders.find(ShaderId::Highlight);
+        if (it == _data->shaders.end())
+        {
+            Common::String buffer;
+            ret = _data->getHighlightShader(buffer);
+            if (ret != Common::Return::Succeed) return ret;
+            it = _data->shaders.insert({ShaderId::Highlight, Common::makeShared<Shader>(buffer)});
         }
         shader = (*it).second;
         return ret;

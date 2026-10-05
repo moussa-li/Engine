@@ -32,7 +32,8 @@ namespace EgLab::RE
         Basic,
         Node,
         Line,
-        Easy
+        Easy,
+        Highlight,
     };
 
     class RenderEngineAPI ShaderLib : public Common::Singleton<ShaderLib>
@@ -53,6 +54,8 @@ namespace EgLab::RE
         Common::Return getLineShader(Common::SharedPtr<Shader> &);
 
         Common::Return getFaceShader(Common::SharedPtr<Shader> &);
+
+        Common::Return getHighlightShader(Common::SharedPtr<Shader> &);
 
     private:
         ShaderLib();

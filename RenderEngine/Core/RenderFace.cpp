@@ -19,12 +19,41 @@ namespace EgLab::RE
 
     void RenderFace::setup()
     {
+        if (_normals.size() != _vertices.size())
+        {
+            _normals.clear();
+            _normals.resize(_vertices.size());
+
+            for (size_t i = 0; i + 2 < _indices.size(); i += 3)
+            {
+                const IdxType i0 = _indices[i];
+                const IdxType i1 = _indices[i + 1];
+                const IdxType i2 = _indices[i + 2];
+                if (i0 >= _vertices.size() || i1 >= _vertices.size() || i2 >= _vertices.size())
+                {
+                    continue;
+                }
+
+                CoordType normal = (_vertices[i1] - _vertices[i0]).cross(_vertices[i2] - _vertices[i0]);
+                _normals[i0] = _normals[i0] + normal;
+                _normals[i1] = _normals[i1] + normal;
+                _normals[i2] = _normals[i2] + normal;
+            }
+
+            for (size_t i = 0; i < _normals.size(); ++i)
+            {
+                _normals[i].normalize();
+            }
+        }
+
         _vertexArray = Common::makeShared<VertexArray>();
         _vertexArray->bind();
 
         VertexBufferLayout layout;
         _vertexBuffer = Common::makeShared<VertexBuffer>(_vertices);
         layout.pushBack<float>(3, _vertexBuffer);
+        _normalVertexBuffer = Common::makeShared<VertexBuffer>(_normals);
+        layout.pushBack<float>(3, _normalVertexBuffer);
 
         _vertexArray->addBuffer(layout);
         _indexBuffer = Common::makeShared<IndexBuffer>(_indices);

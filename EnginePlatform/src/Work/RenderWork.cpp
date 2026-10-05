@@ -495,26 +495,14 @@ namespace EgLab::Platform
 
         if (!_highlightShader)
         {
-            Common::String source(
-                "#shader vertex\n"
-                "#version 330 core\n"
-                "layout(location = 0) in vec3 position;\n"
-                "uniform mat4 proj;\n"
-                "uniform mat4 view;\n"
-                "void main() { gl_Position = proj * view * vec4(position, 1.0); }\n"
-                "#shader fragment\n"
-                "#version 330 core\n"
-                "out vec4 color;\n"
-                "uniform vec4 u_Color;\n"
-                "void main() { color = u_Color; }\n");
-            _highlightShader = Common::makeShared<RE::Shader>(source);
+            RE::ShaderLib::instance().getHighlightShader(_highlightShader);
         }
 
         RE::MeshPrimitiveCreator creator(_activeHighlightedMesh);
-        auto primitive = creator.getPrimitive<RE::RenderLine>();
-        auto line = Common::dynamicSharedPtrCast<RE::RenderLine>(primitive);
-        line->setColor(Common::Vector4f(1.0f, 0.75f, 0.1f, 1.0f));
-        line->setup();
+        auto primitive = creator.getPrimitive<RE::RenderFace>();
+        auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(primitive);
+        face->setColor(Common::Vector4f(1.0f, 0.75f, 0.1f, 1.0f));
+        primitive->setup();
         _highlightPrimitive = primitive;
 
         if (_scene->addPrimitive(_highlightShader, _highlightPrimitive) != Common::Return::Succeed)
