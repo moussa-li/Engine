@@ -68,10 +68,15 @@ namespace EgLab::RE
 
         static int testTime = 0;
         testTime++;  
+
+        Common::Vector4f color(testTime * 0.1f, 0.5f, 0.5f, 1.0f);
+        IdxType triangleCount = _translator.getBoundaryFaceIdx().size();
+        
         Common::DynamicArray<Common::Vector4f> colors;
-        for(size_t i = 0; i < _translator.getBoundaryFaceIdx().size(); ++i)
+        colors.reserve(triangleCount);
+        for(size_t i = 0; i < triangleCount; ++i)
         {
-            colors.pushBack(Common::Vector4f(testTime * 0.1f, 0.5f, 0.5f, 1.0f));
+            colors.pushBack(color);
         }
         primitive->setColors(Common::move(colors));
 

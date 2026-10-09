@@ -14,10 +14,10 @@ uniform mat4 model;
 
 void main()
 {
-    Normal = mat3(transpose(inverse(model))) * normal;
     FragPos = vec3(vec4(position, 1.0));
-    //FragPos = FragPos + Normal * 0.02f;
+    Normal = normalize(mat3(transpose(inverse(model))) * normal);
     TexCoords = texCoord;
+    FragPos = FragPos + normal * 1.1; // Offset the position along the normal to avoid z-fighting
     gl_Position = proj * view * vec4(FragPos, 1.0);
 };
 
@@ -26,5 +26,5 @@ void main()
 out vec4 color;
 uniform vec4 u_Color;
 void main() { 
-    color = u_Color;
+    color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
 } 

@@ -1,4 +1,5 @@
 #include "RenderEngine/Core/RenderFace.hpp"
+#include "Common/Performance.hpp"
 
 #include <GL/glew.h>
 
@@ -24,6 +25,8 @@ namespace EgLab::RE
             _normals.clear();
             _normals.resize(_vertices.size());
 
+            Common::Performance perf;
+            perf.start();
             for (size_t i = 0; i + 2 < _indices.size(); i += 3)
             {
                 const IdxType i0 = _indices[i];
@@ -44,6 +47,13 @@ namespace EgLab::RE
             {
                 _normals[i].normalize();
             }
+
+            perf.stop();
+
+            LOG(INFO) << "Finished calculating normals for RenderFace: "
+                          << ", end_ms=" << perf.getEndTimestampMs()
+                          << ", elapsed_ms=" << perf.getElapsedMilliseconds();
+
         }
 
         _vertexArray = Common::makeShared<VertexArray>();
@@ -59,6 +69,8 @@ namespace EgLab::RE
         _indexBuffer = Common::makeShared<IndexBuffer>(_indices);
         _vertexArray->unBind();
 
+        Common::Performance perf;
+        perf.start();
         // Prepare color table SSBO. If no colors provided, fill with default gray per triangle.
         const size_t triangleCount = (_indices.size() / 3);
         if (_colors.size() == 0 && triangleCount > 0)
@@ -75,6 +87,12 @@ namespace EgLab::RE
             glGenBuffers(1, &_colorSSBO);
         }
         uploadColors();
+
+            perf.stop();
+
+            LOG(INFO) << "Update Color SSBO for RenderFace: "
+                << ", end_ms=" << perf.getEndTimestampMs()
+                << ", elapsed_ms=" << perf.getElapsedMilliseconds();
     }
 
     void RenderFace::draw(Common::SharedPtr<Shader> shader)
