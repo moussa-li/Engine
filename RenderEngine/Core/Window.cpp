@@ -120,6 +120,12 @@ namespace EgLab::RE
 
         void processMouseButton(int button, int action, float xpos, float ypos)
         {
+            if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+            {
+                _selectDirty = true;
+                _selectX = xpos;
+                _selectY = ypos;
+            }
             if (_cameraController == nullptr) return;
             _cameraController->processMouseButton(button, action, xpos, ypos);
         }
@@ -127,7 +133,11 @@ namespace EgLab::RE
         void processMouseMove(float xpos, float ypos)
         {
             if (_cameraController == nullptr) return;
-            _cameraController->processMouseMove(xpos, ypos);
+            if (_cameraController->processMouseMove(xpos, ypos)) return;
+
+            _selectDirty = true;
+            _selectX = xpos;
+            _selectY = ypos;
         }
 
         void processMouseScroll(float yoffset)
@@ -142,6 +152,10 @@ namespace EgLab::RE
 
         unsigned int _width;
         unsigned int _height;
+
+        bool _selectDirty{false};
+        Scalar _selectX{0.0f};
+        Scalar _selectY{0.0f};
 
         float lastFrame{0.0f};
         float deltaTime{0.0f};
@@ -179,6 +193,15 @@ namespace EgLab::RE
     GLFWwindow *Window::getNative() const
     {
         return _impl->_window;
+    }
+
+    void Window::getWindowSize(unsigned int &width, unsigned int &height) const
+    {
+        int windowWidth = 0;
+        int windowHeight = 0;
+        glfwGetWindowSize(_impl->_window, &windowWidth, &windowHeight);
+        width = static_cast<unsigned int>(windowWidth);
+        height = static_cast<unsigned int>(windowHeight);
     }
 
     void Window::getFramebufferSize(unsigned int &width, unsigned int &height) const
@@ -238,6 +261,18 @@ namespace EgLab::RE
     {
         glfwMakeContextCurrent(nullptr);
         _impl->_mutex.unlock();
+    }
+
+    bool Window::trySelectedPos(Scalar &x, Scalar &y)
+    {
+        if (_impl->_selectDirty)
+        {
+            x = _impl->_selectX;
+            y = _impl->_selectY;
+            _impl->_selectDirty = false;
+            return true;
+        }
+        return false;
     }
 
 } // namespace EgLab::RE

@@ -14,6 +14,7 @@ namespace EgLab::RE
     class Scene;
     class Shader;
     class RenderConfigure;
+    class RenderPrimitive;
 
     struct RenderViewport
     {
@@ -31,6 +32,9 @@ namespace EgLab::RE
 
         void draw(const Common::SharedPtr<Scene> &scene,
                   const Common::SharedPtr<Camera> &camera) const;
+
+        bool tryGetPickedNode(Common::SharedPtr<RenderPrimitive> &primitive,
+                              IdxType &nodeIndex) const;
 
         void setBackGroundColor(const Common::Vector4f &color);
 
@@ -57,6 +61,9 @@ namespace EgLab::RE
         Common::UniquePtr<RenderConfigure> _configure;
 
         Common::Vector4f _backGroundColor;
+
+        mutable Common::SharedPtr<RenderPrimitive> _pickedPrimitive{nullptr};
+        mutable IdxType _pickedNodeIndex{static_cast<IdxType>(-1)};
     };
 
 } // namespace EgLab::RE

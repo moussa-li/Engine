@@ -34,11 +34,20 @@ namespace EgLab::RE
          * @param xpos
          * @param ypos
          */
-        virtual void processMouseButton(int button, int action, float xpos, float ypos) {};
+        virtual bool processMouseButton(int button, int action, float xpos, float ypos)
+        {
+            return false;
+        };
 
-        virtual void processMouseMove(float xpos, float ypos) {};
+        virtual bool processMouseMove(float xpos, float ypos)
+        {
+            return false;
+        };
 
-        virtual void processMouseScroll(float yoffset) {};
+        virtual bool processMouseScroll(float yoffset)
+        {
+            return false;
+        };
 
         virtual bool enableCursor() const
         {

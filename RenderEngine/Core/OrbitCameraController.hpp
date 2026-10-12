@@ -12,11 +12,11 @@ namespace EgLab::RE
         OrbitCameraController() = default;
         virtual ~OrbitCameraController();
 
-        void processMouseButton(int button, int action, float xpos, float ypos) override;
+        bool processMouseButton(int button, int action, float xpos, float ypos) override;
 
-        void processMouseMove(float xpos, float ypos) override;
+        bool processMouseMove(float xpos, float ypos) override;
 
-        void processMouseScroll(float yoffset) override;
+        bool processMouseScroll(float yoffset) override;
 
         virtual bool enableCursor() const override
         {

@@ -17,7 +17,9 @@ namespace EgLab::RE
         virtual ~RenderFace();
         virtual void setup() override;
         virtual void draw(Common::SharedPtr<Shader> shader) override;
+        virtual void drawHighlight(Common::SharedPtr<Shader> shader, IdxType faceIndex) override;
         virtual Common::BBox<Scalar, 3> getBounds() const override;
+        virtual IdxType touch(const PickContext &context) override;
 
         void setNodes(Common::DynamicArray<CoordType> &&);
         void setIndices(Common::DynamicArray<IdxType> &&);
@@ -26,7 +28,7 @@ namespace EgLab::RE
         // Set per-triangle colors. Each element is a vec4 (RGBA).
         // If not called, colors default to gray in setup().
         void setColors(Common::DynamicArray<Common::Vector4f> &&colors);
-        void setColor(const Common::Vector4f& color);
+        void setColor(const Common::Vector4f &color);
         void setHighlightScale(float scale);
 
     private:

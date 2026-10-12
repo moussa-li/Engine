@@ -24,9 +24,9 @@ namespace EgLab::RE
     {
     }
 
-    void OrbitCameraController::processMouseButton(int button, int action, float xpos, float ypos)
+    bool OrbitCameraController::processMouseButton(int button, int action, float xpos, float ypos)
     {
-        if (_camera == nullptr) return;
+        if (_camera == nullptr) return false;
         if (button == _moveButton)
         {
             if (action)
@@ -53,14 +53,17 @@ namespace EgLab::RE
                 _rotate = false;
             }
         }
+        return false;
     }
 
-    void OrbitCameraController::processMouseMove(float xpos, float ypos)
+    bool OrbitCameraController::processMouseMove(float xpos, float ypos)
     {
-        if (_camera == nullptr) return;
+        if (_camera == nullptr) return false;
 
         float xoffset = xpos - _lastXPos;
         float yoffset = ypos - _lastYPos;
+
+        bool isChanged = false;
 
         if (_translate)
         {
@@ -78,6 +81,8 @@ namespace EgLab::RE
             target = target + up * (yoffset * panSensitivity) * zoom;
             _camera->setPosition(pos);
             _camera->setTarget(target);
+
+            isChanged = true;
         }
 
         if (_rotate)
@@ -113,17 +118,19 @@ namespace EgLab::RE
             float distance = (target - position).length();
             position = target - newFront * distance;
             _camera->setPosition(position);
+            isChanged = true;
         }
 
         recalcuteCameraPostition();
 
         _lastXPos = xpos;
         _lastYPos = ypos;
+        return isChanged;
     }
 
-    void OrbitCameraController::processMouseScroll(float yoffset)
+    bool OrbitCameraController::processMouseScroll(float yoffset)
     {
-        if (_camera == nullptr) return;
+        if (_camera == nullptr) return false;
 
         const float zoomSpeed = 1.0f + (_zoomSpeed - 1.0f) * _camera->getZoomSensitivity();
         auto target = _camera->getTarget();
@@ -144,6 +151,7 @@ namespace EgLab::RE
 
         // zoom = std::max(0.1f, std::min(zoom, 1000.0f));
         _camera->setZoom(zoom);
+        return true;
     }
 
     void OrbitCameraController::setPanSensitivity(float sensitivity)

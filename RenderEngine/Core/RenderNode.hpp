@@ -3,8 +3,8 @@
 #include "Core/Definites.hpp"
 #include "RenderEngine/Core/RenderEngineAPI.hpp"
 #include "RenderEngine/Core/RenderPrimitive.hpp"
-#include "RenderEngine/Core/VertexBuffer.hpp"
 #include "RenderEngine/Core/VertexArray.hpp"
+#include "RenderEngine/Core/VertexBuffer.hpp"
 
 namespace EgLab::RE
 {
@@ -20,9 +20,12 @@ namespace EgLab::RE
         virtual ~RenderNode();
         virtual void setup() override;
         virtual void draw(Common::SharedPtr<Shader> shader) override;
+        virtual void drawHighlight(Common::SharedPtr<Shader> shader, IdxType nodeIndex) override;
         virtual Common::BBox<Scalar, 3> getBounds() const override;
 
-        void setNodes(Common::DynamicArray<CoordType>&&);
+        void setNodes(Common::DynamicArray<CoordType> &&);
+
+        virtual IdxType touch(const PickContext &context) override;
 
     private:
         Common::DynamicArray<CoordType> _vertices;

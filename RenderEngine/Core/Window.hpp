@@ -35,11 +35,15 @@ namespace EgLab::RE
 
         GLFWwindow *getNative() const;
 
+        void getWindowSize(unsigned int &width, unsigned int &height) const;
+
         void getFramebufferSize(unsigned int &width, unsigned int &height) const;
 
         void activeContext() const;
 
         void deactiveContext() const;
+
+        bool trySelectedPos(Scalar &x, Scalar &y);
 
     private:
         class Impl;

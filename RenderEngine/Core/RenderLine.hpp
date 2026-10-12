@@ -22,7 +22,9 @@ namespace EgLab::RE
         virtual ~RenderLine();
         virtual void setup() override;
         virtual void draw(Common::SharedPtr<Shader> shader) override;
+        virtual void drawHighlight(Common::SharedPtr<Shader> shader, IdxType lineIndex) override;
         virtual Common::BBox<Scalar, 3> getBounds() const override;
+        virtual IdxType touch(const PickContext& context) override;
 
         void setNodes(Common::DynamicArray<CoordType>&&);
         void setIndices(Common::DynamicArray<IdxType>&&);

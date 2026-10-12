@@ -105,7 +105,7 @@ void main()
     vec4 baseColor = vec4(1.0);
     if (isPureColor)
     {
-        baseColor = vec4(1.0,1.0,0.5,1.0); // u_Color; // Use a fixed color for demonstration
+        baseColor = u_Color;
     }
     else
     {

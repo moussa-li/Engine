@@ -86,6 +86,33 @@ namespace EgLab::RE
                        static_cast<GLsizei>(framebufferHeight));
             camera->setWH(framebufferWidth, framebufferHeight);
 
+            Scalar cursorX = 0.0f;
+            Scalar cursorY = 0.0f;
+            const bool selected = viewport.window->trySelectedPos(cursorX, cursorY);
+            if (selected)
+            {
+                _pickedPrimitive = nullptr;
+                _pickedNodeIndex = static_cast<IdxType>(-1);
+            }
+
+            unsigned int windowWidth = 0;
+            unsigned int windowHeight = 0;
+            viewport.window->getWindowSize(windowWidth, windowHeight);
+            if (windowWidth == 0 || windowHeight == 0)
+            {
+                continue;
+            }
+
+            PickContext pickContext;
+            pickContext.x = cursorX * static_cast<Scalar>(framebufferWidth) / windowWidth -
+                            static_cast<Scalar>(viewport.x);
+            pickContext.y = cursorY * static_cast<Scalar>(framebufferHeight) / windowHeight +
+                            static_cast<Scalar>(viewport.y);
+            pickContext.width = framebufferWidth;
+            pickContext.height = framebufferHeight;
+            pickContext.view = camera->view();
+            pickContext.projection = camera->perspective(scene->getBounds());
+
             for (auto it = renderBuckets.begin(); it.hasNext(); it.next())
             {
                 const auto &shader = it.data().first;
@@ -97,9 +124,49 @@ namespace EgLab::RE
                      primitiveIt.next())
                 {
                     primitiveIt.data()->draw(shader);
+                    if (selected)
+                    {
+                        const IdxType nodeIndex = primitiveIt.data()->touch(pickContext);
+                        if (nodeIndex != static_cast<IdxType>(-1))
+                        {
+                            LOG(INFO) << "Picked node index: " << nodeIndex;
+                            _pickedPrimitive = primitiveIt.data();
+                            _pickedNodeIndex = nodeIndex;
+                        }
+                    }
+                }
+            }
+
+            if (_pickedPrimitive != nullptr && _pickedNodeIndex != static_cast<IdxType>(-1))
+            {
+                for (auto it = renderBuckets.begin(); it.hasNext(); it.next())
+                {
+                    const auto &shader = it.data().first;
+                    const auto &primitives = it.data().second;
+                    for (auto primitiveIt = primitives.begin(); primitiveIt.hasNext();
+                         primitiveIt.next())
+                    {
+                        if (primitiveIt.data() == _pickedPrimitive)
+                        {
+                            primitiveIt.data()->drawHighlight(shader, _pickedNodeIndex);
+                        }
+                    }
                 }
             }
         }
+    }
+
+    bool Renderer::tryGetPickedNode(Common::SharedPtr<RenderPrimitive> &primitive,
+                                    IdxType &nodeIndex) const
+    {
+        if (_pickedPrimitive == nullptr || _pickedNodeIndex == static_cast<IdxType>(-1))
+        {
+            return false;
+        }
+
+        primitive = _pickedPrimitive;
+        nodeIndex = _pickedNodeIndex;
+        return true;
     }
 
     Common::UniquePtr<RenderConfigure> &Renderer::getConfigure()
