@@ -88,24 +88,20 @@ namespace EgLab::Platform
             }
 
             ImGui::PushID(&meshData);
-            if (ImGui::MenuItem("Color"))
+            const auto& color = meshData.getColor();
+            float editableColor[] = {color[0], color[1], color[2], color[3]};
+            if (ImGui::ColorEdit4("Color", editableColor,
+                                  ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar))
             {
-                // ImGui::OpenPopup("Color");
+                Common::Vector4f newColor;
+                for (size_t index = 0; index < 4; ++index)
+                {
+                    newColor[index] = editableColor[index];
+                }
+                meshData.setColor(newColor);
+                RenderWork::instance().setMeshColor(meshData.getMesh(), newColor);
             }
             ImGui::PopID();
-            // ImGui::TreeNodeEx("Color",
-            //                   ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-            // ImGui::SameLine();
-            // const auto& color = meshData.getColor();
-            // float editableColor[] = {color[0], color[1], color[2], color[3]};
-            // if (ImGui::ColorEdit4("##MeshColor", editableColor,
-            //                       ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar))
-            // {
-            //     const Common::Vector4f newColor(editableColor[0], editableColor[1],
-            //                                     editableColor[2], editableColor[3]);
-            //     meshData.setColor(newColor);
-            //     RenderWork::instance().setMeshColor(meshData.getMesh(), newColor);
-            // }
 
             ImGui::EndPopup();
         }
