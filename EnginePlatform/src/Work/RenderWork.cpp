@@ -54,9 +54,10 @@ namespace EgLab::Platform
             auto linePrimitive = creator.getPrimitive<EgLab::RE::RenderLine>();
             auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();
 
-            std::lock_guard<std::mutex> lock(_worker->_renderUpdateMutex);
-            RenderPacket packet = {nodePrimitive, linePrimitive, facePrimitive, _sourceMesh};
-            _worker->_renderUpdateQueue.pushBack(packet);
+            RenderWork::RenderEvent event{};
+            event.type = RenderWork::RenderEventType::RenderPacket;
+            event.packet = {nodePrimitive, linePrimitive, facePrimitive, _sourceMesh};
+            _worker->enqueueRenderEvent(Common::move(event));
             perf.stop();
 
             return Common::Return::Succeed;
@@ -66,6 +67,25 @@ namespace EgLab::Platform
         Common::SharedPtr<ME::Mesh> _mesh;
         Common::SharedPtr<ME::Mesh> _sourceMesh;
         RenderWork* _worker;
+    };
+
+    class RenderEventCommand : public ICommand
+    {
+    public:
+        RenderEventCommand(RenderWork* worker, RenderWork::RenderEvent event)
+            : _worker(worker), _event(Common::move(event))
+        {
+        }
+
+        Common::Return exec() override
+        {
+            _worker->enqueueRenderEvent(Common::move(_event));
+            return Common::Return::Succeed;
+        }
+
+    private:
+        RenderWork* _worker;
+        RenderWork::RenderEvent _event;
     };
 
     RenderWork::RenderWork()
@@ -100,12 +120,6 @@ namespace EgLab::Platform
 
             while (_running.load())
             {
-                // Drain the cross-thread mesh packet queue on the render lane.
-                drainMeshRemovalQueue();
-                drainMeshUpdateQueue();
-
-                drainRenderQueue();
-
                 // UI frame draw and ImGui state update move into the render
                 // worker thread where the GL/GLFW context is started and owned.
                 float currentFrame = _window->getTime();
@@ -113,7 +127,7 @@ namespace EgLab::Platform
                 lastFrame = currentFrame;
 
                 _window->activeContext();
-                drainMeshColorUpdates();
+                drainRenderEvents();
                 updateMeshHighlight();
                 _scene->update(deltaTime);
                 _renderer->update(deltaTime);
@@ -153,15 +167,6 @@ namespace EgLab::Platform
         {
             _thread.join();
         }
-
-        std::lock_guard<std::mutex> lock(_meshUpdateMutex);
-        for (auto it = _meshUpdateQueue.begin(); it.hasNext(); it.next())
-        {
-            delete[] it.data().params.data;
-            it.data().params.data = nullptr;
-            it.data().params.dataSize = 0;
-        }
-        _meshUpdateQueue.clear();
     }
 
     void RenderWork::subscribe(EventId eventId)
@@ -195,13 +200,13 @@ namespace EgLab::Platform
         wire.totalDataSize = pod.totalDataSize;
 
         const uint32_t wireSize = static_cast<uint32_t>(sizeof(MeshPODWireHeader));
-        UpdateMeshParam params{};
-        params.dataSize = wireSize + pod.totalDataSize;
-        params.data = new uint8_t[params.dataSize];
-        std::memcpy(params.data, &wire, wireSize);
-        std::memcpy(params.data + wireSize, pod.data, pod.totalDataSize);
-        queueMeshUpdate(params, mesh);
-        delete[] params.data;
+        RenderEvent event{};
+        event.type = RenderEventType::MeshUpdate;
+        event.mesh = mesh;
+        event.payload.resize(wireSize + pod.totalDataSize);
+        std::memcpy(event.payload.data(), &wire, wireSize);
+        std::memcpy(event.payload.data() + wireSize, pod.data, pod.totalDataSize);
+        queueRenderEvent(Common::move(event));
     }
 
     void RenderWork::queueMeshUpdate(const UpdateMeshParam& params,
@@ -209,144 +214,173 @@ namespace EgLab::Platform
     {
         if (params.dataSize == 0 || params.data == nullptr) return;
 
-        std::lock_guard<std::mutex> lock(_meshUpdateMutex);
-        QueuedMeshUpdate copy{};
-        copy.params = params;
-        copy.params.data = new uint8_t[params.dataSize];
-        std::memcpy(copy.params.data, params.data, params.dataSize);
-        copy.sourceMesh = sourceMesh;
-        _meshUpdateQueue.pushBack(copy);
+        RenderEvent event{};
+        event.type = RenderEventType::MeshUpdate;
+        event.mesh = sourceMesh;
+        event.payload.assign(params.data, params.data + params.dataSize);
+        queueRenderEvent(Common::move(event));
     }
 
-    void RenderWork::drainMeshUpdateQueue()
+    void RenderWork::queueRenderEvent(RenderEvent event)
     {
-        Common::DynamicArray<QueuedMeshUpdate> localPackets;
-        {
-            std::lock_guard<std::mutex> lock(_meshUpdateMutex);
-            while (!_meshUpdateQueue.empty())
-            {
-                localPackets.pushBack(_meshUpdateQueue[0]);
-                for (size_t i = 1; i < _meshUpdateQueue.size(); ++i)
-                {
-                    _meshUpdateQueue[i - 1] = _meshUpdateQueue[i];
-                }
-                _meshUpdateQueue.popBack();
-            }
-        }
-
-        _window->activeContext();
-        for (size_t i = 0; i < localPackets.size(); ++i)
-        {
-            if (localPackets[i].sourceMesh && isMeshRemoved(localPackets[i].sourceMesh.get()))
-            {
-                delete[] localPackets[i].params.data;
-                continue;
-            }
-            materializeMesh(localPackets[i].params, localPackets[i].sourceMesh);
-            delete[] localPackets[i].params.data;
-        }
-        _window->deactiveContext();
+        auto command = Common::SharedPtr<RenderEventCommand>(this, Common::move(event));
+        _renderUpdateBus.dispatch(command);
     }
 
-    void RenderWork::drainRenderQueue()
+    void RenderWork::enqueueRenderEvent(RenderEvent event)
     {
-        Common::DynamicArray<RenderPacket> localPackets;
+        std::lock_guard<std::mutex> lock(_renderEventMutex);
+        _renderEventQueue.push_back(Common::move(event));
+    }
+
+    void RenderWork::drainRenderEvents()
+    {
+        std::deque<RenderEvent> events;
         {
-            std::lock_guard<std::mutex> lock(_renderUpdateMutex);
-            while (!_renderUpdateQueue.empty())
-            {
-                localPackets.pushBack(_renderUpdateQueue[0]);
-                for (size_t i = 1; i < _renderUpdateQueue.size(); ++i)
-                {
-                    _renderUpdateQueue[i - 1] = _renderUpdateQueue[i];
-                }
-                _renderUpdateQueue.popBack();
-            }
+            std::lock_guard<std::mutex> lock(_renderEventMutex);
+            events.swap(_renderEventQueue);
         }
 
-        _window->activeContext();
-        for (size_t i = 0; i < localPackets.size(); ++i)
+        for (auto& event : events)
         {
-            if (localPackets[i].sourceMesh && isMeshRemoved(localPackets[i].sourceMesh.get()))
+            switch (event.type)
             {
-                continue;
-            }
-            auto nodePrimitive = localPackets[i].renderNode;
-            auto linePrimitive = localPackets[i].renderLine;
-            auto facePrimitive = localPackets[i].renderFace;
-            if (localPackets[i].sourceMesh)
+            case RenderEventType::MeshUpdate:
             {
-                Common::Vector4f color(0.8f, 0.8f, 0.8f, 1.0f);
+                if (event.mesh && isMeshRemoved(event.mesh.get()))
                 {
-                    std::lock_guard<std::mutex> lock(_meshColorMutex);
+                    break;
+                }
+                UpdateMeshParam params{};
+                params.dataSize = static_cast<uint32_t>(event.payload.size());
+                params.data = event.payload.data();
+                materializeMesh(params, event.mesh);
+                break;
+            }
+            case RenderEventType::RenderPacket:
+            {
+                RenderPacket& packet = event.packet;
+                if (packet.sourceMesh && isMeshRemoved(packet.sourceMesh.get()))
+                {
+                    break;
+                }
+                if (packet.sourceMesh)
+                {
+                    Common::Vector4f color(0.8f, 0.8f, 0.8f, 1.0f);
                     for (const auto& meshColor : _meshColors)
                     {
-                        if (meshColor.mesh == localPackets[i].sourceMesh)
+                        if (meshColor.mesh == packet.sourceMesh)
                         {
                             color = meshColor.color;
                             break;
                         }
                     }
+                    auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(packet.renderFace);
+                    if (face)
+                    {
+                        face->setColor(color);
+                    }
                 }
-                auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(facePrimitive);
-                if (face)
+                packet.renderNode->setup();
+                packet.renderLine->setup();
+                packet.renderFace->setup();
+
+                Common::SharedPtr<RE::Shader> nodeShader;
+                Common::SharedPtr<RE::Shader> lineShader;
+                Common::SharedPtr<RE::Shader> faceShader;
+                RE::ShaderLib::instance().getNodeShader(nodeShader);
+                RE::ShaderLib::instance().getLineShader(lineShader);
+                RE::ShaderLib::instance().getFaceShader(faceShader);
+                _scene->addPrimitive(nodeShader, packet.renderNode);
+                _scene->addPrimitive(lineShader, packet.renderLine);
+                _scene->addPrimitive(faceShader, packet.renderFace);
+                if (packet.sourceMesh)
                 {
-                    face->setColor(color);
+                    _activeMeshPackets.pushBack(packet);
                 }
+                _camera->fitView(_scene->getBounds(), 2);
+                break;
             }
-            nodePrimitive->setup();
-            linePrimitive->setup();
-            facePrimitive->setup();
-
-            EgLab::Common::SharedPtr<EgLab::RE::Shader> nodeShader;
-            EgLab::RE::ShaderLib::instance().getNodeShader(nodeShader);
-            EgLab::Common::SharedPtr<EgLab::RE::Shader> lineShader;
-            EgLab::RE::ShaderLib::instance().getLineShader(lineShader);
-            EgLab::Common::SharedPtr<EgLab::RE::Shader> faceShader;
-            EgLab::RE::ShaderLib::instance().getFaceShader(faceShader);
-            _scene->addPrimitive(nodeShader, nodePrimitive);
-            _scene->addPrimitive(lineShader, linePrimitive);
-            _scene->addPrimitive(faceShader, facePrimitive);
-            if (localPackets[i].sourceMesh)
+            case RenderEventType::MeshColor:
             {
-                _activeMeshPackets.pushBack(localPackets[i]);
-            }
-            _camera->fitView(_scene->getBounds(), 2);
-        }
-        _window->deactiveContext();
-    }
-
-    void RenderWork::drainMeshColorUpdates()
-    {
-        Common::DynamicArray<Common::SharedPtr<ME::Mesh>> dirtyMeshes;
-        Common::DynamicArray<MeshColor> meshColors;
-        {
-            std::lock_guard<std::mutex> lock(_meshColorMutex);
-            dirtyMeshes = _dirtyMeshColors;
-            _dirtyMeshColors.clear();
-            meshColors = _meshColors;
-        }
-
-        for (const auto& dirtyMesh : dirtyMeshes)
-        {
-            for (const auto& meshColor : meshColors)
-            {
-                if (meshColor.mesh != dirtyMesh)
+                if (!event.mesh || isMeshRemoved(event.mesh.get()))
                 {
-                    continue;
+                    break;
+                }
+                bool found = false;
+                for (auto& meshColor : _meshColors)
+                {
+                    if (meshColor.mesh == event.mesh)
+                    {
+                        meshColor.color = event.color;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    _meshColors.pushBack(MeshColor{event.mesh, event.color});
                 }
                 for (auto& packet : _activeMeshPackets)
                 {
-                    if (packet.sourceMesh != dirtyMesh)
+                    if (packet.sourceMesh != event.mesh)
                     {
                         continue;
                     }
                     auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(packet.renderFace);
                     if (face)
                     {
-                        face->setColor(meshColor.color);
+                        face->setColor(event.color);
                     }
                 }
+                break;
+            }
+            case RenderEventType::MeshRemoval:
+            {
+                if (!event.mesh || isMeshRemoved(event.mesh.get()))
+                {
+                    break;
+                }
+                _removedMeshes.pushBack(event.mesh.get());
+
+                Common::SharedPtr<RE::Shader> nodeShader;
+                Common::SharedPtr<RE::Shader> lineShader;
+                Common::SharedPtr<RE::Shader> faceShader;
+                RE::ShaderLib::instance().getNodeShader(nodeShader);
+                RE::ShaderLib::instance().getLineShader(lineShader);
+                RE::ShaderLib::instance().getFaceShader(faceShader);
+                Common::DynamicArray<RenderPacket> remainingPackets;
+                for (auto packet : _activeMeshPackets)
+                {
+                    if (packet.sourceMesh != event.mesh)
+                    {
+                        remainingPackets.pushBack(packet);
+                        continue;
+                    }
+                    _scene->removePrimitive(nodeShader, packet.renderNode);
+                    _scene->removePrimitive(lineShader, packet.renderLine);
+                    _scene->removePrimitive(faceShader, packet.renderFace);
+                }
+                _activeMeshPackets = Common::move(remainingPackets);
+
+                Common::DynamicArray<MeshColor> remainingColors;
+                for (auto meshColor : _meshColors)
+                {
+                    if (meshColor.mesh != event.mesh)
+                    {
+                        remainingColors.pushBack(meshColor);
+                    }
+                }
+                _meshColors = Common::move(remainingColors);
+                if (_requestedHighlightedMesh == event.mesh)
+                {
+                    _requestedHighlightedMesh = nullptr;
+                }
+                break;
+            }
+            case RenderEventType::Highlight:
+                _requestedHighlightedMesh =
+                    event.mesh && !isMeshRemoved(event.mesh.get()) ? event.mesh : nullptr;
                 break;
             }
         }
@@ -426,8 +460,10 @@ namespace EgLab::Platform
 
     void RenderWork::setHighlightedMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
     {
-        std::lock_guard<std::mutex> lock(_highlightMutex);
-        _requestedHighlightedMesh = mesh;
+        RenderEvent event{};
+        event.type = RenderEventType::Highlight;
+        event.mesh = mesh;
+        queueRenderEvent(Common::move(event));
     }
 
     void RenderWork::setMeshColor(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
@@ -439,36 +475,11 @@ namespace EgLab::Platform
             return;
         }
 
-        std::lock_guard<std::mutex> lock(_meshColorMutex);
-        bool found = false;
-        for (auto& meshColor : _meshColors)
-        {
-            if (meshColor.mesh == mesh)
-            {
-                meshColor.color = color;
-                found = true;
-                break;
-            }
-        }
-        if (!found)
-        {
-            _meshColors.pushBack(MeshColor{mesh, color});
-        }
-
-        bool alreadyDirty = false;
-        for (const auto& dirtyMesh : _dirtyMeshColors)
-        {
-            if (dirtyMesh == mesh)
-            {
-                alreadyDirty = true;
-                break;
-            }
-        }
-        if (!alreadyDirty)
-        {
-            Common::SharedPtr<ME::Mesh> dirtyMesh = mesh;
-            _dirtyMeshColors.pushBack(dirtyMesh);
-        }
+        RenderEvent event{};
+        event.type = RenderEventType::MeshColor;
+        event.mesh = mesh;
+        event.color = color;
+        queueRenderEvent(Common::move(event));
     }
 
     void RenderWork::removeMesh(const Common::SharedPtr<ME::Mesh>& mesh)
@@ -478,30 +489,14 @@ namespace EgLab::Platform
             return;
         }
 
-        {
-            std::lock_guard<std::mutex> lock(_meshRemovalMutex);
-            for (ME::Mesh* removedMesh : _removedMeshes)
-            {
-                if (removedMesh == mesh.get())
-                {
-                    return;
-                }
-            }
-            _removedMeshes.pushBack(mesh.get());
-            Common::SharedPtr<ME::Mesh> queuedMesh = mesh;
-            _meshRemovalQueue.pushBack(Common::move(queuedMesh));
-        }
-
-        std::lock_guard<std::mutex> lock(_highlightMutex);
-        if (_requestedHighlightedMesh == mesh)
-        {
-            _requestedHighlightedMesh = nullptr;
-        }
+        RenderEvent event{};
+        event.type = RenderEventType::MeshRemoval;
+        event.mesh = mesh;
+        queueRenderEvent(Common::move(event));
     }
 
     bool RenderWork::isMeshRemoved(const ME::Mesh* mesh)
     {
-        std::lock_guard<std::mutex> lock(_meshRemovalMutex);
         for (ME::Mesh* removedMesh : _removedMeshes)
         {
             if (removedMesh == mesh)
@@ -512,72 +507,9 @@ namespace EgLab::Platform
         return false;
     }
 
-    void RenderWork::drainMeshRemovalQueue()
-    {
-        Common::DynamicArray<Common::SharedPtr<ME::Mesh>> meshesToRemove;
-        {
-            std::lock_guard<std::mutex> lock(_meshRemovalMutex);
-            meshesToRemove = Common::move(_meshRemovalQueue);
-        }
-        if (meshesToRemove.empty())
-        {
-            return;
-        }
-
-        Common::SharedPtr<RE::Shader> nodeShader;
-        Common::SharedPtr<RE::Shader> lineShader;
-        Common::SharedPtr<RE::Shader> faceShader;
-        RE::ShaderLib::instance().getNodeShader(nodeShader);
-        RE::ShaderLib::instance().getLineShader(lineShader);
-        RE::ShaderLib::instance().getFaceShader(faceShader);
-
-        for (const auto& mesh : meshesToRemove)
-        {
-            Common::DynamicArray<RenderPacket> remainingPackets;
-            for (auto packet : _activeMeshPackets)
-            {
-                if (packet.sourceMesh != mesh)
-                {
-                    remainingPackets.pushBack(packet);
-                    continue;
-                }
-                _scene->removePrimitive(nodeShader, packet.renderNode);
-                _scene->removePrimitive(lineShader, packet.renderLine);
-                _scene->removePrimitive(faceShader, packet.renderFace);
-            }
-            _activeMeshPackets = Common::move(remainingPackets);
-
-            std::lock_guard<std::mutex> lock(_meshColorMutex);
-            Common::DynamicArray<MeshColor> remainingColors;
-            for (auto color : _meshColors)
-            {
-                if (color.mesh != mesh)
-                {
-                    remainingColors.pushBack(color);
-                }
-            }
-            _meshColors = Common::move(remainingColors);
-
-            Common::DynamicArray<Common::SharedPtr<ME::Mesh>> remainingDirtyMeshes;
-            for (auto dirtyMesh : _dirtyMeshColors)
-            {
-                if (dirtyMesh != mesh)
-                {
-                    remainingDirtyMeshes.pushBack(dirtyMesh);
-                }
-            }
-            _dirtyMeshColors = Common::move(remainingDirtyMeshes);
-        }
-    }
-
     void RenderWork::updateMeshHighlight()
     {
-        Common::SharedPtr<ME::Mesh> requestedMesh;
-        {
-            std::lock_guard<std::mutex> lock(_highlightMutex);
-            requestedMesh = _requestedHighlightedMesh;
-        }
-
+        Common::SharedPtr<ME::Mesh> requestedMesh = _requestedHighlightedMesh;
         if (requestedMesh == _activeHighlightedMesh)
         {
             return;
