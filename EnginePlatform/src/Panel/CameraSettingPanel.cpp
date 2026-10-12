@@ -19,6 +19,7 @@ namespace EgLab::Platform
         ImGui::SetNextWindowSize(ImVec2(320, 480), ImGuiCond_FirstUseEver);
         if (ImGui::Begin("Camera Setting", &_show))
         {
+            auto camera = Context::instance().getApplication().camera;
             ImGui::Text("Camera Setting Panel");
             ImGui::Separator();
 
@@ -44,13 +45,22 @@ namespace EgLab::Platform
 
             // ========== Sensitivity ==========
             ImGui::Text("Sensitivity");
-            static float moveSens = 1.0f;
-            static float rotateSens = 1.0f;
-            static float zoomSens = 1.0f;
+            float moveSens = camera ? camera->getMoveSensitivity() : 1.0f;
+            float rotateSens = camera ? camera->getRotateSensitivity() : 1.0f;
+            float zoomSens = camera ? camera->getZoomSensitivity() : 1.0f;
 
-            ImGui::SliderFloat("Move Sensitivity", &moveSens, 0.1f, 5.0f, "%.2f");
-            ImGui::SliderFloat("Rotate Sensitivity", &rotateSens, 0.1f, 5.0f, "%.2f");
-            ImGui::SliderFloat("Zoom Sensitivity", &zoomSens, 0.1f, 5.0f, "%.2f");
+            if (ImGui::SliderFloat("Move Sensitivity", &moveSens, 0.1f, 5.0f, "%.2f") && camera)
+            {
+                camera->setMoveSensitivity(moveSens);
+            }
+            if (ImGui::SliderFloat("Rotate Sensitivity", &rotateSens, 0.1f, 5.0f, "%.2f") && camera)
+            {
+                camera->setRotateSensitivity(rotateSens);
+            }
+            if (ImGui::SliderFloat("Zoom Sensitivity", &zoomSens, 0.1f, 5.0f, "%.2f") && camera)
+            {
+                camera->setZoomSensitivity(zoomSens);
+            }
 
             ImGui::Separator();
 
@@ -70,9 +80,12 @@ namespace EgLab::Platform
                 camTarget[0] = 0.0f;
                 camTarget[1] = 0.0f;
                 camTarget[2] = 0.0f;
-                moveSens = 1.0f;
-                rotateSens = 1.0f;
-                zoomSens = 1.0f;
+                if (camera)
+                {
+                    camera->setMoveSensitivity(1.0f);
+                    camera->setRotateSensitivity(1.0f);
+                    camera->setZoomSensitivity(1.0f);
+                }
             }
 
             ImGui::Separator();

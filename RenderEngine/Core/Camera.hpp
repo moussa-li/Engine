@@ -73,6 +73,18 @@ namespace EgLab::RE
         {
             return _zoom;
         }
+        float getMoveSensitivity() const
+        {
+            return _moveSensitivity;
+        }
+        float getRotateSensitivity() const
+        {
+            return _rotateSensitivity;
+        }
+        float getZoomSensitivity() const
+        {
+            return _zoomSensitivity;
+        }
 
         // --- Setters ---
         void setPosition(const CoordType &pos)
@@ -111,6 +123,18 @@ namespace EgLab::RE
         {
             _zoom = zoom;
         }
+        void setMoveSensitivity(float sensitivity)
+        {
+            _moveSensitivity = sensitivity;
+        }
+        void setRotateSensitivity(float sensitivity)
+        {
+            _rotateSensitivity = sensitivity;
+        }
+        void setZoomSensitivity(float sensitivity)
+        {
+            _zoomSensitivity = sensitivity;
+        }
 
         void setOrientation(Quatf orientation)
         {
@@ -140,6 +164,9 @@ namespace EgLab::RE
 
         float _movementSpeed;
         float _mouseSensitivity;
+        float _moveSensitivity = 1.0f;
+        float _rotateSensitivity = 1.0f;
+        float _zoomSensitivity = 1.0f;
         float _zoom;
 
         unsigned int _width;

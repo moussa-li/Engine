@@ -71,10 +71,11 @@ namespace EgLab::RE
             CoordType target = _camera->getTarget();
             auto zoom = _camera->getZoom();
 
-            pos = pos - right * (xoffset * _panSensitivity) * zoom;
-            pos = pos + up * (yoffset * _panSensitivity) * zoom;
-            target = target - right * (xoffset * _panSensitivity) * zoom;
-            target = target + up * (yoffset * _panSensitivity) * zoom;
+            const float panSensitivity = _panSensitivity * _camera->getMoveSensitivity();
+            pos = pos - right * (xoffset * panSensitivity) * zoom;
+            pos = pos + up * (yoffset * panSensitivity) * zoom;
+            target = target - right * (xoffset * panSensitivity) * zoom;
+            target = target + up * (yoffset * panSensitivity) * zoom;
             _camera->setPosition(pos);
             _camera->setTarget(target);
         }
@@ -83,8 +84,9 @@ namespace EgLab::RE
         {
             auto yaw = _camera->getYaw();
             auto pitch = _camera->getPitch();
-            xoffset *= _orbitSensitivity;
-            yoffset *= _orbitSensitivity;
+            const float orbitSensitivity = _orbitSensitivity * _camera->getRotateSensitivity();
+            xoffset *= orbitSensitivity;
+            yoffset *= orbitSensitivity;
 
             auto up = _camera->getUp();
             auto right = _camera->getRight();
@@ -121,20 +123,23 @@ namespace EgLab::RE
 
     void OrbitCameraController::processMouseScroll(float yoffset)
     {
+        if (_camera == nullptr) return;
+
+        const float zoomSpeed = 1.0f + (_zoomSpeed - 1.0f) * _camera->getZoomSensitivity();
         auto target = _camera->getTarget();
         auto position = _camera->getPosition();
         auto distance = (target - position).length();
-        auto newPos = position + _camera->getFront() * (yoffset * _zoomSpeed);
+        auto newPos = position + _camera->getFront() * (yoffset * zoomSpeed);
         _camera->setPosition(newPos);
 
         auto zoom = _camera->getZoom();
         if (yoffset > 0)
         {
-            zoom /= _zoomSpeed;
+            zoom /= zoomSpeed;
         }
         else if (yoffset < 0)
         {
-            zoom *= _zoomSpeed;
+            zoom *= zoomSpeed;
         }
 
         // zoom = std::max(0.1f, std::min(zoom, 1000.0f));
