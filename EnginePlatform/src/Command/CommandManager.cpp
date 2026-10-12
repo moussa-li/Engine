@@ -6,6 +6,7 @@
 #include <thread>
 
 #include "Command/CommandBus.hpp"
+#include "Command/DeleteMeshCmd.hpp"
 #include "Command/ICommand.hpp"
 #include "Command/ImportMeshCmd.hpp"
 #include "Command/UpdateMeshCmd.hpp"
@@ -64,6 +65,12 @@ namespace EgLab::Platform
 
         void registerCommand()
         {
+            _creator[EventId::MeshDelete] = [](const PacketPOD& pod) {
+                DeleteMeshParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<DeleteMeshCmd>(param);
+            };
+
             _creator[EventId::MeshImport] = [](const PacketPOD& pod) {
                 ImportMeshParam param;
                 std::memcpy(&param, pod.data, sizeof(ImportMeshParam));
@@ -92,6 +99,14 @@ namespace EgLab::Platform
                 return pod;
             };
 
+            _packetCreator[EventId::MeshDelete] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                DeleteMeshParam param{packet.getData<uintptr_t>("meshAddress")};
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
             _packetCreator[EventId::UpdateMesh] = [](const EventPacket& packet) {
                 PacketPOD pod{};
                 const auto& raw = packet.getRawBuffer();
@@ -112,6 +127,7 @@ namespace EgLab::Platform
         void startListen()
         {
             _subscriber.subscrib((uint32_t)EventId::MeshImport);
+            _subscriber.subscrib((uint32_t)EventId::MeshDelete);
             _subscriber.subscrib((uint32_t)EventId::UpdateMesh);
 
             if (_isRunning == true) return;

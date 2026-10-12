@@ -8,8 +8,7 @@ namespace EgLab::Platform
     {
     }
 
-    DataTree::DataTree(const Common::String& name, DataTree* parent)
-        : _name(name), _parent(nullptr)
+    DataTree::DataTree(const Common::String& name, DataTree* parent) : _name(name), _parent(nullptr)
     {
         if (parent != nullptr)
         {
@@ -40,6 +39,41 @@ namespace EgLab::Platform
 
         _childrens.pushBack(child);
         child->_parent = this;
+        return Common::Return::Succeed;
+    }
+
+    Common::Return DataTree::removeTree(DataTree* child)
+    {
+        if (child == nullptr || child == this)
+        {
+            return Common::Return::BadInput;
+        }
+
+        {
+            std::scoped_lock lock(_childrenMutex, child->_childrenMutex);
+            Common::DynamicArray<DataTree*> remaining;
+            bool found = false;
+            for (DataTree* current : _childrens)
+            {
+                if (current == child)
+                {
+                    found = true;
+                }
+                else
+                {
+                    remaining.pushBack(current);
+                }
+            }
+            if (!found || child->_parent != this)
+            {
+                return Common::Return::Failed;
+            }
+
+            _childrens = Common::move(remaining);
+            child->_parent = nullptr;
+        }
+
+        delete child;
         return Common::Return::Succeed;
     }
 

@@ -7,7 +7,6 @@
 
 #include "Common/Protocol.hpp"
 
-
 namespace EgLab::Platform
 {
     struct ImportMeshParam
@@ -21,9 +20,16 @@ namespace EgLab::Platform
         uint8_t* data;
     };
 
+    struct DeleteMeshParam
+    {
+        uintptr_t meshAddress;
+    };
+
     static_assert(std::is_trivially_copyable<ImportMeshParam>::value,
                   "ImportMeshParam must be trivially copyable");
     static_assert(std::is_trivially_copyable<UpdateMeshParam>::value,
                   "UpdateMeshParam must be trivially copyable");
+    static_assert(std::is_trivially_copyable<DeleteMeshParam>::value,
+                  "DeleteMeshParam must be trivially copyable");
 
 } // namespace EgLab::Platform

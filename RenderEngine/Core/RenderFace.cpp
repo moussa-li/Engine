@@ -98,6 +98,10 @@ namespace EgLab::RE
     void RenderFace::draw(Common::SharedPtr<Shader> shader)
     {
         shader->bind();
+        if (_highlightScaleEnabled)
+        {
+            shader->setUniformMat4f("scale", _highlightScaleMatrix);
+        }
         // ensure SSBO is bound before draw
         if (_colorSSBO != 0)
         {
@@ -120,6 +124,7 @@ namespace EgLab::RE
     void RenderFace::setNodes(Common::DynamicArray<CoordType> &&nodes)
     {
         _vertices = Common::move(nodes);
+        updateHighlightScaleMatrix();
     }
     void RenderFace::setIndices(Common::DynamicArray<IdxType> &&idx)
     {
@@ -147,6 +152,47 @@ namespace EgLab::RE
             _colors.pushBack(triangleColor);
         }
         uploadColors();
+    }
+
+    void RenderFace::setHighlightScale(float scale)
+    {
+        _highlightScale = scale;
+        _highlightScaleEnabled = true;
+        updateHighlightScaleMatrix();
+    }
+
+    void RenderFace::updateHighlightScaleMatrix()
+    {
+        _highlightScaleMatrix = Common::Matrix4f::Identity();
+        if (!_highlightScaleEnabled)
+        {
+            return;
+        }
+
+        const auto bounds = getBounds();
+        if (bounds.isEmpty())
+        {
+            return;
+        }
+
+        const CoordType center = (bounds.min() + bounds.max()) * 0.5f;
+
+        Common::Matrix4f translateToCenter = Common::Matrix4f::Identity();
+        translateToCenter[0][3] = center.x();
+        translateToCenter[1][3] = center.y();
+        translateToCenter[2][3] = center.z();
+
+        Common::Matrix4f scaleByFactor = Common::Matrix4f::Identity();
+        scaleByFactor[0][0] = _highlightScale;
+        scaleByFactor[1][1] = _highlightScale;
+        scaleByFactor[2][2] = _highlightScale;
+
+        Common::Matrix4f translateBack = Common::Matrix4f::Identity();
+        translateBack[0][3] = -center.x();
+        translateBack[1][3] = -center.y();
+        translateBack[2][3] = -center.z();
+
+        _highlightScaleMatrix = translateBack * scaleByFactor * translateToCenter;
     }
 
     void RenderFace::uploadColors()

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common/DynamicArray.hpp"
+#include "Common/Matrix.hpp"
 #include "Common/Vector.hpp"
 #include "Core/Definites.hpp"
 #include "RenderEngine/Core/IndexBuffer.hpp"
@@ -26,9 +27,11 @@ namespace EgLab::RE
         // If not called, colors default to gray in setup().
         void setColors(Common::DynamicArray<Common::Vector4f> &&colors);
         void setColor(const Common::Vector4f& color);
+        void setHighlightScale(float scale);
 
     private:
         void uploadColors();
+        void updateHighlightScaleMatrix();
 
         Common::DynamicArray<CoordType> _vertices;
         Common::DynamicArray<CoordType> _normals;
@@ -44,6 +47,9 @@ namespace EgLab::RE
         // Each triangle has a vec4 color (RGBA). Default is gray when not provided.
         Common::DynamicArray<Common::Vector4f> _colors;
         unsigned int _colorSSBO{0};
+        float _highlightScale{1.0f};
+        bool _highlightScaleEnabled{false};
+        Common::Matrix4f _highlightScaleMatrix{Common::Matrix4f::Identity()};
         // SSBO binding point used by shaders. Shaders should declare:
         // layout(std430, binding = 2) buffer ColorTable { vec4 colors[]; };
         static constexpr unsigned int COLOR_SSBO_BINDING = 2;

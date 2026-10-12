@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mutex>
+
 #include "Common/SharedPtr.hpp"
 #include "Core/Application.hpp"
 #include "DataBase/DataTree.hpp"
@@ -37,11 +39,13 @@ namespace EgLab::Platform
 
         Common::Return addMeshData(const Common::SharedPtr<ME::Mesh>& mesh,
                                    const Common::String& name);
+        Common::SharedPtr<ME::Mesh> removeMeshData(const ME::Mesh* mesh);
 
     protected:
         friend class Common::Singleton<Context>;
 
     private:
+        std::mutex _dataTreeMutex;
         DataTree _dataTree{"Context"};
         PanelManager _panelManager;
 

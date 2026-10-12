@@ -1,6 +1,7 @@
 #include "Command/CommandBus.hpp"
 
 #include <Common/DynamicArray.hpp>
+#include <condition_variable>
 #include <queue>
 #include <thread>
 

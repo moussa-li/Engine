@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace EgLab::Platform
 {
 
@@ -8,5 +10,6 @@ namespace EgLab::Platform
         Unknow = 0,
         UpdateMesh = 200001, // Mesh = 2xxxxx
         MeshImport = 200002,
+        MeshDelete = 200003,
     };
 }

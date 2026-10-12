@@ -54,7 +54,6 @@ namespace EgLab::Platform
             auto linePrimitive = creator.getPrimitive<EgLab::RE::RenderLine>();
             auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();
 
-            
             std::lock_guard<std::mutex> lock(_worker->_renderUpdateMutex);
             RenderPacket packet = {nodePrimitive, linePrimitive, facePrimitive, _sourceMesh};
             _worker->_renderUpdateQueue.pushBack(packet);
@@ -102,6 +101,7 @@ namespace EgLab::Platform
             while (_running.load())
             {
                 // Drain the cross-thread mesh packet queue on the render lane.
+                drainMeshRemovalQueue();
                 drainMeshUpdateQueue();
 
                 drainRenderQueue();
@@ -237,6 +237,11 @@ namespace EgLab::Platform
         _window->activeContext();
         for (size_t i = 0; i < localPackets.size(); ++i)
         {
+            if (localPackets[i].sourceMesh && isMeshRemoved(localPackets[i].sourceMesh.get()))
+            {
+                delete[] localPackets[i].params.data;
+                continue;
+            }
             materializeMesh(localPackets[i].params, localPackets[i].sourceMesh);
             delete[] localPackets[i].params.data;
         }
@@ -262,6 +267,10 @@ namespace EgLab::Platform
         _window->activeContext();
         for (size_t i = 0; i < localPackets.size(); ++i)
         {
+            if (localPackets[i].sourceMesh && isMeshRemoved(localPackets[i].sourceMesh.get()))
+            {
+                continue;
+            }
             auto nodePrimitive = localPackets[i].renderNode;
             auto linePrimitive = localPackets[i].renderLine;
             auto facePrimitive = localPackets[i].renderFace;
@@ -288,7 +297,6 @@ namespace EgLab::Platform
             nodePrimitive->setup();
             linePrimitive->setup();
             facePrimitive->setup();
-            
 
             EgLab::Common::SharedPtr<EgLab::RE::Shader> nodeShader;
             EgLab::RE::ShaderLib::instance().getNodeShader(nodeShader);
@@ -345,7 +353,7 @@ namespace EgLab::Platform
     }
 
     void RenderWork::materializeMesh(const UpdateMeshParam& params,
-                                    const Common::SharedPtr<ME::Mesh>& sourceMesh)
+                                     const Common::SharedPtr<ME::Mesh>& sourceMesh)
     {
         if (params.dataSize <= sizeof(MeshPODWireHeader) || params.data == nullptr)
         {
@@ -463,6 +471,105 @@ namespace EgLab::Platform
         }
     }
 
+    void RenderWork::removeMesh(const Common::SharedPtr<ME::Mesh>& mesh)
+    {
+        if (!mesh)
+        {
+            return;
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(_meshRemovalMutex);
+            for (ME::Mesh* removedMesh : _removedMeshes)
+            {
+                if (removedMesh == mesh.get())
+                {
+                    return;
+                }
+            }
+            _removedMeshes.pushBack(mesh.get());
+            Common::SharedPtr<ME::Mesh> queuedMesh = mesh;
+            _meshRemovalQueue.pushBack(Common::move(queuedMesh));
+        }
+
+        std::lock_guard<std::mutex> lock(_highlightMutex);
+        if (_requestedHighlightedMesh == mesh)
+        {
+            _requestedHighlightedMesh = nullptr;
+        }
+    }
+
+    bool RenderWork::isMeshRemoved(const ME::Mesh* mesh)
+    {
+        std::lock_guard<std::mutex> lock(_meshRemovalMutex);
+        for (ME::Mesh* removedMesh : _removedMeshes)
+        {
+            if (removedMesh == mesh)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void RenderWork::drainMeshRemovalQueue()
+    {
+        Common::DynamicArray<Common::SharedPtr<ME::Mesh>> meshesToRemove;
+        {
+            std::lock_guard<std::mutex> lock(_meshRemovalMutex);
+            meshesToRemove = Common::move(_meshRemovalQueue);
+        }
+        if (meshesToRemove.empty())
+        {
+            return;
+        }
+
+        Common::SharedPtr<RE::Shader> nodeShader;
+        Common::SharedPtr<RE::Shader> lineShader;
+        Common::SharedPtr<RE::Shader> faceShader;
+        RE::ShaderLib::instance().getNodeShader(nodeShader);
+        RE::ShaderLib::instance().getLineShader(lineShader);
+        RE::ShaderLib::instance().getFaceShader(faceShader);
+
+        for (const auto& mesh : meshesToRemove)
+        {
+            Common::DynamicArray<RenderPacket> remainingPackets;
+            for (auto packet : _activeMeshPackets)
+            {
+                if (packet.sourceMesh != mesh)
+                {
+                    remainingPackets.pushBack(packet);
+                    continue;
+                }
+                _scene->removePrimitive(nodeShader, packet.renderNode);
+                _scene->removePrimitive(lineShader, packet.renderLine);
+                _scene->removePrimitive(faceShader, packet.renderFace);
+            }
+            _activeMeshPackets = Common::move(remainingPackets);
+
+            std::lock_guard<std::mutex> lock(_meshColorMutex);
+            Common::DynamicArray<MeshColor> remainingColors;
+            for (auto color : _meshColors)
+            {
+                if (color.mesh != mesh)
+                {
+                    remainingColors.pushBack(color);
+                }
+            }
+            _meshColors = Common::move(remainingColors);
+
+            Common::DynamicArray<Common::SharedPtr<ME::Mesh>> remainingDirtyMeshes;
+            for (auto dirtyMesh : _dirtyMeshColors)
+            {
+                if (dirtyMesh != mesh)
+                {
+                    remainingDirtyMeshes.pushBack(dirtyMesh);
+                }
+            }
+            _dirtyMeshColors = Common::move(remainingDirtyMeshes);
+        }
+    }
+
     void RenderWork::updateMeshHighlight()
     {
         Common::SharedPtr<ME::Mesh> requestedMesh;
@@ -502,6 +609,7 @@ namespace EgLab::Platform
         auto primitive = creator.getPrimitive<RE::RenderFace>();
         auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(primitive);
         face->setColor(Common::Vector4f(1.0f, 0.75f, 0.1f, 1.0f));
+        face->setHighlightScale(1.05f);
         primitive->setup();
         _highlightPrimitive = primitive;
 

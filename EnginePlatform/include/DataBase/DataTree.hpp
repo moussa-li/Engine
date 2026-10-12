@@ -17,6 +17,7 @@ namespace EgLab::Platform
         DataTree& operator=(const DataTree&) = delete;
 
         Common::Return addTree(DataTree*);
+        Common::Return removeTree(DataTree*);
 
         const Common::String& getName() const;
         Common::DynamicArray<DataTree*> getChildrens() const;

@@ -62,6 +62,7 @@ namespace EgLab::Platform
         void setHighlightedMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
         void setMeshColor(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
                           const Common::Vector4f& color);
+        void removeMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
 
     private:
         void queueMeshUpdate(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
@@ -70,6 +71,8 @@ namespace EgLab::Platform
         void drainMeshUpdateQueue();
         void drainRenderQueue();
         void drainMeshColorUpdates();
+        void drainMeshRemovalQueue();
+        bool isMeshRemoved(const ME::Mesh* mesh);
         void materializeMesh(const UpdateMeshParam& params,
                              const Common::SharedPtr<EgLab::ME::Mesh>& sourceMesh);
         void updateMeshHighlight();
@@ -105,6 +108,10 @@ namespace EgLab::Platform
         Common::DynamicArray<MeshColor> _meshColors;
         Common::DynamicArray<Common::SharedPtr<ME::Mesh>> _dirtyMeshColors;
         Common::DynamicArray<RenderPacket> _activeMeshPackets;
+
+        std::mutex _meshRemovalMutex;
+        Common::DynamicArray<Common::SharedPtr<ME::Mesh>> _meshRemovalQueue;
+        Common::DynamicArray<ME::Mesh*> _removedMeshes;
 
         std::mutex _highlightMutex;
         Common::SharedPtr<EgLab::ME::Mesh> _requestedHighlightedMesh;
