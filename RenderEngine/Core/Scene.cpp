@@ -52,6 +52,16 @@ namespace EgLab::RE
         }
 
         bucket = Common::move(remaining);
+
+        _sceneBounds.reset();
+        for (auto it = _renderPrimitives.begin(); it.hasNext(); ++it)
+        {
+            for (const auto& remainingPrimitive : it.data().second)
+            {
+                _sceneBounds.merge(remainingPrimitive->getBounds());
+            }
+        }
+
         return Common::Return::Succeed;
     }
 

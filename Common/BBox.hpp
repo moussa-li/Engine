@@ -1,4 +1,5 @@
 #pragma once
+#include "Common/DynamicArray.hpp"
 #include "Common/Vector.hpp"
 
 namespace EgLab::Common
@@ -68,6 +69,61 @@ namespace EgLab::Common
 
             addPoint(other.min());
             addPoint(other.max());
+        }
+
+        DynamicArray<BBox> split(const BBox& other) const
+        {
+            DynamicArray<BBox> pieces;
+            if (_empty) return pieces;
+            if (other._empty)
+            {
+                BBox unchanged = *this;
+                pieces.pushBack(unchanged);
+                return pieces;
+            }
+
+            Vector<Scalar, Dim> intersectionMin;
+            Vector<Scalar, Dim> intersectionMax;
+            for (size_t i = 0; i < Dim; ++i)
+            {
+                intersectionMin[i] = _min[i] > other._min[i] ? _min[i] : other._min[i];
+                intersectionMax[i] = _max[i] < other._max[i] ? _max[i] : other._max[i];
+                if (intersectionMin[i] >= intersectionMax[i])
+                {
+                    BBox unchanged = *this;
+                    pieces.pushBack(unchanged);
+                    return pieces;
+                }
+            }
+
+            auto remainingMin = _min;
+            auto remainingMax = _max;
+            for (size_t i = 0; i < Dim; ++i)
+            {
+                if (remainingMin[i] < intersectionMin[i])
+                {
+                    auto pieceMax = remainingMax;
+                    pieceMax[i] = intersectionMin[i];
+                    BBox piece;
+                    piece.addPoint(remainingMin);
+                    piece.addPoint(pieceMax);
+                    pieces.pushBack(piece);
+                    remainingMin[i] = intersectionMin[i];
+                }
+
+                if (intersectionMax[i] < remainingMax[i])
+                {
+                    auto pieceMin = remainingMin;
+                    pieceMin[i] = intersectionMax[i];
+                    BBox piece;
+                    piece.addPoint(pieceMin);
+                    piece.addPoint(remainingMax);
+                    pieces.pushBack(piece);
+                    remainingMax[i] = intersectionMax[i];
+                }
+            }
+
+            return pieces;
         }
 
     private:
