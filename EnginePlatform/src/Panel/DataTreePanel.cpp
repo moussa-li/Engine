@@ -11,81 +11,166 @@
 
 namespace EgLab::Platform
 {
-    namespace
+    void DataTreePanel::renderMeshNode(MeshData& meshData)
     {
-        bool renderDataTreeNode(DataTree& node, DataTree*& selectedNode, uintptr_t& meshToDelete,
-                                bool defaultOpen = false)
+        const auto& mesh = meshData.getMesh();
+        size_t selectedIndex = _selectedMeshes.size();
+        for (size_t index = 0; index < _selectedMeshes.size(); ++index)
         {
-            const auto children = node.getChildrens();
-            auto* meshData = dynamic_cast<MeshData*>(&node);
-            ImGuiTreeNodeFlags flags =
-                ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
-            if (&node == selectedNode)
+            if (_selectedMeshes[index] == mesh)
             {
-                flags |= ImGuiTreeNodeFlags_Selected;
+                selectedIndex = index;
+                break;
             }
-            if (children.empty() && meshData == nullptr)
-            {
-                flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-            }
-            if (defaultOpen)
-            {
-                flags |= ImGuiTreeNodeFlags_DefaultOpen;
-            }
-
-            const bool isOpen = ImGui::TreeNodeEx(&node, flags, "%s", node.getName().c_str());
-            const bool clicked = ImGui::IsItemClicked();
-            bool selectionChanged = false;
-            if (clicked)
-            {
-                selectedNode = meshData != nullptr ? &node : nullptr;
-                selectionChanged = true;
-            }
-
-            if (meshData != nullptr && ImGui::BeginPopupContextItem("MeshContextMenu"))
-            {
-                if (ImGui::MenuItem("delete Mesh"))
-                {
-                    meshToDelete = reinterpret_cast<uintptr_t>(meshData->getMesh().get());
-                    if (selectedNode == &node)
-                    {
-                        selectedNode = nullptr;
-                        selectionChanged = true;
-                    }
-                }
-                ImGui::EndPopup();
-            }
-
-            if (isOpen && (meshData != nullptr || !children.empty()))
-            {
-                if (meshData != nullptr)
-                {
-                    ImGui::PushID(meshData);
-                    ImGui::TreeNodeEx(
-                        "Color", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                    ImGui::SameLine();
-                    const auto& color = meshData->getColor();
-                    float editableColor[] = {color[0], color[1], color[2], color[3]};
-                    if (ImGui::ColorEdit4(
-                            "##MeshColor", editableColor,
-                            ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar))
-                    {
-                        const Common::Vector4f newColor(editableColor[0], editableColor[1],
-                                                        editableColor[2], editableColor[3]);
-                        meshData->setColor(newColor);
-                        RenderWork::instance().setMeshColor(meshData->getMesh(), newColor);
-                    }
-                    ImGui::PopID();
-                }
-                for (DataTree* child : children)
-                {
-                    selectionChanged |= renderDataTreeNode(*child, selectedNode, meshToDelete);
-                }
-                ImGui::TreePop();
-            }
-            return selectionChanged;
         }
-    } // namespace
+        const bool isSelected = selectedIndex < _selectedMeshes.size();
+        const bool isOpen = renderCommonNode(meshData, isSelected);
+        const bool isClicked = ImGui::IsItemClicked(ImGuiMouseButton_Left);
+
+        if (isClicked)
+        {
+            const bool shiftDown = ImGui::GetIO().KeyShift;
+            if (!shiftDown)
+            {
+                _selectedMeshes.clear();
+                auto selectedMesh = mesh;
+                _selectedMeshes.pushBack(selectedMesh);
+            }
+            else if (!isSelected)
+            {
+                auto selectedMesh = mesh;
+                _selectedMeshes.pushBack(selectedMesh);
+            }
+            else
+            {
+                Common::DynamicArray<Common::SharedPtr<ME::Mesh>> remainingMeshes;
+                for (size_t index = 0; index < _selectedMeshes.size(); ++index)
+                {
+                    if (index != selectedIndex)
+                    {
+                        auto selectedMesh = _selectedMeshes[index];
+                        remainingMeshes.pushBack(selectedMesh);
+                    }
+                }
+                _selectedMeshes = Common::move(remainingMeshes);
+            }
+            RenderWork::instance().setHighlightedMeshes(_selectedMeshes);
+        }
+
+        if (ImGui::BeginPopupContextItem())
+        {
+            if (ImGui::MenuItem("delete Mesh"))
+            {
+                Common::DynamicArray<Common::SharedPtr<ME::Mesh>> meshesToDelete;
+                if (isSelected)
+                {
+                    for (size_t index = 0; index < _selectedMeshes.size(); ++index)
+                    {
+                        auto selectedMesh = _selectedMeshes[index];
+                        meshesToDelete.pushBack(selectedMesh);
+                    }
+                }
+                else
+                {
+                    auto meshToDelete = mesh;
+                    meshesToDelete.pushBack(meshToDelete);
+                }
+
+                _selectedMeshes.clear();
+                RenderWork::instance().setHighlightedMeshes(_selectedMeshes);
+                for (size_t index = 0; index < meshesToDelete.size(); ++index)
+                {
+                    auto meshToDelete = reinterpret_cast<uintptr_t>(meshesToDelete[index].get());
+                    EventPacket packet;
+                    packet.setData("meshAddress", meshToDelete);
+                    CommandManager::instance().call(EventId::MeshDelete, packet);
+                }
+            }
+
+            ImGui::PushID(&meshData);
+            if (ImGui::MenuItem("Color"))
+            {
+                // ImGui::OpenPopup("Color");
+            }
+            ImGui::PopID();
+            // ImGui::TreeNodeEx("Color",
+            //                   ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+            // ImGui::SameLine();
+            // const auto& color = meshData.getColor();
+            // float editableColor[] = {color[0], color[1], color[2], color[3]};
+            // if (ImGui::ColorEdit4("##MeshColor", editableColor,
+            //                       ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar))
+            // {
+            //     const Common::Vector4f newColor(editableColor[0], editableColor[1],
+            //                                     editableColor[2], editableColor[3]);
+            //     meshData.setColor(newColor);
+            //     RenderWork::instance().setMeshColor(meshData.getMesh(), newColor);
+            // }
+
+            ImGui::EndPopup();
+        }
+
+        if (isOpen)
+        {
+            // ImGui::PushID(&meshData);
+            // ImGui::TreeNodeEx("Color",
+            //                   ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+            // ImGui::SameLine();
+            // const auto& color = meshData.getColor();
+            // float editableColor[] = {color[0], color[1], color[2], color[3]};
+            // if (ImGui::ColorEdit4("##MeshColor", editableColor,
+            //                       ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar))
+            // {
+            //     const Common::Vector4f newColor(editableColor[0], editableColor[1],
+            //                                     editableColor[2], editableColor[3]);
+            //     meshData.setColor(newColor);
+            //     RenderWork::instance().setMeshColor(meshData.getMesh(), newColor);
+            // }
+            // ImGui::PopID();
+        }
+    }
+
+    bool DataTreePanel::renderCommonNode(DataTree& node, bool isSelected)
+    {
+        const auto children = node.getChildrens();
+        ImGuiTreeNodeFlags flags =
+            ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+        if (isSelected)
+        {
+            flags |= ImGuiTreeNodeFlags_Selected;
+        }
+        if (children.empty())
+        {
+            flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+        }
+        // if (defaultOpen)
+        // {
+        //     flags |= ImGuiTreeNodeFlags_DefaultOpen;
+        // }
+
+        const bool isOpen = ImGui::TreeNodeEx(&node, flags, "%s", node.getName().c_str());
+        return isOpen;
+    }
+
+    void DataTreePanel::renderNode(DataTree& node)
+    {
+        auto* meshData = dynamic_cast<MeshData*>(&node);
+        if (meshData != nullptr)
+        {
+            return renderMeshNode(*meshData);
+        }
+
+        const auto children = node.getChildrens();
+        const auto isOpen = renderCommonNode(node);
+        if (isOpen && (!children.empty()))
+        {
+            for (DataTree* child : children)
+            {
+                renderNode(*child);
+            }
+            ImGui::TreePop();
+        }
+    }
 
     DataTreePanel::DataTreePanel()
     {
@@ -101,19 +186,12 @@ namespace EgLab::Platform
         if (ImGui::Begin("Data Tree", &_show))
         {
             // std::lock_guard<std::mutex> lock(Context::instance().getDataTreeMutex());
-            uintptr_t meshToDelete = 0;
-            if (renderDataTreeNode(Context::instance().getDataTree(), _selectedNode, meshToDelete,
-                                   true))
+            renderNode(Context::instance().getDataTree());
+            if (!_selectedMeshes.empty() && ImGui::IsWindowHovered() &&
+                ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())
             {
-                auto* meshData = dynamic_cast<MeshData*>(_selectedNode);
-                RenderWork::instance().setHighlightedMesh(
-                    meshData == nullptr ? Common::SharedPtr<ME::Mesh>() : meshData->getMesh());
-            }
-            if (meshToDelete != 0)
-            {
-                EventPacket packet;
-                packet.setData("meshAddress", meshToDelete);
-                CommandManager::instance().call(EventId::MeshDelete, packet);
+                _selectedMeshes.clear();
+                RenderWork::instance().setHighlightedMeshes(_selectedMeshes);
             }
         }
         ImGui::End();

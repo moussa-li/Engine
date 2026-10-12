@@ -61,6 +61,8 @@ namespace EgLab::Platform
         void onUpdateMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
         void onUpdateMesh(const UpdateMeshParam& params);
         void setHighlightedMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
+        void setHighlightedMeshes(
+            const Common::DynamicArray<Common::SharedPtr<EgLab::ME::Mesh>>& meshes);
         void setMeshColor(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
                           const Common::Vector4f& color);
         void removeMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
@@ -80,6 +82,7 @@ namespace EgLab::Platform
             RenderEventType type{RenderEventType::MeshUpdate};
             std::vector<uint8_t> payload;
             Common::SharedPtr<ME::Mesh> mesh;
+            Common::DynamicArray<Common::SharedPtr<ME::Mesh>> meshes;
             Common::Vector4f color;
             RenderPacket packet;
         };
@@ -117,10 +120,10 @@ namespace EgLab::Platform
 
         Common::DynamicArray<ME::Mesh*> _removedMeshes;
 
-        Common::SharedPtr<EgLab::ME::Mesh> _requestedHighlightedMesh;
-        Common::SharedPtr<EgLab::ME::Mesh> _activeHighlightedMesh;
+        Common::DynamicArray<Common::SharedPtr<EgLab::ME::Mesh>> _requestedHighlightedMeshes;
+        Common::DynamicArray<Common::SharedPtr<EgLab::ME::Mesh>> _activeHighlightedMeshes;
         Common::SharedPtr<RE::Shader> _highlightShader;
-        Common::SharedPtr<RE::RenderPrimitive> _highlightPrimitive;
+        Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _highlightPrimitives;
 
         friend class RenderUpdate;
 

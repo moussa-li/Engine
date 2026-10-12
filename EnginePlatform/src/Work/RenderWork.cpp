@@ -372,15 +372,28 @@ namespace EgLab::Platform
                     }
                 }
                 _meshColors = Common::move(remainingColors);
-                if (_requestedHighlightedMesh == event.mesh)
+                Common::DynamicArray<Common::SharedPtr<ME::Mesh>> remainingMeshes;
+                for (size_t index = 0; index < _requestedHighlightedMeshes.size(); ++index)
                 {
-                    _requestedHighlightedMesh = nullptr;
+                    if (_requestedHighlightedMeshes[index] != event.mesh)
+                    {
+                        auto mesh = _requestedHighlightedMeshes[index];
+                        remainingMeshes.pushBack(mesh);
+                    }
                 }
+                _requestedHighlightedMeshes = Common::move(remainingMeshes);
                 break;
             }
             case RenderEventType::Highlight:
-                _requestedHighlightedMesh =
-                    event.mesh && !isMeshRemoved(event.mesh.get()) ? event.mesh : nullptr;
+                _requestedHighlightedMeshes.clear();
+                for (size_t index = 0; index < event.meshes.size(); ++index)
+                {
+                    auto mesh = event.meshes[index];
+                    if (mesh && !isMeshRemoved(mesh.get()))
+                    {
+                        _requestedHighlightedMeshes.pushBack(mesh);
+                    }
+                }
                 break;
             }
         }
@@ -460,9 +473,21 @@ namespace EgLab::Platform
 
     void RenderWork::setHighlightedMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
     {
+        Common::DynamicArray<Common::SharedPtr<ME::Mesh>> meshes;
+        if (mesh)
+        {
+            auto selectedMesh = mesh;
+            meshes.pushBack(selectedMesh);
+        }
+        setHighlightedMeshes(meshes);
+    }
+
+    void RenderWork::setHighlightedMeshes(
+        const Common::DynamicArray<Common::SharedPtr<EgLab::ME::Mesh>>& meshes)
+    {
         RenderEvent event{};
         event.type = RenderEventType::Highlight;
-        event.mesh = mesh;
+        event.meshes = meshes;
         queueRenderEvent(Common::move(event));
     }
 
@@ -509,25 +534,31 @@ namespace EgLab::Platform
 
     void RenderWork::updateMeshHighlight()
     {
-        Common::SharedPtr<ME::Mesh> requestedMesh = _requestedHighlightedMesh;
-        if (requestedMesh == _activeHighlightedMesh)
+        bool highlightsMatch =
+            _requestedHighlightedMeshes.size() == _activeHighlightedMeshes.size();
+        for (size_t index = 0; highlightsMatch && index < _requestedHighlightedMeshes.size();
+             ++index)
+        {
+            highlightsMatch = _requestedHighlightedMeshes[index] == _activeHighlightedMeshes[index];
+        }
+        if (highlightsMatch)
         {
             return;
         }
 
-        if (_highlightPrimitive)
+        for (size_t index = 0; index < _highlightPrimitives.size(); ++index)
         {
-            const Common::Return result =
-                _scene->removePrimitive(_highlightShader, _highlightPrimitive);
+            auto primitive = _highlightPrimitives[index];
+            const Common::Return result = _scene->removePrimitive(_highlightShader, primitive);
             if (result != Common::Return::Succeed)
             {
                 LOG(WARNING) << "RenderWork::updateMeshHighlight() could not remove old highlight";
             }
-            _highlightPrimitive = nullptr;
         }
-        _activeHighlightedMesh = requestedMesh;
+        _highlightPrimitives.clear();
+        _activeHighlightedMeshes = _requestedHighlightedMeshes;
 
-        if (!_activeHighlightedMesh)
+        if (_activeHighlightedMeshes.empty())
         {
             return;
         }
@@ -537,18 +568,22 @@ namespace EgLab::Platform
             RE::ShaderLib::instance().getHighlightShader(_highlightShader);
         }
 
-        RE::MeshPrimitiveCreator creator(_activeHighlightedMesh);
-        auto primitive = creator.getPrimitive<RE::RenderFace>();
-        auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(primitive);
-        face->setColor(Common::Vector4f(1.0f, 0.75f, 0.1f, 1.0f));
-        face->setHighlightScale(1.05f);
-        primitive->setup();
-        _highlightPrimitive = primitive;
-
-        if (_scene->addPrimitive(_highlightShader, _highlightPrimitive) != Common::Return::Succeed)
+        for (size_t index = 0; index < _activeHighlightedMeshes.size(); ++index)
         {
-            LOG(ERROR) << "RenderWork::updateMeshHighlight() failed to add mesh highlight";
-            _highlightPrimitive = nullptr;
+            auto mesh = _activeHighlightedMeshes[index];
+            RE::MeshPrimitiveCreator creator(mesh);
+            auto primitive = creator.getPrimitive<RE::RenderFace>();
+            auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(primitive);
+            face->setColor(Common::Vector4f(1.0f, 0.75f, 0.1f, 1.0f));
+            face->setHighlightScale(1.05f);
+            primitive->setup();
+
+            if (_scene->addPrimitive(_highlightShader, primitive) != Common::Return::Succeed)
+            {
+                LOG(ERROR) << "RenderWork::updateMeshHighlight() failed to add mesh highlight";
+                continue;
+            }
+            _highlightPrimitives.pushBack(primitive);
         }
     }
 } // namespace EgLab::Platform
