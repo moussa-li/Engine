@@ -17,6 +17,16 @@ namespace EgLab::RE
     {
     }
 
+    MeshToTriFace& MeshPrimitiveCreator::getTranslator()
+    {
+        return _translator;
+    }
+
+    const MeshToTriFace& MeshPrimitiveCreator::getTranslator() const
+    {
+        return _translator;
+    }
+
     void MeshPrimitiveCreator::updateData(Common::SharedPtr<RenderNode> primitive)
     {
         ME::MeshIterator meshIt(*_mesh);
@@ -65,21 +75,21 @@ namespace EgLab::RE
         primitive->setNodes(Common::move(nodes));
 
         primitive->setIndices(_translator.getBoundaryFaceIdx());
+        primitive->setFaceLocations(_translator.getBoundaryFaceLocations());
 
         static int testTime = 0;
-        testTime++;  
+        testTime++;
 
         Common::Vector4f color(testTime * 0.1f, 0.5f, 0.5f, 1.0f);
         IdxType triangleCount = _translator.getBoundaryFaceIdx().size();
-        
+
         Common::DynamicArray<Common::Vector4f> colors;
         colors.reserve(triangleCount);
-        for(size_t i = 0; i < triangleCount; ++i)
+        for (size_t i = 0; i < triangleCount; ++i)
         {
             colors.pushBack(color);
         }
         primitive->setColors(Common::move(colors));
-
     }
 
 } // namespace EgLab::RE

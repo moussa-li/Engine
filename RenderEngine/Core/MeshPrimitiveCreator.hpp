@@ -14,6 +14,9 @@ namespace EgLab::RE
 
         ~MeshPrimitiveCreator();
 
+        MeshToTriFace& getTranslator();
+        const MeshToTriFace& getTranslator() const;
+
     protected:
         virtual void updateData(Common::SharedPtr<RenderNode>);
         virtual void updateData(Common::SharedPtr<RenderLine>);

@@ -9,6 +9,7 @@
  */
 
 #include <cstddef>
+#include <type_traits>
 
 #include "Common/CommonAPI.hpp"
 #include "Common/PtrBase.hpp"
@@ -16,6 +17,19 @@
 
 namespace EgLab::Common
 {
+    template <typename T>
+    class SharedPtr;
+
+    template <typename T>
+    struct IsSharedPtr : FalseType
+    {
+    };
+
+    template <typename T>
+    struct IsSharedPtr<SharedPtr<T>> : TrueType
+    {
+    };
+
     template <typename T, typename = void>
     struct HasRefMember : FalseType
     {
@@ -91,7 +105,8 @@ namespace EgLab::Common
             }
         }
 
-        template <typename Derived>
+        template <typename Derived,
+                  typename = enableIf_t<std::is_convertible<Derived *, T *>::value>>
         SharedPtr(const SharedPtr<Derived> &other) : PtrBase<T>(other._ptr), _ref(other._ref)
         {
             if (_ref)
@@ -100,8 +115,16 @@ namespace EgLab::Common
             }
         }
 
+        template <typename Derived,
+                  typename = enableIf_t<std::is_convertible<Derived *, T *>::value>>
+        SharedPtr(SharedPtr<Derived> &&other) noexcept : PtrBase<T>(other._ptr), _ref(other._ref)
+        {
+            other._ptr = nullptr;
+            other._ref = nullptr;
+        }
+
         template <typename U, typename... Args,
-                  typename = enableIf_t<!isSame<decay_t<U>, SharedPtr<T>>::value &&
+                  typename = enableIf_t<!IsSharedPtr<decay_t<U>>::value &&
                                         !isSame<decay_t<U>, std::nullptr_t>::value>>
         explicit SharedPtr(U &&firstArg, Args &&...args)
             : PtrBase<T>(static_cast<T *>(new TRef(forward<U>(firstArg), forward<Args>(args)...))),
@@ -139,6 +162,26 @@ namespace EgLab::Common
                 other._ptr = nullptr;
                 other._ref = nullptr;
             }
+            return *this;
+        }
+
+        template <typename Derived,
+                  typename = enableIf_t<std::is_convertible<Derived *, T *>::value>>
+        SharedPtr<T> &operator=(const SharedPtr<Derived> &other)
+        {
+            assign(other._ptr, other._ref);
+            return *this;
+        }
+
+        template <typename Derived,
+                  typename = enableIf_t<std::is_convertible<Derived *, T *>::value>>
+        SharedPtr<T> &operator=(SharedPtr<Derived> &&other) noexcept
+        {
+            releaseRef();
+            this->_ptr = other._ptr;
+            _ref = other._ref;
+            other._ptr = nullptr;
+            other._ref = nullptr;
             return *this;
         }
 
@@ -197,7 +240,6 @@ namespace EgLab::Common
             TRef(T &&other) : T(other)
             {
             }
-
         };
 
         IntrusiveRef *_ref{nullptr};

@@ -9,16 +9,22 @@ namespace EgLab::RE
     class MeshToTriFace::Impl
     {
     public:
-        Common::DynamicArray<Common::SharedPtr<ME::Mesh>> _meshes;
         Common::SharedPtr<ME::Mesh> _mesh;
         Common::DynamicArray<IdxType> _boundaryFaceIdx;
         Common::DynamicArray<IdxType> _boundaryLineIdx;
+        Common::DynamicArray<ME::ElemFaceLocation> _boundaryFaceLocations;
+        Common::DynamicArray<ME::ElemFaceEdgeLocation> _boundaryLineLocations;
 
         bool _dirty{false};
 
         void setup()
         {
             _dirty = false;
+            _boundaryFaceIdx.clear();
+            _boundaryLineIdx.clear();
+            _boundaryFaceLocations.clear();
+            _boundaryLineLocations.clear();
+
             ME::ExtractSurface extractor(_mesh);
             auto faceIndices = extractor.getSurface();
 
@@ -30,8 +36,21 @@ namespace EgLab::RE
                 auto& elemId = faceIdxPair.first;
                 auto& faceIdx = faceIdxPair.second;
                 ME::ElemFaceGetter getter(_mesh->getElemById(elemId));
-                _boundaryFaceIdx.pushBack(getter.getNodes(faceIdx));
-                _boundaryLineIdx.pushBack(getter.getLineNodes(faceIdx));
+                auto faceNodes = getter.getNodes(faceIdx);
+                auto lineNodes = getter.getLineNodes(faceIdx);
+                const IdxType triangleCount = static_cast<IdxType>(faceNodes.size() / 3);
+                const IdxType edgeCount = static_cast<IdxType>(lineNodes.size() / 2);
+
+                _boundaryFaceIdx.pushBack(Common::move(faceNodes));
+                _boundaryLineIdx.pushBack(Common::move(lineNodes));
+                for (IdxType triangle = 0; triangle < triangleCount; ++triangle)
+                {
+                    _boundaryFaceLocations.pushBack({elemId, faceIdx});
+                }
+                for (IdxType edge = 0; edge < edgeCount; ++edge)
+                {
+                    _boundaryLineLocations.pushBack({elemId, faceIdx, edge});
+                }
             }
 
             for (int i = 0; i < _boundaryFaceIdx.size(); i++)
@@ -57,7 +76,6 @@ namespace EgLab::RE
     void MeshToTriFace::setMesh(Common::SharedPtr<ME::Mesh>& mesh)
     {
         _impl->_mesh = mesh;
-        //_impl->_meshes.pushBack(mesh);
         _impl->_dirty = true;
     }
 
@@ -73,6 +91,20 @@ namespace EgLab::RE
         if (_impl->_dirty) _impl->setup();
 
         return _impl->_boundaryLineIdx;
+    }
+
+    Common::DynamicArray<ME::ElemFaceLocation> MeshToTriFace::getBoundaryFaceLocations() const
+    {
+        if (_impl->_dirty) _impl->setup();
+
+        return _impl->_boundaryFaceLocations;
+    }
+
+    Common::DynamicArray<ME::ElemFaceEdgeLocation> MeshToTriFace::getBoundaryLineLocations() const
+    {
+        if (_impl->_dirty) _impl->setup();
+
+        return _impl->_boundaryLineLocations;
     }
 
 } // namespace EgLab::RE

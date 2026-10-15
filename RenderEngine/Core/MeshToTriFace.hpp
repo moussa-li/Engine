@@ -3,6 +3,7 @@
 #include "Common/DynamicArray.hpp"
 #include "Common/SharedPtr.hpp"
 #include "Common/UniquePtr.hpp"
+#include "MeshEngine/MeshData/Element.hpp"
 #include "RenderEngine/Core/Definites.hpp"
 
 namespace EgLab::ME
@@ -23,6 +24,10 @@ namespace EgLab::RE
         Common::DynamicArray<IdxType> getBoundaryFaceIdx() const;
 
         Common::DynamicArray<IdxType> getBoundaryLineIdx() const;
+
+        Common::DynamicArray<ME::ElemFaceLocation> getBoundaryFaceLocations() const;
+
+        Common::DynamicArray<ME::ElemFaceEdgeLocation> getBoundaryLineLocations() const;
 
     private:
         class Impl;

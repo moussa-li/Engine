@@ -5,6 +5,19 @@
 
 namespace EgLab::ME
 {
+    struct ElemFaceLocation
+    {
+        IdType elemId;
+        IdxType faceIdx;
+    };
+
+    struct ElemFaceEdgeLocation
+    {
+        IdType elemId;
+        IdxType faceIdx;
+        IdxType edgeIdx;
+    };
+
     enum class ElemType : int
     {
         Tri3 = 0x203,

@@ -4,9 +4,11 @@
 
 #include "RenderEngine/Core/Camera.hpp"
 #include "RenderEngine/Core/Entity.hpp"
+#include "RenderEngine/Core/MeshSelector.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"
 #include "RenderEngine/Core/RenderPrimitive.hpp"
 #include "RenderEngine/Core/Scene.hpp"
+#include "RenderEngine/Core/Selector.hpp"
 #include "RenderEngine/Core/Window.hpp"
 
 namespace EgLab::RE
@@ -22,6 +24,8 @@ namespace EgLab::RE
 
     void Renderer::update(DeltaTime time)
     {
+        glEnable(GL_DEPTH_CLAMP);
+
         if (_configure->enableDeepTest.get())
         {
             glEnable(GL_DEPTH_TEST);
@@ -139,6 +143,17 @@ namespace EgLab::RE
 
             if (_pickedPrimitive != nullptr && _pickedNodeIndex != static_cast<IdxType>(-1))
             {
+                Common::DynamicArray<IdxType> highlightIndices;
+                if (_selector != nullptr)
+                {
+                    highlightIndices =
+                        _selector->getHighlightIndices(_pickedPrimitive, _pickedNodeIndex);
+                }
+                else
+                {
+                    highlightIndices.pushBack(_pickedNodeIndex);
+                }
+
                 for (auto it = renderBuckets.begin(); it.hasNext(); it.next())
                 {
                     const auto &shader = it.data().first;
@@ -148,7 +163,10 @@ namespace EgLab::RE
                     {
                         if (primitiveIt.data() == _pickedPrimitive)
                         {
-                            primitiveIt.data()->drawHighlight(shader, _pickedNodeIndex);
+                            for (IdxType index = 0; index < highlightIndices.size(); ++index)
+                            {
+                                primitiveIt.data()->drawHighlight(shader, highlightIndices[index]);
+                            }
                         }
                     }
                 }
@@ -174,6 +192,11 @@ namespace EgLab::RE
         return _configure;
     }
 
+    void Renderer::setSelector(Common::SharedPtr<Selector> selector)
+    {
+        _selector = Common::move(selector);
+    }
+
     void Renderer::setBackGroundColor(const Common::Vector4f &color)
     {
         _backGroundColor = color;
@@ -186,6 +209,8 @@ namespace EgLab::RE
 
     Renderer::Renderer() : _configure(Common::makeUnique<RenderConfigure>())
     {
+        auto meshSelector = Common::makeShared<MeshSelector>();
+        _selector = meshSelector;
         _backGroundColor = Common::Vector4f(1, 1, 1, 1);
     }
 

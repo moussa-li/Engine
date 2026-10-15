@@ -15,6 +15,7 @@ namespace EgLab::RE
     class Shader;
     class RenderConfigure;
     class RenderPrimitive;
+    class Selector;
 
     struct RenderViewport
     {
@@ -44,6 +45,8 @@ namespace EgLab::RE
 
         Common::UniquePtr<RenderConfigure> &getConfigure();
 
+        void setSelector(Common::SharedPtr<Selector> selector);
+
         Renderer();
 
         ~Renderer();
@@ -59,6 +62,7 @@ namespace EgLab::RE
         Common::DynamicArray<Light *> _lights;
 
         Common::UniquePtr<RenderConfigure> _configure;
+        Common::SharedPtr<Selector> _selector;
 
         Common::Vector4f _backGroundColor;
 
