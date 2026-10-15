@@ -2,6 +2,13 @@
 
 #include <GL/glew.h>
 
+#include <cmath>
+#include <fstream>
+#include <iomanip>
+#include <limits>
+#include <sstream>
+#include <string>
+
 #include "RenderEngine/Core/Camera.hpp"
 #include "RenderEngine/Core/Entity.hpp"
 #include "RenderEngine/Core/MeshSelector.hpp"
@@ -16,6 +23,66 @@
 
 namespace EgLab::RE
 {
+    namespace
+    {
+        constexpr const char *RENDER_SETTINGS_FILE = "render_settings.ini";
+
+        Common::Vector4f loadBackGroundColor()
+        {
+            Common::Vector4f color(1, 1, 1, 1);
+            std::ifstream settings(RENDER_SETTINGS_FILE);
+            std::string line;
+            bool inRendererSection = false;
+            while (std::getline(settings, line))
+            {
+                if (line == "[Renderer]")
+                {
+                    inRendererSection = true;
+                    continue;
+                }
+                if (!line.empty() && line.front() == '[')
+                {
+                    inRendererSection = false;
+                    continue;
+                }
+                constexpr const char *key = "BackgroundColor=";
+                if (!inRendererSection || line.rfind(key, 0) != 0)
+                {
+                    continue;
+                }
+
+                Scalar channels[4]{};
+                char separator1 = 0;
+                char separator2 = 0;
+                char separator3 = 0;
+                std::istringstream value(line.substr(std::char_traits<char>::length(key)));
+                if (value >> channels[0] >> separator1 >> channels[1] >> separator2 >>
+                        channels[2] >> separator3 >> channels[3] &&
+                    separator1 == ',' && separator2 == ',' && separator3 == ',' &&
+                    std::isfinite(channels[0]) && std::isfinite(channels[1]) &&
+                    std::isfinite(channels[2]) && std::isfinite(channels[3]) && channels[0] >= 0 &&
+                    channels[0] <= 1 && channels[1] >= 0 && channels[1] <= 1 && channels[2] >= 0 &&
+                    channels[2] <= 1 && channels[3] >= 0 && channels[3] <= 1)
+                {
+                    return Common::Vector4f(channels[0], channels[1], channels[2], channels[3]);
+                }
+            }
+            return color;
+        }
+
+        void saveBackGroundColor(const Common::Vector4f &color)
+        {
+            std::ofstream settings(RENDER_SETTINGS_FILE, std::ios::trunc);
+            if (!settings)
+            {
+                return;
+            }
+            settings << "[Renderer]\nBackgroundColor="
+                     << std::setprecision(std::numeric_limits<Scalar>::max_digits10) << color[0]
+                     << ',' << color[1] << ',' << color[2] << ',' << color[3] << '\n';
+        }
+    } // namespace
+
     void Renderer::clear()
     {
     }
@@ -270,7 +337,18 @@ namespace EgLab::RE
 
     void Renderer::setBackGroundColor(const Common::Vector4f &color)
     {
+        bool changed = false;
+        for (size_t channel = 0; channel < 4; ++channel)
+        {
+            changed = changed || _backGroundColor[channel] != color[channel];
+        }
+        if (!changed)
+        {
+            return;
+        }
+
         _backGroundColor = color;
+        saveBackGroundColor(_backGroundColor);
     }
 
     Common::Vector4f Renderer::getBackGroundColor() const
@@ -282,7 +360,7 @@ namespace EgLab::RE
     {
         auto meshSelector = Common::makeShared<MeshSelector>();
         _selector = meshSelector;
-        _backGroundColor = Common::Vector4f(1, 1, 1, 1);
+        _backGroundColor = loadBackGroundColor();
     }
 
     Renderer::~Renderer()
