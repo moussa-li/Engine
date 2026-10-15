@@ -111,6 +111,12 @@ namespace EgLab::Platform
         style.ItemSpacing = ImVec2(8, 6);
         style.ItemInnerSpacing = ImVec2(6, 6);
 
+        ImGuiIO& io = ImGui::GetIO();
+
+        ImFont* mainFont = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/msyh.ttc", 16.0f, nullptr,
+                                                        io.Fonts->GetGlyphRangesChineseFull());
+        IM_ASSERT(mainFont != nullptr);
+
         ImGui_ImplGlfw_InitForOpenGL(_window->getNative(), true);
         ImGui_ImplOpenGL3_Init("#version 330");
         deactiveContext();
