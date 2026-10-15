@@ -46,6 +46,14 @@ namespace EgLab::RE
         Common::UniquePtr<RenderConfigure> &getConfigure();
 
         void setSelector(Common::SharedPtr<Selector> selector);
+        Common::SharedPtr<Selector> getSelector() const;
+
+        void setRenderNodesEnabled(bool enabled);
+        bool isRenderNodesEnabled() const;
+        void setRenderEdgesEnabled(bool enabled);
+        bool isRenderEdgesEnabled() const;
+        void setRenderFacesEnabled(bool enabled);
+        bool isRenderFacesEnabled() const;
 
         Renderer();
 
@@ -55,6 +63,7 @@ namespace EgLab::RE
         void loadCamera(const Common::SharedPtr<Shader> &shader,
                         const Common::SharedPtr<Camera> &camera,
                         const Common::SharedPtr<Scene> &scene) const;
+        bool isPrimitiveVisible(const Common::SharedPtr<RenderPrimitive> &primitive) const;
 
     private:
         Common::DynamicArray<RenderViewport> _viewports;
@@ -68,6 +77,9 @@ namespace EgLab::RE
 
         mutable Common::SharedPtr<RenderPrimitive> _pickedPrimitive{nullptr};
         mutable IdxType _pickedNodeIndex{static_cast<IdxType>(-1)};
+        bool _renderNodesEnabled{true};
+        bool _renderEdgesEnabled{true};
+        bool _renderFacesEnabled{true};
     };
 
 } // namespace EgLab::RE

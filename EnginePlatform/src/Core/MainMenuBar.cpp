@@ -72,6 +72,10 @@ namespace EgLab::Platform
                 {
                     Context::instance().getPanelManager().showPanel("DataTree");
                 }
+                if (ImGui::MenuItem("Mesh Render Settings"))
+                {
+                    Context::instance().getPanelManager().showPanel("MeshRenderSettings");
+                }
                 ImGui::MenuItem("Wireframe", NULL, &showWireframe);
                 ImGui::MenuItem("Grid", NULL, &showGrid);
                 ImGui::EndMenu();

@@ -11,5 +11,6 @@ namespace EgLab::Platform
         UpdateMesh = 200001, // Mesh = 2xxxxx
         MeshImport = 200002,
         MeshDelete = 200003,
+        MeshPickInfo = 200004,
     };
 }

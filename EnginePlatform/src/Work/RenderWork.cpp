@@ -1,7 +1,9 @@
 #include "Work/RenderWork.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cstring>
+#include <sstream>
 
 #include "Common/Log.hpp"
 #include "Common/Performance.hpp"
@@ -10,6 +12,7 @@
 #include "MeshEngine/MeshData/MeshToPOD.hpp"
 #include "RenderEngine/Core/Camera.hpp"
 #include "RenderEngine/Core/MeshPrimitiveCreator.hpp"
+#include "RenderEngine/Core/MeshSelector.hpp"
 #include "RenderEngine/Core/RenderFace.hpp"
 #include "RenderEngine/Core/RenderLine.hpp"
 #include "RenderEngine/Core/RenderNode.hpp"
@@ -56,7 +59,8 @@ namespace EgLab::Platform
 
             RenderWork::RenderEvent event{};
             event.type = RenderWork::RenderEventType::RenderPacket;
-            event.packet = {nodePrimitive, linePrimitive, facePrimitive, _sourceMesh};
+            event.packet = {nodePrimitive, linePrimitive, facePrimitive,
+                            _sourceMesh,   _mesh,         creator.getTranslator()};
             _worker->enqueueRenderEvent(Common::move(event));
             perf.stop();
 
@@ -148,6 +152,17 @@ namespace EgLab::Platform
     void RenderWork::bindRenderer(const Common::SharedPtr<EgLab::RE::Renderer>& renderer)
     {
         _renderer = renderer;
+        if (_renderer)
+        {
+            _meshSelector = Common::makeShared<RE::MeshSelector>();
+            _renderer->setSelector(Common::SharedPtr<RE::Selector>(_meshSelector));
+            _meshSelector->registerPickInfoCallback(
+                [this](const RE::PrimitivePickInfo& info) { publishPickInfo(info); });
+        }
+        else
+        {
+            _meshSelector = nullptr;
+        }
     }
 
     void RenderWork::bindScene(const Common::SharedPtr<EgLab::RE::Scene>& scene)
@@ -172,6 +187,97 @@ namespace EgLab::Platform
     void RenderWork::subscribe(EventId eventId)
     {
         (void)eventId;
+    }
+
+    PickInfoSubscriptionId RenderWork::subscribePickInfo()
+    {
+        std::lock_guard<std::mutex> lock(_pickInfoSubscriptionsMutex);
+        const PickInfoSubscriptionId subscriptionId = _nextPickInfoSubscriptionId++;
+
+        std::ostringstream queueName;
+        queueName << "RenderPickInfo_" << reinterpret_cast<uintptr_t>(this) << '_'
+                  << subscriptionId;
+
+        auto subscription = std::make_unique<PickInfoSubscription>();
+        subscription->id = subscriptionId;
+        subscription->queue =
+            std::make_unique<Common::MemoryQueue>(Common::String(queueName.str().c_str()), true);
+        subscription->publisher = std::make_unique<Common::Publisher>(*subscription->queue);
+        subscription->subscriber = std::make_unique<Common::Subscriber>(*subscription->queue);
+        subscription->subscriber->subscrib(static_cast<uint32_t>(EventId::MeshPickInfo));
+
+        if (_hasPublishedPickInfo)
+        {
+            subscription->publisher->publish(static_cast<uint32_t>(EventId::MeshPickInfo),
+                                             _lastPublishedPickInfo);
+        }
+        _pickInfoSubscriptions.push_back(Common::move(subscription));
+        return subscriptionId;
+    }
+
+    void RenderWork::unsubscribePickInfo(PickInfoSubscriptionId subscriptionId)
+    {
+        std::lock_guard<std::mutex> lock(_pickInfoSubscriptionsMutex);
+        _pickInfoSubscriptions.erase(
+            std::remove_if(_pickInfoSubscriptions.begin(), _pickInfoSubscriptions.end(),
+                           [subscriptionId](const auto& subscription) {
+                               return subscription->id == subscriptionId;
+                           }),
+            _pickInfoSubscriptions.end());
+    }
+
+    bool RenderWork::tryReceivePickInfo(PickInfoSubscriptionId subscriptionId, PickedMeshInfo& info)
+    {
+        std::lock_guard<std::mutex> lock(_pickInfoSubscriptionsMutex);
+        for (const auto& subscription : _pickInfoSubscriptions)
+        {
+            if (subscription->id == subscriptionId)
+            {
+                uint32_t eventId = 0;
+                return subscription->subscriber->tryReceive(eventId, info);
+            }
+        }
+        return false;
+    }
+
+    void RenderWork::publishPickInfo(const RE::PrimitivePickInfo& info)
+    {
+        PickedMeshInfo pickedInfo;
+        pickedInfo.entityId = info.entityId;
+        pickedInfo.faceIndex = info.faceIdx;
+        pickedInfo.edgeIndex = info.edgeIdx;
+        pickedInfo.x = info.position.x();
+        pickedInfo.y = info.position.y();
+        pickedInfo.z = info.position.z();
+        pickedInfo.topologyNodeCount = static_cast<uint32_t>(info.elementNodeCount);
+        for (uint32_t index = 0; index < pickedInfo.topologyNodeCount; ++index)
+        {
+            pickedInfo.topologyNodeIds[index] = info.elementNodeIds[index];
+        }
+        switch (info.kind)
+        {
+        case RE::PrimitivePickKind::Node:
+            pickedInfo.kind = PickedMeshKind::Node;
+            break;
+        case RE::PrimitivePickKind::Edge:
+            pickedInfo.kind = PickedMeshKind::ElementEdge;
+            break;
+        case RE::PrimitivePickKind::Face:
+            pickedInfo.kind = PickedMeshKind::ElementFace;
+            break;
+        default:
+            pickedInfo.kind = PickedMeshKind::None;
+            break;
+        }
+
+        std::lock_guard<std::mutex> lock(_pickInfoSubscriptionsMutex);
+        _lastPublishedPickInfo = pickedInfo;
+        _hasPublishedPickInfo = true;
+        for (const auto& subscription : _pickInfoSubscriptions)
+        {
+            subscription->publisher->publish(static_cast<uint32_t>(EventId::MeshPickInfo),
+                                             pickedInfo);
+        }
     }
 
     void RenderWork::queueMeshUpdate(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
@@ -285,6 +391,12 @@ namespace EgLab::Platform
                 packet.renderLine->setup();
                 packet.renderFace->setup();
 
+                if (_meshSelector && packet.mesh && packet.translator)
+                {
+                    _meshSelector->registerMesh(packet.mesh, packet.translator, packet.renderNode,
+                                                packet.renderLine, packet.renderFace);
+                }
+
                 Common::SharedPtr<RE::Shader> nodeShader;
                 Common::SharedPtr<RE::Shader> lineShader;
                 Common::SharedPtr<RE::Shader> faceShader;
@@ -356,6 +468,10 @@ namespace EgLab::Platform
                     {
                         remainingPackets.pushBack(packet);
                         continue;
+                    }
+                    if (_meshSelector && packet.mesh)
+                    {
+                        _meshSelector->unregisterMesh(packet.mesh.get());
                     }
                     _scene->removePrimitive(nodeShader, packet.renderNode);
                     _scene->removePrimitive(lineShader, packet.renderLine);

@@ -243,15 +243,6 @@ namespace EgLab::RE
         _indices = Common::move(idx);
     }
 
-    void RenderFace::setFaceLocations(Common::DynamicArray<ME::ElemFaceLocation> &&locations)
-    {
-        _faceLocations = Common::move(locations);
-    }
-
-    const Common::DynamicArray<ME::ElemFaceLocation> &RenderFace::getFaceLocations() const
-    {
-        return _faceLocations;
-    }
     void RenderFace::setNormals(Common::DynamicArray<CoordType> &&norms)
     {
         _normals = Common::move(norms);

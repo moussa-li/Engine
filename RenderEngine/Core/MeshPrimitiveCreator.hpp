@@ -14,8 +14,7 @@ namespace EgLab::RE
 
         ~MeshPrimitiveCreator();
 
-        MeshToTriFace& getTranslator();
-        const MeshToTriFace& getTranslator() const;
+        Common::SharedPtr<MeshToTriFace> getTranslator() const;
 
     protected:
         virtual void updateData(Common::SharedPtr<RenderNode>);
@@ -24,6 +23,6 @@ namespace EgLab::RE
 
     private:
         Common::SharedPtr<ME::Mesh> _mesh;
-        MeshToTriFace _translator;
+        Common::SharedPtr<MeshToTriFace> _translator;
     };
 } // namespace EgLab::RE

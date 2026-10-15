@@ -6,6 +6,9 @@
 #include "RenderEngine/Core/Entity.hpp"
 #include "RenderEngine/Core/MeshSelector.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"
+#include "RenderEngine/Core/RenderFace.hpp"
+#include "RenderEngine/Core/RenderLine.hpp"
+#include "RenderEngine/Core/RenderNode.hpp"
 #include "RenderEngine/Core/RenderPrimitive.hpp"
 #include "RenderEngine/Core/Scene.hpp"
 #include "RenderEngine/Core/Selector.hpp"
@@ -97,6 +100,10 @@ namespace EgLab::RE
             {
                 _pickedPrimitive = nullptr;
                 _pickedNodeIndex = static_cast<IdxType>(-1);
+                if (_selector)
+                {
+                    _selector->processPick(nullptr, static_cast<IdxType>(-1));
+                }
             }
 
             unsigned int windowWidth = 0;
@@ -127,15 +134,22 @@ namespace EgLab::RE
                 for (auto primitiveIt = primitives.begin(); primitiveIt.hasNext();
                      primitiveIt.next())
                 {
+                    if (!isPrimitiveVisible(primitiveIt.data()))
+                    {
+                        continue;
+                    }
                     primitiveIt.data()->draw(shader);
                     if (selected)
                     {
                         const IdxType nodeIndex = primitiveIt.data()->touch(pickContext);
                         if (nodeIndex != static_cast<IdxType>(-1))
                         {
-                            LOG(INFO) << "Picked node index: " << nodeIndex;
                             _pickedPrimitive = primitiveIt.data();
                             _pickedNodeIndex = nodeIndex;
+                            if (_selector)
+                            {
+                                _selector->processPick(_pickedPrimitive, _pickedNodeIndex);
+                            }
                         }
                     }
                 }
@@ -161,7 +175,8 @@ namespace EgLab::RE
                     for (auto primitiveIt = primitives.begin(); primitiveIt.hasNext();
                          primitiveIt.next())
                     {
-                        if (primitiveIt.data() == _pickedPrimitive)
+                        if (primitiveIt.data() == _pickedPrimitive &&
+                            isPrimitiveVisible(primitiveIt.data()))
                         {
                             for (IdxType index = 0; index < highlightIndices.size(); ++index)
                             {
@@ -195,6 +210,62 @@ namespace EgLab::RE
     void Renderer::setSelector(Common::SharedPtr<Selector> selector)
     {
         _selector = Common::move(selector);
+    }
+
+    Common::SharedPtr<Selector> Renderer::getSelector() const
+    {
+        return _selector;
+    }
+
+    void Renderer::setRenderNodesEnabled(bool enabled)
+    {
+        _renderNodesEnabled = enabled;
+    }
+
+    bool Renderer::isRenderNodesEnabled() const
+    {
+        return _renderNodesEnabled;
+    }
+
+    void Renderer::setRenderEdgesEnabled(bool enabled)
+    {
+        _renderEdgesEnabled = enabled;
+    }
+
+    bool Renderer::isRenderEdgesEnabled() const
+    {
+        return _renderEdgesEnabled;
+    }
+
+    void Renderer::setRenderFacesEnabled(bool enabled)
+    {
+        _renderFacesEnabled = enabled;
+    }
+
+    bool Renderer::isRenderFacesEnabled() const
+    {
+        return _renderFacesEnabled;
+    }
+
+    bool Renderer::isPrimitiveVisible(const Common::SharedPtr<RenderPrimitive> &primitive) const
+    {
+        if (!primitive)
+        {
+            return false;
+        }
+        if (dynamic_cast<const RenderNode *>(primitive.get()) != nullptr)
+        {
+            return _renderNodesEnabled;
+        }
+        if (dynamic_cast<const RenderLine *>(primitive.get()) != nullptr)
+        {
+            return _renderEdgesEnabled;
+        }
+        if (dynamic_cast<const RenderFace *>(primitive.get()) != nullptr)
+        {
+            return _renderFacesEnabled;
+        }
+        return true;
     }
 
     void Renderer::setBackGroundColor(const Common::Vector4f &color)

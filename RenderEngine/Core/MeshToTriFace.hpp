@@ -25,9 +25,9 @@ namespace EgLab::RE
 
         Common::DynamicArray<IdxType> getBoundaryLineIdx() const;
 
-        Common::DynamicArray<ME::ElemFaceLocation> getBoundaryFaceLocations() const;
+        const Common::DynamicArray<ME::ElemFaceLocation>& getBoundaryFaceLocations() const;
 
-        Common::DynamicArray<ME::ElemFaceEdgeLocation> getBoundaryLineLocations() const;
+        const Common::DynamicArray<ME::ElemFaceEdgeLocation>& getBoundaryLineLocations() const;
 
     private:
         class Impl;

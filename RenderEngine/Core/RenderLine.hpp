@@ -1,5 +1,6 @@
 #pragma once
 #include "Common/DynamicArray.hpp"
+#include "Common/SharedPtr.hpp"
 #include "Core/Definites.hpp"
 #include "RenderEngine/Core/IndexBuffer.hpp"
 #include "RenderEngine/Core/RenderEngineAPI.hpp"

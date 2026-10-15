@@ -4,7 +4,6 @@
 #include "Common/Matrix.hpp"
 #include "Common/Vector.hpp"
 #include "Core/Definites.hpp"
-#include "MeshEngine/MeshData/Element.hpp"
 #include "RenderEngine/Core/IndexBuffer.hpp"
 #include "RenderEngine/Core/RenderEngineAPI.hpp"
 #include "RenderEngine/Core/RenderPrimitive.hpp"
@@ -24,8 +23,6 @@ namespace EgLab::RE
 
         void setNodes(Common::DynamicArray<CoordType> &&);
         void setIndices(Common::DynamicArray<IdxType> &&);
-        void setFaceLocations(Common::DynamicArray<ME::ElemFaceLocation> &&);
-        const Common::DynamicArray<ME::ElemFaceLocation> &getFaceLocations() const;
         void setNormals(Common::DynamicArray<CoordType> &&);
 
         // Set per-triangle colors. Each element is a vec4 (RGBA).
@@ -41,7 +38,6 @@ namespace EgLab::RE
         Common::DynamicArray<CoordType> _vertices;
         Common::DynamicArray<CoordType> _normals;
         Common::DynamicArray<IdxType> _indices;
-        Common::DynamicArray<ME::ElemFaceLocation> _faceLocations;
 
         Common::SharedPtr<VertexArray> _vertexArray;
         Common::SharedPtr<VertexArray> _normalVertexArray;

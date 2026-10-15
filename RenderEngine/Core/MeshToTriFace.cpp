@@ -93,14 +93,16 @@ namespace EgLab::RE
         return _impl->_boundaryLineIdx;
     }
 
-    Common::DynamicArray<ME::ElemFaceLocation> MeshToTriFace::getBoundaryFaceLocations() const
+    const Common::DynamicArray<ME::ElemFaceLocation>& MeshToTriFace::getBoundaryFaceLocations()
+        const
     {
         if (_impl->_dirty) _impl->setup();
 
         return _impl->_boundaryFaceLocations;
     }
 
-    Common::DynamicArray<ME::ElemFaceEdgeLocation> MeshToTriFace::getBoundaryLineLocations() const
+    const Common::DynamicArray<ME::ElemFaceEdgeLocation>& MeshToTriFace::getBoundaryLineLocations()
+        const
     {
         if (_impl->_dirty) _impl->setup();
 
