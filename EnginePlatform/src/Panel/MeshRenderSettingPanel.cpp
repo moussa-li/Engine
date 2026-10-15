@@ -58,48 +58,55 @@ namespace EgLab::Platform
             ImGui::Checkbox("Element Info", &_showElementInfo);
             ImGui::Checkbox("Element Edge Info", &_showElementEdgeInfo);
             ImGui::Checkbox("Element Face Info", &_showElementFaceInfo);
-
-            if (_hasPickedInfo)
-            {
-                ImGui::Separator();
-                if (_showNodeInfo && _pickedInfo.kind == PickedMeshKind::Node)
-                {
-                    ImGui::Text("Node ID: %u", _pickedInfo.entityId);
-                    ImGui::Text("XYZ: (%.6g, %.6g, %.6g)", _pickedInfo.x, _pickedInfo.y,
-                                _pickedInfo.z);
-                }
-
-                const bool pickedElement = _pickedInfo.kind == PickedMeshKind::ElementEdge ||
-                                           _pickedInfo.kind == PickedMeshKind::ElementFace;
-                if (_showElementInfo && pickedElement)
-                {
-                    ImGui::Text("Element ID: %u", _pickedInfo.entityId);
-                    std::ostringstream nodeIds;
-                    for (size_t index = 0; index < _pickedInfo.topologyNodeCount; ++index)
-                    {
-                        if (index != 0)
-                        {
-                            nodeIds << ", ";
-                        }
-                        nodeIds << _pickedInfo.topologyNodeIds[index];
-                    }
-                    ImGui::Text("Topology node IDs: %s", nodeIds.str().c_str());
-                }
-
-                if (_showElementEdgeInfo && _pickedInfo.kind == PickedMeshKind::ElementEdge)
-                {
-                    ImGui::Text("Element ID: %u", _pickedInfo.entityId);
-                    ImGui::Text("Edge index: %u", _pickedInfo.edgeIndex);
-                }
-
-                if (_showElementFaceInfo && _pickedInfo.kind == PickedMeshKind::ElementFace)
-                {
-                    ImGui::Text("Element ID: %u", _pickedInfo.entityId);
-                    ImGui::Text("Face index: %u", _pickedInfo.faceIndex);
-                }
-            }
         }
 
         ImGui::End();
+
+        const bool showNodeInfo = _showNodeInfo && _pickedInfo.kind == PickedMeshKind::Node;
+        const bool showElementInfo =
+            _showElementInfo && (_pickedInfo.kind == PickedMeshKind::ElementEdge ||
+                                 _pickedInfo.kind == PickedMeshKind::ElementFace);
+        const bool showElementEdgeInfo =
+            _showElementEdgeInfo && _pickedInfo.kind == PickedMeshKind::ElementEdge;
+        const bool showElementFaceInfo =
+            _showElementFaceInfo && _pickedInfo.kind == PickedMeshKind::ElementFace;
+        if (_hasPickedInfo &&
+            (showNodeInfo || showElementInfo || showElementEdgeInfo || showElementFaceInfo))
+        {
+            ImGui::BeginTooltip();
+            if (showNodeInfo)
+            {
+                ImGui::Text("Node ID: %u", _pickedInfo.entityId);
+                ImGui::Text("XYZ: (%.6g, %.6g, %.6g)", _pickedInfo.x, _pickedInfo.y, _pickedInfo.z);
+            }
+
+            if (showElementInfo)
+            {
+                ImGui::Text("Element ID: %u", _pickedInfo.entityId);
+                std::ostringstream nodeIds;
+                for (size_t index = 0; index < _pickedInfo.topologyNodeCount; ++index)
+                {
+                    if (index != 0)
+                    {
+                        nodeIds << ", ";
+                    }
+                    nodeIds << _pickedInfo.topologyNodeIds[index];
+                }
+                ImGui::Text("Topology node IDs: %s", nodeIds.str().c_str());
+            }
+
+            if (showElementEdgeInfo)
+            {
+                ImGui::Text("Element ID: %u", _pickedInfo.entityId);
+                ImGui::Text("Edge index: %u", _pickedInfo.edgeIndex);
+            }
+
+            if (showElementFaceInfo)
+            {
+                ImGui::Text("Element ID: %u", _pickedInfo.entityId);
+                ImGui::Text("Face index: %u", _pickedInfo.faceIndex);
+            }
+            ImGui::EndTooltip();
+        }
     }
 } // namespace EgLab::Platform
