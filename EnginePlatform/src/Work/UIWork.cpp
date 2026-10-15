@@ -97,6 +97,20 @@ namespace EgLab::Platform
         ImGui::CreateContext();
         ImGui::StyleColorsDark();
 
+        ImGuiStyle& style = ImGui::GetStyle();
+
+        style.WindowRounding = 6.0f;
+        style.FrameRounding = 4.0f;
+        style.GrabRounding = 4.0f;
+        style.TabRounding = 4.0f;
+        style.PopupRounding = 4.0f;
+        style.ScrollbarRounding = 4.0f;
+
+        style.WindowPadding = ImVec2(10, 10);
+        style.FramePadding = ImVec2(8, 5);
+        style.ItemSpacing = ImVec2(8, 6);
+        style.ItemInnerSpacing = ImVec2(6, 6);
+
         ImGui_ImplGlfw_InitForOpenGL(_window->getNative(), true);
         ImGui_ImplOpenGL3_Init("#version 330");
         deactiveContext();
