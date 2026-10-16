@@ -23,6 +23,8 @@ namespace EgLab::RE
 
         Common::DynamicArray<IdxType> getBoundaryFaceIdx() const;
 
+        const Common::DynamicArray<IdxType>& getBoundaryFaceNodeIdx() const;
+
         Common::DynamicArray<IdxType> getBoundaryLineIdx() const;
 
         const Common::DynamicArray<ME::ElemFaceLocation>& getBoundaryFaceLocations() const;

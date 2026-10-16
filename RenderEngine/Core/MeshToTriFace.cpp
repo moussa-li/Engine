@@ -11,6 +11,7 @@ namespace EgLab::RE
     public:
         Common::SharedPtr<ME::Mesh> _mesh;
         Common::DynamicArray<IdxType> _boundaryFaceIdx;
+        Common::DynamicArray<IdxType> _boundaryFaceNodeIdx;
         Common::DynamicArray<IdxType> _boundaryLineIdx;
         Common::DynamicArray<ME::ElemFaceLocation> _boundaryFaceLocations;
         Common::DynamicArray<ME::ElemFaceEdgeLocation> _boundaryLineLocations;
@@ -21,6 +22,7 @@ namespace EgLab::RE
         {
             _dirty = false;
             _boundaryFaceIdx.clear();
+            _boundaryFaceNodeIdx.clear();
             _boundaryLineIdx.clear();
             _boundaryFaceLocations.clear();
             _boundaryLineLocations.clear();
@@ -30,6 +32,14 @@ namespace EgLab::RE
 
             _boundaryFaceIdx.reserve(faceIndices.size() * 6);
             _boundaryLineIdx.reserve(faceIndices.size() * 8);
+
+            const IdxType invalidIndex = static_cast<IdxType>(-1);
+            Common::DynamicArray<IdxType> faceNodeIndices;
+            faceNodeIndices.resize(_mesh->getNodeNumber());
+            for (size_t node = 0; node < faceNodeIndices.size(); ++node)
+            {
+                faceNodeIndices[node] = invalidIndex;
+            }
 
             for (const auto& faceIdxPair : faceIndices)
             {
@@ -41,7 +51,29 @@ namespace EgLab::RE
                 const IdxType triangleCount = static_cast<IdxType>(faceNodes.size() / 3);
                 const IdxType edgeCount = static_cast<IdxType>(lineNodes.size() / 2);
 
-                _boundaryFaceIdx.pushBack(Common::move(faceNodes));
+                Common::DynamicArray<IdxType> faceMeshNodeIndices;
+                faceMeshNodeIndices.reserve(faceNodes.size());
+                for (size_t node = 0; node < faceNodes.size(); ++node)
+                {
+                    IdxType meshNodeIndex = _mesh->getNodeIdx(faceNodes[node]);
+                    if (meshNodeIndex >= faceNodeIndices.size())
+                    {
+                        continue;
+                    }
+
+                    IdxType& faceNodeIndex = faceNodeIndices[meshNodeIndex];
+                    if (faceNodeIndex == invalidIndex)
+                    {
+                        faceNodeIndex = static_cast<IdxType>(_boundaryFaceNodeIdx.size());
+                        _boundaryFaceNodeIdx.pushBack(meshNodeIndex);
+                        faceMeshNodeIndices.pushBack(meshNodeIndex);
+                    }
+                    _boundaryFaceIdx.pushBack(faceNodeIndex);
+                }
+                for (IdxType meshNodeIndex : faceMeshNodeIndices)
+                {
+                    faceNodeIndices[meshNodeIndex] = invalidIndex;
+                }
                 _boundaryLineIdx.pushBack(Common::move(lineNodes));
                 for (IdxType triangle = 0; triangle < triangleCount; ++triangle)
                 {
@@ -51,11 +83,6 @@ namespace EgLab::RE
                 {
                     _boundaryLineLocations.pushBack({elemId, faceIdx, edge});
                 }
-            }
-
-            for (int i = 0; i < _boundaryFaceIdx.size(); i++)
-            {
-                _boundaryFaceIdx[i] = _mesh->getNodeIdx(_boundaryFaceIdx[i]);
             }
 
             for (int i = 0; i < _boundaryLineIdx.size(); i++)
@@ -84,6 +111,13 @@ namespace EgLab::RE
         if (_impl->_dirty) _impl->setup();
 
         return _impl->_boundaryFaceIdx;
+    }
+
+    const Common::DynamicArray<IdxType>& MeshToTriFace::getBoundaryFaceNodeIdx() const
+    {
+        if (_impl->_dirty) _impl->setup();
+
+        return _impl->_boundaryFaceNodeIdx;
     }
 
     Common::DynamicArray<IdxType> MeshToTriFace::getBoundaryLineIdx() const

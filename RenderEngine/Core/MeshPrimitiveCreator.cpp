@@ -68,15 +68,23 @@ namespace EgLab::RE
             nodes.pushBack(c);
         } while (meshIt.nextNode());
 
-        primitive->setNodes(Common::move(nodes));
+        Common::DynamicArray<RE::CoordType> faceNodes;
+        const auto& faceNodeIndices = _translator->getBoundaryFaceNodeIdx();
+        faceNodes.reserve(faceNodeIndices.size());
+        for (IdxType sourceNodeIndex : faceNodeIndices)
+        {
+            if (sourceNodeIndex < nodes.size()) faceNodes.pushBack(nodes[sourceNodeIndex]);
+        }
 
-        primitive->setIndices(_translator->getBoundaryFaceIdx());
+        primitive->setNodes(Common::move(faceNodes));
+        Common::DynamicArray<IdxType> sourceIndices = _translator->getBoundaryFaceIdx();
+        primitive->setIndices(Common::move(sourceIndices));
 
         static int testTime = 0;
         testTime++;
 
         Common::Vector4f color(testTime * 0.1f, 0.5f, 0.5f, 1.0f);
-        IdxType triangleCount = _translator->getBoundaryFaceIdx().size();
+        IdxType triangleCount = static_cast<IdxType>(sourceIndices.size() / 3);
 
         Common::DynamicArray<Common::Vector4f> colors;
         colors.reserve(triangleCount);

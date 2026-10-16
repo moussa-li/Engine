@@ -20,41 +20,36 @@ namespace EgLab::RE
 
     void RenderFace::setup()
     {
-        if (_normals.size() != _vertices.size())
+        _normals.clear();
+        _normals.resize(_vertices.size());
+
+        Common::Performance perf;
+        perf.start();
+        for (size_t i = 0; i + 2 < _indices.size(); i += 3)
         {
-            _normals.clear();
-            _normals.resize(_vertices.size());
-
-            Common::Performance perf;
-            perf.start();
-            for (size_t i = 0; i + 2 < _indices.size(); i += 3)
+            const IdxType i0 = _indices[i];
+            const IdxType i1 = _indices[i + 1];
+            const IdxType i2 = _indices[i + 2];
+            if (i0 >= _vertices.size() || i1 >= _vertices.size() || i2 >= _vertices.size())
             {
-                const IdxType i0 = _indices[i];
-                const IdxType i1 = _indices[i + 1];
-                const IdxType i2 = _indices[i + 2];
-                if (i0 >= _vertices.size() || i1 >= _vertices.size() || i2 >= _vertices.size())
-                {
-                    continue;
-                }
-
-                CoordType normal =
-                    (_vertices[i1] - _vertices[i0]).cross(_vertices[i2] - _vertices[i0]);
-                _normals[i0] = _normals[i0] + normal;
-                _normals[i1] = _normals[i1] + normal;
-                _normals[i2] = _normals[i2] + normal;
+                continue;
             }
 
-            for (size_t i = 0; i < _normals.size(); ++i)
-            {
-                _normals[i].normalize();
-            }
-
-            perf.stop();
-
-            LOG(INFO) << "Finished calculating normals for RenderFace: "
-                      << ", end_ms=" << perf.getEndTimestampMs()
-                      << ", elapsed_ms=" << perf.getElapsedMilliseconds();
+            CoordType normal = (_vertices[i1] - _vertices[i0]).cross(_vertices[i2] - _vertices[i0]);
+            _normals[i0] = _normals[i0] + normal;
+            _normals[i1] = _normals[i1] + normal;
+            _normals[i2] = _normals[i2] + normal;
         }
+
+        for (size_t i = 0; i < _normals.size(); ++i)
+        {
+            _normals[i].normalize();
+        }
+
+        perf.stop();
+        LOG(INFO) << "Finished calculating face-local node normals for RenderFace: "
+                  << ", end_ms=" << perf.getEndTimestampMs()
+                  << ", elapsed_ms=" << perf.getElapsedMilliseconds();
 
         _vertexArray = Common::makeShared<VertexArray>();
         _vertexArray->bind();
@@ -69,8 +64,33 @@ namespace EgLab::RE
         _indexBuffer = Common::makeShared<IndexBuffer>(_indices);
         _vertexArray->unBind();
 
-        Common::Performance perf;
-        perf.start();
+        Common::DynamicArray<CoordType> arrayVertices;
+        Common::DynamicArray<CoordType> arrayNormals;
+        arrayVertices.reserve(_indices.size());
+        arrayNormals.reserve(_indices.size());
+        for (size_t i = 0; i < _indices.size(); ++i)
+        {
+            const IdxType index = _indices[i];
+            if (index >= _vertices.size())
+            {
+                continue;
+            }
+            arrayVertices.pushBack(_vertices[index]);
+            arrayNormals.pushBack(_normals[index]);
+        }
+
+        _arrayVertexArray = Common::makeShared<VertexArray>();
+        _arrayVertexArray->bind();
+        VertexBufferLayout arrayLayout;
+        _arrayVertexBuffer = Common::makeShared<VertexBuffer>(arrayVertices);
+        arrayLayout.pushBack<float>(3, _arrayVertexBuffer);
+        _arrayNormalVertexBuffer = Common::makeShared<VertexBuffer>(arrayNormals);
+        arrayLayout.pushBack<float>(3, _arrayNormalVertexBuffer);
+        _arrayVertexArray->addBuffer(arrayLayout);
+        _arrayVertexArray->unBind();
+
+        Common::Performance colorPerf;
+        colorPerf.start();
         // Prepare color table SSBO. If no colors provided, fill with default gray per triangle.
         const size_t triangleCount = (_indices.size() / 3);
         if (_colors.size() == 0 && triangleCount > 0)
@@ -88,11 +108,11 @@ namespace EgLab::RE
         }
         uploadColors();
 
-        perf.stop();
+        colorPerf.stop();
 
         LOG(INFO) << "Update Color SSBO for RenderFace: "
-                  << ", end_ms=" << perf.getEndTimestampMs()
-                  << ", elapsed_ms=" << perf.getElapsedMilliseconds();
+                  << ", end_ms=" << colorPerf.getEndTimestampMs()
+                  << ", elapsed_ms=" << colorPerf.getElapsedMilliseconds();
     }
 
     void RenderFace::draw(Common::SharedPtr<Shader> shader)
@@ -109,16 +129,25 @@ namespace EgLab::RE
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, COLOR_SSBO_BINDING, _colorSSBO);
         }
 
-        _vertexArray->bind();
-        _indexBuffer->bind();
         glEnable(GL_POLYGON_OFFSET_FILL);
         glPolygonOffset(1.0f, 1.0f);
-        glDrawElements(GL_TRIANGLES, _indexBuffer->getCount(), GL_UNSIGNED_INT, 0);
+        if (_drawMode == DrawMode::Arrays)
+        {
+            _arrayVertexArray->bind();
+            glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(_indices.size()));
+            _arrayVertexArray->unBind();
+        }
+        else
+        {
+            _vertexArray->bind();
+            _indexBuffer->bind();
+            glDrawElements(GL_TRIANGLES, _indexBuffer->getCount(), GL_UNSIGNED_INT, 0);
+            _vertexArray->unBind();
+            _indexBuffer->unBind();
+        }
         glDepthMask(GL_TRUE);
         glDisable(GL_POLYGON_OFFSET_FILL);
 
-        _vertexArray->unBind();
-        _indexBuffer->unBind();
         shader->unBind();
     }
 
@@ -272,6 +301,16 @@ namespace EgLab::RE
         _highlightScale = scale;
         _highlightScaleEnabled = true;
         updateHighlightScaleMatrix();
+    }
+
+    void RenderFace::setDrawMode(DrawMode mode)
+    {
+        _drawMode = mode;
+    }
+
+    RenderFace::DrawMode RenderFace::getDrawMode() const
+    {
+        return _drawMode;
     }
 
     void RenderFace::updateHighlightScaleMatrix()

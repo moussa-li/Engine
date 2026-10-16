@@ -14,6 +14,12 @@ namespace EgLab::RE
     class RenderEngineAPI RenderFace : public RenderPrimitive
     {
     public:
+        enum class DrawMode
+        {
+            Arrays,
+            Elements
+        };
+
         virtual ~RenderFace();
         virtual void setup() override;
         virtual void draw(Common::SharedPtr<Shader> shader) override;
@@ -30,6 +36,8 @@ namespace EgLab::RE
         void setColors(Common::DynamicArray<Common::Vector4f> &&colors);
         void setColor(const Common::Vector4f &color);
         void setHighlightScale(float scale);
+        void setDrawMode(DrawMode mode);
+        DrawMode getDrawMode() const;
 
     private:
         void uploadColors();
@@ -40,9 +48,12 @@ namespace EgLab::RE
         Common::DynamicArray<IdxType> _indices;
 
         Common::SharedPtr<VertexArray> _vertexArray;
+        Common::SharedPtr<VertexArray> _arrayVertexArray;
         Common::SharedPtr<VertexArray> _normalVertexArray;
         Common::SharedPtr<VertexBuffer> _vertexBuffer;
         Common::SharedPtr<VertexBuffer> _normalVertexBuffer;
+        Common::SharedPtr<VertexBuffer> _arrayVertexBuffer;
+        Common::SharedPtr<VertexBuffer> _arrayNormalVertexBuffer;
         Common::SharedPtr<IndexBuffer> _indexBuffer;
 
         // Per-triangle color table stored in a Shader Storage Buffer Object (SSBO).
@@ -51,6 +62,7 @@ namespace EgLab::RE
         unsigned int _colorSSBO{0};
         float _highlightScale{1.0f};
         bool _highlightScaleEnabled{false};
+        DrawMode _drawMode{DrawMode::Arrays};
         Common::Matrix4f _highlightScaleMatrix{Common::Matrix4f::Identity()};
         // SSBO binding point used by shaders. Shaders should declare:
         // layout(std430, binding = 2) buffer ColorTable { vec4 colors[]; };
