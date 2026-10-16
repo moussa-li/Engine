@@ -22,21 +22,6 @@ namespace EgLab::Platform
 {
     void renderRibbonToolbar()
     {
-        bool showWireframe = false;
-        bool showGrid = true;
-
-        // if (ImGuiFileDialog::Instance()->Display("文件选择"))
-        // {
-        //     if (ImGuiFileDialog::Instance()->IsOk())
-        //     {
-        //         std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
-        //         EventPacket packet;
-        //         packet.setData("fileDir", Common::String(filePath.c_str()));
-        //         CommandManager::instance().call(EventId::MeshImport, Common::move(packet));
-        //     }
-        //     ImGuiFileDialog::Instance()->Close();
-        // }
-
         if (ImGui::BeginMainMenuBar())
         {
             if (ImGui::BeginMenu("File"))
@@ -45,8 +30,6 @@ namespace EgLab::Platform
                 { /* ... */
                     Context::instance().getPanelManager().showPanel("MeshImport");
                 }
-
-                // 2. 在渲染循环中显示对话框并获取结果
 
                 if (ImGui::MenuItem("Save", "Ctrl+S"))
                 { /* ... */
@@ -80,78 +63,10 @@ namespace EgLab::Platform
                 {
                     Context::instance().getPanelManager().showPanel("MeshRenderSettings");
                 }
-                ImGui::MenuItem("Wireframe", NULL, &showWireframe);
-                ImGui::MenuItem("Grid", NULL, &showGrid);
                 ImGui::EndMenu();
             }
             ImGui::EndMainMenuBar();
         }
-
-        // // ===== 工具栏 =====
-        // ImGui::Begin("##Toolbar", nullptr,
-        //              ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-        //                  ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
-        // {
-        //     // 分组 1: 文件
-        //     ImGui::BeginGroup();
-        //     ImGui::Text("File");
-        //     ImGui::Separator();
-        //     if (ImGui::SmallButton("Open"))
-        //     { /* ... */
-        //     }
-        //     ImGui::SameLine();
-        //     if (ImGui::SmallButton("Save"))
-        //     { /* ... */
-        //     }
-        //     ImGui::EndGroup();
-
-        //     // 竖线分隔（兼容写法）
-        //     ImGui::SameLine();
-        //     ImGui::Spacing();
-        //     ImGui::SameLine();
-        //     ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "|");
-        //     ImGui::SameLine();
-        //     ImGui::Spacing();
-        //     ImGui::SameLine();
-
-        //     // 分组 2: 视图
-        //     ImGui::BeginGroup();
-        //     ImGui::Text("View");
-        //     ImGui::Separator();
-        //     if (ImGui::SmallButton("Wireframe"))
-        //     {
-        //         showWireframe = !showWireframe;
-        //     }
-        //     ImGui::SameLine();
-        //     if (ImGui::SmallButton("Grid"))
-        //     {
-        //         showGrid = !showGrid;
-        //     }
-        //     ImGui::EndGroup();
-
-        //     // 竖线分隔
-        //     ImGui::SameLine();
-        //     ImGui::Spacing();
-        //     ImGui::SameLine();
-        //     ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "|");
-        //     ImGui::SameLine();
-        //     ImGui::Spacing();
-        //     ImGui::SameLine();
-
-        //     // 分组 3: 相机
-        //     ImGui::BeginGroup();
-        //     ImGui::Text("Camera");
-        //     ImGui::Separator();
-        //     if (ImGui::SmallButton("Fit View"))
-        //     { /* ... */
-        //     }
-        //     ImGui::SameLine();
-        //     if (ImGui::SmallButton("Reset"))
-        //     { /* ... */
-        //     }
-        //     ImGui::EndGroup();
-        // }
-        // ImGui::End();
     }
 
 } // namespace EgLab::Platform

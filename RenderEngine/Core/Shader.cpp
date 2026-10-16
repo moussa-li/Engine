@@ -188,7 +188,7 @@ namespace EgLab::RE
         IdType location = glGetUniformLocation(_rendererId, name.c_str());
         if (location == -1)
         {
-            LOG(WARNING) << "uniform " << name.c_str() << " doesn't exist!";
+            return location;
         }
 
         _uniformLocationCache[name] = location;
