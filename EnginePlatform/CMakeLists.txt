@@ -28,6 +28,15 @@ add_executable(EnginePlatform
     ${IMGUIFILEDLG_DIR}/ImGuiFileDialog.cpp
 )
 
+if(WIN32)
+    configure_file(
+        "${CMAKE_SOURCE_DIR}/assets/icon/EnginePlatform.rc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/EnginePlatform.rc"
+        @ONLY
+    )
+    target_sources(EnginePlatform PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/EnginePlatform.rc")
+endif()
+
 target_include_directories(EnginePlatform PRIVATE
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/EnginePlatform/include

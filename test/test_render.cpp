@@ -142,6 +142,58 @@ TEST_F(TestRender, window)
     // app.exec();
 }
 
+TEST_F(TestRender, node_touch_uses_screen_space)
+{
+    EgLab::RE::RenderNode node;
+    EgLab::Common::DynamicArray<EgLab::RE::CoordType> nodes;
+    nodes.pushBack(EgLab::RE::CoordType(0.0f, 0.0f, 0.0f));
+    node.setNodes(EgLab::Common::move(nodes));
+
+    EgLab::RE::PickContext context;
+    context.width = 100;
+    context.height = 100;
+    context.view = EgLab::Common::Matrix4f::Identity();
+    context.view[2][3] = -1000.0f;
+    context.projection = EgLab::Common::Matrix4f::Identity();
+    context.projection[2][2] = -0.0002f;
+    context.projection[2][3] = -1.0f;
+
+    context.x = 50.0f;
+    context.y = 50.0f;
+    EXPECT_EQ(node.touch(context), 0u);
+
+    context.x = 58.0f;
+    EXPECT_EQ(node.touch(context), static_cast<EgLab::RE::IdxType>(-1));
+}
+
+TEST_F(TestRender, node_touch_prefers_frontmost_node)
+{
+    EgLab::RE::RenderNode backNode;
+    EgLab::Common::DynamicArray<EgLab::RE::CoordType> backNodes;
+    backNodes.pushBack(EgLab::RE::CoordType(0.0f, 0.0f, 0.0f));
+    backNode.setNodes(EgLab::Common::move(backNodes));
+
+    EgLab::RE::RenderNode frontNode;
+    EgLab::Common::DynamicArray<EgLab::RE::CoordType> frontNodes;
+    frontNodes.pushBack(EgLab::RE::CoordType(0.0f, 0.0f, 1.0f));
+    frontNode.setNodes(EgLab::Common::move(frontNodes));
+
+    EgLab::RE::PickContext context;
+    context.width = 100;
+    context.height = 100;
+    context.x = 50.0f;
+    context.y = 50.0f;
+    context.view = EgLab::Common::Matrix4f::Identity();
+    context.view[2][3] = -1000.0f;
+    context.projection = EgLab::Common::Matrix4f::Identity();
+    context.projection[2][2] = -0.0002f;
+    context.projection[2][3] = -1.0f;
+
+    EXPECT_EQ(backNode.touch(context), 0u);
+    EXPECT_EQ(frontNode.touch(context), 0u);
+    EXPECT_EQ(backNode.touch(context), static_cast<EgLab::RE::IdxType>(-1));
+}
+
 TEST_F(TestRender, vertex)
 {
     SimpleApp app;
@@ -199,6 +251,80 @@ TEST_F(TestRender, line)
 
     app.window->deactiveContext();
     app.exec();
+}
+
+TEST_F(TestRender, renderLineTouch)
+{
+    EgLab::RE::RenderLine line;
+    EgLab::Common::DynamicArray<EgLab::RE::CoordType> vertices;
+    vertices.pushBack(EgLab::RE::CoordType(-0.5f, 0.0f, -0.5f));
+    vertices.pushBack(EgLab::RE::CoordType(0.5f, 0.0f, -0.5f));
+    line.setNodes(EgLab::Common::move(vertices));
+
+    EgLab::Common::DynamicArray<EgLab::RE::IdxType> indices;
+    indices.pushBack(0);
+    indices.pushBack(1);
+    line.setIndices(EgLab::Common::move(indices));
+
+    EgLab::RE::PickContext context;
+    context.width = 200;
+    context.height = 200;
+    context.x = 100.0f;
+    context.y = 100.0f;
+    context.view = EgLab::Common::Matrix4f::Identity();
+    context.projection = EgLab::Common::Matrix4f::Identity();
+    EXPECT_EQ(line.touch(context), 0u);
+
+    EgLab::RE::PickContext outsideContext = context;
+    outsideContext.x = 100.0f;
+    outsideContext.y = 120.0f;
+    EXPECT_EQ(line.touch(outsideContext), static_cast<EgLab::RE::IdxType>(-1));
+}
+
+TEST_F(TestRender, renderFaceTouch)
+{
+    EgLab::RE::RenderFace face;
+    EgLab::Common::DynamicArray<EgLab::RE::CoordType> vertices;
+    vertices.pushBack(EgLab::RE::CoordType(-0.5f, -0.5f, 0.5f));
+    vertices.pushBack(EgLab::RE::CoordType(0.5f, -0.5f, 0.5f));
+    vertices.pushBack(EgLab::RE::CoordType(0.0f, 0.5f, 0.5f));
+    face.setNodes(EgLab::Common::move(vertices));
+
+    EgLab::Common::DynamicArray<EgLab::RE::IdxType> indices;
+    indices.pushBack(0);
+    indices.pushBack(1);
+    indices.pushBack(2);
+    face.setIndices(EgLab::Common::move(indices));
+
+    EgLab::RE::PickContext context;
+    context.width = 200;
+    context.height = 200;
+    context.x = 100.0f;
+    context.y = 100.0f;
+    context.view = EgLab::Common::Matrix4f::Identity();
+    context.projection = EgLab::Common::Matrix4f::Identity();
+    EXPECT_EQ(face.touch(context), 0u);
+
+    EgLab::RE::PickContext outsideContext = context;
+    outsideContext.x = 10.0f;
+    outsideContext.y = 10.0f;
+    EXPECT_EQ(face.touch(outsideContext), static_cast<EgLab::RE::IdxType>(-1));
+
+    EgLab::RE::RenderLine nearerLine;
+    EgLab::Common::DynamicArray<EgLab::RE::CoordType> lineVertices;
+    lineVertices.pushBack(EgLab::RE::CoordType(-0.5f, 0.0f, -0.5f));
+    lineVertices.pushBack(EgLab::RE::CoordType(0.5f, 0.0f, -0.5f));
+    nearerLine.setNodes(EgLab::Common::move(lineVertices));
+    EgLab::Common::DynamicArray<EgLab::RE::IdxType> lineIndices;
+    lineIndices.pushBack(0);
+    lineIndices.pushBack(1);
+    nearerLine.setIndices(EgLab::Common::move(lineIndices));
+
+    EgLab::RE::PickContext depthContext = context;
+    depthContext.bestDepth = std::numeric_limits<EgLab::RE::Scalar>::max();
+    depthContext.bestDistanceSquared = std::numeric_limits<EgLab::RE::Scalar>::max();
+    EXPECT_EQ(face.touch(depthContext), 0u);
+    EXPECT_EQ(nearerLine.touch(depthContext), 0u);
 }
 
 TEST_F(TestRender, face)

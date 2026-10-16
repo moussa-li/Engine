@@ -5,8 +5,8 @@
 #include "Common/BBox.hpp"
 #include "Common/DynamicArray.hpp"
 #include "Common/HashMap.hpp"
-#include "Common/HashTable.hpp"
 #include "Common/HashSet.hpp"
+#include "Common/HashTable.hpp"
 #include "Common/List.hpp"
 #include "Common/Log.hpp"
 #include "Common/Matrix.hpp"
@@ -57,6 +57,33 @@ TEST_F(TestCommon, BBoxTest)
     box.reset();
     EXPECT_TRUE(box.isEmpty());
     EXPECT_FALSE(box.contains(Vector3d(0.0, 0.0, 0.0)));
+
+    BBox<double, 3> splitBox;
+    splitBox.addPoint(Vector3d(0.0, 0.0, 0.0));
+    splitBox.addPoint(Vector3d(10.0, 10.0, 10.0));
+    BBox<double, 3> cutBox;
+    cutBox.addPoint(Vector3d(2.0, 2.0, 2.0));
+    cutBox.addPoint(Vector3d(8.0, 8.0, 8.0));
+
+    const auto pieces = splitBox.split(cutBox);
+    EXPECT_EQ(pieces.size(), 6);
+    double remainingVolume = 0.0;
+    for (const auto& piece : pieces)
+    {
+        const auto pieceMin = piece.min();
+        const auto pieceMax = piece.max();
+        remainingVolume +=
+            (pieceMax[0] - pieceMin[0]) * (pieceMax[1] - pieceMin[1]) * (pieceMax[2] - pieceMin[2]);
+        EXPECT_FALSE(piece.contains(Vector3d(5.0, 5.0, 5.0)));
+    }
+    EXPECT_DOUBLE_EQ(remainingVolume, 784.0);
+
+    BBox<double, 3> disjointBox;
+    disjointBox.addPoint(Vector3d(20.0, 20.0, 20.0));
+    disjointBox.addPoint(Vector3d(30.0, 30.0, 30.0));
+    const auto unchanged = splitBox.split(disjointBox);
+    EXPECT_EQ(unchanged.size(), 1);
+    EXPECT_TRUE(unchanged[0].contains(Vector3d(5.0, 5.0, 5.0)));
 }
 
 TEST_F(TestCommon, testSingle)
@@ -449,8 +476,25 @@ TEST_F(TestCommon, sharedPtrPreservesControlBlockAcrossBaseConversion)
 
     int destroyed = 0;
     auto derived = EgLab::Common::makeShared<Derived>(destroyed);
+    EgLab::Common::SharedPtr<Base> copied(derived);
+    EXPECT_EQ(copied.get(), static_cast<Base*>(derived.get()));
+
+    auto moveSource = derived;
+    EgLab::Common::SharedPtr<Base> moved(EgLab::Common::move(moveSource));
+    EXPECT_EQ(moveSource.get(), nullptr);
+    EXPECT_EQ(moved.get(), static_cast<Base*>(derived.get()));
+
+    EgLab::Common::SharedPtr<Base> moveAssigned = derived;
+    auto sameControlBlockSource = derived;
+    moveAssigned = EgLab::Common::move(sameControlBlockSource);
+    EXPECT_EQ(sameControlBlockSource.get(), nullptr);
+    EXPECT_EQ(moveAssigned.get(), static_cast<Base*>(derived.get()));
+
     EgLab::Common::SharedPtr<Base> base;
     base = derived;
+    copied = nullptr;
+    moved = nullptr;
+    moveAssigned = nullptr;
 
     EXPECT_EQ(base.get(), static_cast<Base*>(derived.get()));
     derived = nullptr;
