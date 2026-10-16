@@ -68,6 +68,10 @@ namespace EgLab::Platform
                 {
                     Context::instance().getPanelManager().showPanel("BackGroundSetting");
                 }
+                if (ImGui::MenuItem("Light Settings"))
+                {
+                    Context::instance().getPanelManager().showPanel("LightSetting");
+                }
                 if (ImGui::MenuItem("Data Tree"))
                 {
                     Context::instance().getPanelManager().showPanel("DataTree");

@@ -131,6 +131,7 @@ namespace EgLab::RE
 
         shader->setUniformMat4f("proj", proj);
         shader->setUniformMat4f("view", view);
+        shader->setUniform3f("viewPos", camera->getPosition());
 
         shader->unBind();
     }
@@ -197,6 +198,7 @@ namespace EgLab::RE
                 const auto &primitives = it.data().second;
 
                 loadCamera(shader, camera, scene);
+                loadLight(shader, camera);
 
                 for (auto primitiveIt = primitives.begin(); primitiveIt.hasNext();
                      primitiveIt.next())
@@ -354,6 +356,34 @@ namespace EgLab::RE
     Common::Vector4f Renderer::getBackGroundColor() const
     {
         return _backGroundColor;
+    }
+
+    void Renderer::setLightSettings(const DirectionalLightSettings &settings)
+    {
+        std::lock_guard<std::mutex> lock(_lightMutex);
+        _lightSettings = settings;
+    }
+
+    DirectionalLightSettings Renderer::getLightSettings() const
+    {
+        std::lock_guard<std::mutex> lock(_lightMutex);
+        return _lightSettings;
+    }
+
+    void Renderer::loadLight(const Common::SharedPtr<Shader> &shader,
+                             const Common::SharedPtr<Camera> &camera) const
+    {
+        const DirectionalLightSettings settings = getLightSettings();
+        shader->bind();
+        shader->setUniform3f("pointLights.position", camera->getPosition());
+        shader->setUniform1f("pointLights.constant", 1.0f);
+        shader->setUniform1f("pointLights.linear", 0.0f);
+        shader->setUniform1f("pointLights.quadratic", 0.0f);
+        shader->setUniform3f("pointLights.ambient", settings.ambient);
+        shader->setUniform3f("pointLights.diffuse", settings.diffuse);
+        shader->setUniform3f("pointLights.specular", settings.specular);
+        shader->setUniform1f("material.shininess", settings.shininess);
+        shader->unBind();
     }
 
     Renderer::Renderer() : _configure(Common::makeUnique<RenderConfigure>())

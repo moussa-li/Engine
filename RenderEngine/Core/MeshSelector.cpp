@@ -182,4 +182,8 @@ namespace EgLab::RE
         }
         return nullptr;
     }
+
+    MeshSelector::~MeshSelector()
+    {
+    }
 } // namespace EgLab::RE

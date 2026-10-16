@@ -4,6 +4,7 @@
 #include "Panel/CameraSettingPanel.hpp"
 #include "Panel/DataTreePanel.hpp"
 #include "Panel/IPanel.hpp"
+#include "Panel/LightSettingPanel.hpp"
 #include "Panel/MeshImportPanel.hpp"
 #include "Panel/MeshRenderSettingPanel.hpp"
 
@@ -18,6 +19,7 @@ namespace EgLab::Platform
         _panels[DataTreePanel().getPanelName()] = Common::makeShared<DataTreePanel>();
         _panels[MeshRenderSettingPanel().getPanelName()] =
             Common::makeShared<MeshRenderSettingPanel>();
+        _panels[LightSettingPanel().getPanelName()] = Common::makeShared<LightSettingPanel>();
     }
 
     Common::Return PanelManager::showPanel(const Common::String& name)

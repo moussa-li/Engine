@@ -133,7 +133,7 @@ namespace EgLab::ME
         }
         else if (nodeNumber == 4)
         {
-            static int quadFaceMap[6] = {0, 1, 2, 0, 3, 2};
+            static int quadFaceMap[6] = {0, 1, 2, 0, 2, 3};
             res.resize(6);
             for (int i = 0; i < 6; i++)
             {

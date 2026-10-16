@@ -25,6 +25,8 @@ namespace EgLab::RE
                           const Common::SharedPtr<RenderPrimitive>& facePrimitive);
         void unregisterMesh(const ME::Mesh* mesh);
 
+        ~MeshSelector();
+
     private:
         struct MeshRegistration
         {

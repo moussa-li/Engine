@@ -1,4 +1,6 @@
 #pragma once
+#include <mutex>
+
 #include "Common/DynamicArray.hpp"
 #include "Common/Return.hpp"
 #include "Common/SharedPtr.hpp"
@@ -24,6 +26,14 @@ namespace EgLab::RE
         int width, height; // size
     };
 
+    struct DirectionalLightSettings
+    {
+        Common::Vector3f ambient{0.15f, 0.15f, 0.15f};
+        Common::Vector3f diffuse{0.8f, 0.8f, 0.8f};
+        Common::Vector3f specular{0.35f, 0.35f, 0.35f};
+        Scalar shininess{32.0f};
+    };
+
     class RenderEngineAPI Renderer
     {
     public:
@@ -40,6 +50,9 @@ namespace EgLab::RE
         void setBackGroundColor(const Common::Vector4f &color);
 
         Common::Vector4f getBackGroundColor() const;
+
+        void setLightSettings(const DirectionalLightSettings &settings);
+        DirectionalLightSettings getLightSettings() const;
 
         void update(DeltaTime deltaTime);
 
@@ -63,6 +76,8 @@ namespace EgLab::RE
         void loadCamera(const Common::SharedPtr<Shader> &shader,
                         const Common::SharedPtr<Camera> &camera,
                         const Common::SharedPtr<Scene> &scene) const;
+        void loadLight(const Common::SharedPtr<Shader> &shader,
+                       const Common::SharedPtr<Camera> &camera) const;
         bool isPrimitiveVisible(const Common::SharedPtr<RenderPrimitive> &primitive) const;
 
     private:
@@ -74,6 +89,8 @@ namespace EgLab::RE
         Common::SharedPtr<Selector> _selector;
 
         Common::Vector4f _backGroundColor;
+        mutable std::mutex _lightMutex;
+        DirectionalLightSettings _lightSettings;
 
         mutable Common::SharedPtr<RenderPrimitive> _pickedPrimitive{nullptr};
         mutable IdxType _pickedNodeIndex{static_cast<IdxType>(-1)};

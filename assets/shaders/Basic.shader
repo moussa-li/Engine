@@ -10,15 +10,13 @@ out vec2 TexCoords;
 
 uniform mat4 proj;
 uniform mat4 view;
-uniform mat4 model;
 
 void main()
 {
-    //FragPos = vec3(model * vec4(position, 1.0));
-    FragPos = vec3(vec4(position, 1.0));
-    Normal = mat3(transpose(inverse(model))) * normal;
+    FragPos = position;
     TexCoords = texCoord;
-    gl_Position = proj * view * vec4(FragPos, 1.0);
+    Normal = normal;
+    gl_Position = proj * view * vec4(position, 1.0);
 };
        
 
@@ -76,7 +74,12 @@ in vec3 Normal;
 in vec2 TexCoords;
 
 uniform vec3 viewPos;
-uniform DirLight dirLight;
+uniform DirLight dirLight = DirLight(
+    vec3(-0.2, -1.0, -0.3),
+    vec3(0.15),
+    vec3(0.8),
+    vec3(0.35)
+);
 uniform PointLight pointLights;
 //uniform PointLight pointLights[NR_POINT_LIGHTS];
 uniform SpotLight spotLight;
@@ -120,13 +123,12 @@ void main()
     }
     
     // lighting using baseColor
-    vec3 result = CalcDirLight(dirLight, norm, viewDir, baseColor);
+    vec3 result = CalcPointLight(pointLights, norm, FragPos, viewDir, baseColor);
     // optionally add other lights (commented out as before)
     // for(int i = 0; i < NR_POINT_LIGHTS; i++) result += CalcPointLight(pointLights, norm, FragPos, viewDir, baseColor);
     // result += CalcSpotLight(spotLight, norm, FragPos, viewDir, baseColor);
 
-    // FragColor = vec4(result, baseColor.a);
-    FragColor = baseColor;
+    FragColor = vec4(result, baseColor.a);
 }
 
 // calculates the color when using a directional light.
@@ -139,22 +141,10 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec4 baseColor)
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
     // combine results
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-    if (isPureColor)
-    {
-        ambient = light.ambient * vec3(baseColor);
-        diffuse = light.diffuse * diff * vec3(baseColor);
-        specular = light.specular * spec * vec3(baseColor);
-    }
-    else
-    {
-        // use baseColor instead of texture when SSBO is present
-        ambient = light.ambient * vec3(baseColor);
-        diffuse = light.diffuse * diff * vec3(baseColor);
-        specular = light.specular * spec * vec3(baseColor);
-    }
+    vec3 ambient = light.ambient * baseColor.rgb;
+    vec3 diffuse = light.diffuse * diff * baseColor.rgb;
+    vec3 specular = light.specular * spec;
+    //return (ambient + diffuse + specular);
     return (ambient + diffuse + specular);
 }
 
