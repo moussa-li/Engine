@@ -14,6 +14,8 @@
 #include "Common/Publisher.hpp"
 #include "Common/SharedPtr.hpp"
 #include "Common/Subscriber.hpp"
+#include "DataBase/Context.hpp"
+#include "Work/RenderWork.hpp"
 
 template <>
 struct EgLab::Common::hash<EgLab::Platform::EventId>
@@ -27,6 +29,32 @@ struct EgLab::Common::hash<EgLab::Platform::EventId>
 
 namespace EgLab::Platform
 {
+
+    class ShowPanelCommand : public ICommand
+    {
+    public:
+        explicit ShowPanelCommand(const ShowPanelParam& params) : _params(params)
+        {
+        }
+
+        Common::Return exec() override
+        {
+            return Context::instance().getPanelManager().queueShowPanel(_params.panelName);
+        }
+
+    private:
+        ShowPanelParam _params;
+    };
+
+    class FitViewCommand : public ICommand
+    {
+    public:
+        Common::Return exec() override
+        {
+            RenderWork::instance().fitView();
+            return Common::Return::Succeed;
+        }
+    };
 
     using ICommandCreateFunc = std::function<Common::SharedPtr<ICommand>(const PacketPOD& packet)>;
     using EventPacketToPODCreateFunc = std::function<PacketPOD(const EventPacket& packet)>;
@@ -65,6 +93,16 @@ namespace EgLab::Platform
 
         void registerCommand()
         {
+            _creator[EventId::ShowPanel] = [](const PacketPOD& pod) {
+                ShowPanelParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<ShowPanelCommand>(param);
+            };
+
+            _creator[EventId::FitView] = [](const PacketPOD&) {
+                return Common::makeShared<FitViewCommand>();
+            };
+
             _creator[EventId::MeshDelete] = [](const PacketPOD& pod) {
                 DeleteMeshParam param{};
                 std::memcpy(&param, pod.data, sizeof(param));
@@ -99,6 +137,19 @@ namespace EgLab::Platform
                 return pod;
             };
 
+            _packetCreator[EventId::ShowPanel] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                ShowPanelParam param{};
+                const Common::String panelName = packet.getData<Common::String>("panelName");
+                const size_t copySize = std::min(panelName.size(), sizeof(param.panelName) - 1);
+                std::memcpy(param.panelName, panelName.c_str(), copySize);
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
+            _packetCreator[EventId::FitView] = [](const EventPacket&) { return PacketPOD{}; };
+
             _packetCreator[EventId::MeshDelete] = [](const EventPacket& packet) {
                 PacketPOD pod{};
                 DeleteMeshParam param{packet.getData<uintptr_t>("meshAddress")};
@@ -126,6 +177,8 @@ namespace EgLab::Platform
 
         void startListen()
         {
+            _subscriber.subscrib(static_cast<uint32_t>(EventId::ShowPanel));
+            _subscriber.subscrib(static_cast<uint32_t>(EventId::FitView));
             _subscriber.subscrib((uint32_t)EventId::MeshImport);
             _subscriber.subscrib((uint32_t)EventId::MeshDelete);
             _subscriber.subscrib((uint32_t)EventId::UpdateMesh);

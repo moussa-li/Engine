@@ -1,7 +1,7 @@
 #include "Panel/CameraSettingPanel.hpp"
 
+#include "Command/CommandManager.hpp"
 #include "DataBase/Context.hpp"
-#include "Work/RenderWork.hpp"
 #include "imgui.h"
 
 namespace EgLab::Platform
@@ -67,7 +67,7 @@ namespace EgLab::Platform
             // ========== Fit View Button ==========
             if (ImGui::Button("Fit View", ImVec2(-1, 0)))
             {
-                RenderWork::instance().fitView();
+                CommandManager::instance().call(EventId::FitView, EventPacket{});
             }
 
             ImGui::SameLine();

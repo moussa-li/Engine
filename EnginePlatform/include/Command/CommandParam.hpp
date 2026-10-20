@@ -9,6 +9,11 @@
 
 namespace EgLab::Platform
 {
+    struct ShowPanelParam
+    {
+        char panelName[64];
+    };
+
     struct ImportMeshParam
     {
         char fileDir[128];
@@ -25,6 +30,8 @@ namespace EgLab::Platform
         uintptr_t meshAddress;
     };
 
+    static_assert(std::is_trivially_copyable<ShowPanelParam>::value,
+                  "ShowPanelParam must be trivially copyable");
     static_assert(std::is_trivially_copyable<ImportMeshParam>::value,
                   "ImportMeshParam must be trivially copyable");
     static_assert(std::is_trivially_copyable<UpdateMeshParam>::value,

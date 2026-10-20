@@ -20,15 +20,29 @@ namespace EgLab
 
 namespace EgLab::Platform
 {
+    void requestShowPanel(const Common::String& panelName)
+    {
+        EventPacket packet;
+        packet.setData("panelName", panelName);
+        CommandManager::instance().call(EventId::ShowPanel, Common::move(packet));
+    }
+
     void renderRibbonToolbar()
     {
+        const bool openRequested =
+            ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal);
+        if (openRequested)
+        {
+            requestShowPanel("MeshImport");
+        }
+
         if (ImGui::BeginMainMenuBar())
         {
             if (ImGui::BeginMenu("File"))
             {
                 if (ImGui::MenuItem("Open", "Ctrl+O"))
                 { /* ... */
-                    Context::instance().getPanelManager().showPanel("MeshImport");
+                    requestShowPanel("MeshImport");
                 }
 
                 if (ImGui::MenuItem("Save", "Ctrl+S"))
@@ -44,27 +58,35 @@ namespace EgLab::Platform
             {
                 if (ImGui::MenuItem("camera setting", "f5"))
                 {
-                    Context::instance().getPanelManager().showPanel("CameraSetting");
+                    requestShowPanel("CameraSetting");
                 }
 
                 if (ImGui::MenuItem("background setting", "f5"))
                 {
-                    Context::instance().getPanelManager().showPanel("BackGroundSetting");
+                    requestShowPanel("BackGroundSetting");
                 }
                 if (ImGui::MenuItem("Light Settings"))
                 {
-                    Context::instance().getPanelManager().showPanel("LightSetting");
+                    requestShowPanel("LightSetting");
                 }
                 if (ImGui::MenuItem("Data Tree"))
                 {
-                    Context::instance().getPanelManager().showPanel("DataTree");
+                    requestShowPanel("DataTree");
                 }
                 if (ImGui::MenuItem("Mesh Render Settings"))
                 {
-                    Context::instance().getPanelManager().showPanel("MeshRenderSettings");
+                    requestShowPanel("MeshRenderSettings");
                 }
                 ImGui::EndMenu();
             }
+            if (ImGui::BeginMenu("Mesh"))
+            {
+                if (ImGui::MenuItem("Half Edge Mesh"))
+                {
+                    requestShowPanel("HEMesh");
+                }
+            }
+
             ImGui::EndMainMenuBar();
         }
     }
