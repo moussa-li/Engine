@@ -103,6 +103,7 @@ namespace EgLab::Platform
         void setHighlightedMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
         void setHighlightedMeshes(
             const Common::DynamicArray<Common::SharedPtr<EgLab::ME::Mesh>>& meshes);
+        void setHighlightColor(const Common::Vector4f& color);
         void setHEMeshHighlight(const Common::SharedPtr<ME::HEMesh>& mesh, uint32_t vertexIndex,
                                 uint32_t halfEdgeIndex = UINT32_MAX);
         void setMeshColor(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
@@ -117,6 +118,7 @@ namespace EgLab::Platform
             MeshColor,
             MeshRemoval,
             Highlight,
+            HighlightColor,
             HEMeshHighlight,
             FitView,
         };
@@ -190,6 +192,7 @@ namespace EgLab::Platform
         Common::SharedPtr<RE::Shader> _highlightShader;
         Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _highlightPrimitives;
         Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _highlightContourPrimitives;
+        Common::Vector4f _highlightColor{1.0f, 0.75f, 0.7f, 0.3f};
         RE::CoordType _highlightViewPosition;
         RE::CoordType _highlightViewFront;
         bool _highlightViewValid{false};

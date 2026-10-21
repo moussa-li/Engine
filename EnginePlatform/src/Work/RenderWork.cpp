@@ -653,6 +653,17 @@ namespace EgLab::Platform
                     }
                 }
                 break;
+            case RenderEventType::HighlightColor:
+                _highlightColor = event.color;
+                for (const auto& primitive : _highlightPrimitives)
+                {
+                    auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(primitive);
+                    if (face)
+                    {
+                        face->setColor(_highlightColor);
+                    }
+                }
+                break;
             case RenderEventType::HEMeshHighlight:
                 updateHEMeshHighlight(event);
                 break;
@@ -751,6 +762,14 @@ namespace EgLab::Platform
         RenderEvent event{};
         event.type = RenderEventType::Highlight;
         event.meshes = meshes;
+        queueRenderEvent(Common::move(event));
+    }
+
+    void RenderWork::setHighlightColor(const Common::Vector4f& color)
+    {
+        RenderEvent event{};
+        event.type = RenderEventType::HighlightColor;
+        event.color = color;
         queueRenderEvent(Common::move(event));
     }
 
@@ -854,7 +873,7 @@ namespace EgLab::Platform
             RE::MeshPrimitiveCreator creator(mesh);
             auto primitive = creator.getPrimitive<RE::RenderFace>();
             auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(primitive);
-            face->setColor(Common::Vector4f(1.0f, 0.75f, 0.1f, 0.3f));
+            face->setColor(_highlightColor);
             face->setDepthOffset(-1.0f, -1.0f);
             primitive->setup();
 

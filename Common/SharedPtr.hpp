@@ -248,7 +248,7 @@ namespace EgLab::Common
         friend class SharedPtr;
 
         template <class Derived, typename Base>
-        friend SharedPtr<Derived> dynamicSharedPtrCast(SharedPtr<Base> &ptr);
+        friend SharedPtr<Derived> dynamicSharedPtrCast(const SharedPtr<Base> &ptr);
 
         template <class U, class... Args>
         friend SharedPtr<U> makeShared(Args &&...args);
@@ -270,7 +270,7 @@ namespace EgLab::Common
     }
 
     template <class Derived, typename Base>
-    SharedPtr<Derived> dynamicSharedPtrCast(SharedPtr<Base> &ptr)
+    SharedPtr<Derived> dynamicSharedPtrCast(const SharedPtr<Base> &ptr)
     {
         Derived *derivedPtr = dynamic_cast<Derived *>(ptr.get());
         if (derivedPtr)

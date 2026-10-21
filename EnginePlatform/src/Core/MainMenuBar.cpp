@@ -73,10 +73,7 @@ namespace EgLab::Platform
                 {
                     requestShowPanel("DataTree");
                 }
-                if (ImGui::MenuItem("Mesh Render Settings"))
-                {
-                    requestShowPanel("MeshRenderSettings");
-                }
+
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Mesh"))
@@ -84,6 +81,10 @@ namespace EgLab::Platform
                 if (ImGui::MenuItem("Half Edge Mesh"))
                 {
                     requestShowPanel("HEMesh");
+                }
+                if (ImGui::MenuItem("Mesh Render Settings"))
+                {
+                    requestShowPanel("MeshRenderSettings");
                 }
                 ImGui::EndMenu();
             }

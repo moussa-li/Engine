@@ -18,7 +18,7 @@ namespace EgLab::Platform
 
     void MeshRenderSettingPanel::render()
     {
-        ImGui::SetNextWindowSize(ImVec2(320, 280), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(320, 320), ImGuiCond_FirstUseEver);
         ImGui::Begin("Mesh Render Settings", &_show);
 
         auto renderer = Context::instance().getApplication().renderer;
@@ -51,6 +51,13 @@ namespace EgLab::Platform
             if (ImGui::Checkbox("Faces", &renderFaces))
             {
                 renderer->setRenderFacesEnabled(renderFaces);
+            }
+
+            if (ImGui::ColorEdit4("Highlight Color", _highlightColor))
+            {
+                RenderWork::instance().setHighlightColor(
+                    Common::Vector4f(_highlightColor[0], _highlightColor[1], _highlightColor[2],
+                                     _highlightColor[3]));
             }
 
             ImGui::Separator();
