@@ -130,7 +130,7 @@ namespace EgLab::RE
         }
 
         glEnable(GL_POLYGON_OFFSET_FILL);
-        glPolygonOffset(1.0f, 1.0f);
+        glPolygonOffset(_depthOffsetFactor, _depthOffsetUnits);
         if (_drawMode == DrawMode::Arrays)
         {
             _arrayVertexArray->bind();
@@ -301,6 +301,12 @@ namespace EgLab::RE
         _highlightScale = scale;
         _highlightScaleEnabled = true;
         updateHighlightScaleMatrix();
+    }
+
+    void RenderFace::setDepthOffset(float factor, float units)
+    {
+        _depthOffsetFactor = factor;
+        _depthOffsetUnits = units;
     }
 
     void RenderFace::setDrawMode(DrawMode mode)

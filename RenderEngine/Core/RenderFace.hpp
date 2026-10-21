@@ -36,6 +36,7 @@ namespace EgLab::RE
         void setColors(Common::DynamicArray<Common::Vector4f> &&colors);
         void setColor(const Common::Vector4f &color);
         void setHighlightScale(float scale);
+        void setDepthOffset(float factor, float units);
         void setDrawMode(DrawMode mode);
         DrawMode getDrawMode() const;
 
@@ -62,6 +63,8 @@ namespace EgLab::RE
         unsigned int _colorSSBO{0};
         float _highlightScale{1.0f};
         bool _highlightScaleEnabled{false};
+        float _depthOffsetFactor{1.0f};
+        float _depthOffsetUnits{1.0f};
         DrawMode _drawMode{DrawMode::Arrays};
         Common::Matrix4f _highlightScaleMatrix{Common::Matrix4f::Identity()};
         // SSBO binding point used by shaders. Shaders should declare:
