@@ -6,6 +6,8 @@
 #include "Panel/BackGroundSettingPanel.hpp"
 #include "Panel/CameraSettingPanel.hpp"
 #include "Panel/DataTreePanel.hpp"
+#include "Panel/HEMeshDataPanel.hpp"
+#include "Panel/HEMeshPanel.hpp"
 #include "Panel/IPanel.hpp"
 #include "Panel/LightSettingPanel.hpp"
 #include "Panel/MeshImportPanel.hpp"
@@ -24,6 +26,9 @@ namespace EgLab::Platform
         _panels[BackGroundSettingPanel().getPanelName()] =
             Common::makeShared<BackGroundSettingPanel>();
         _panels[DataTreePanel().getPanelName()] = Common::makeShared<DataTreePanel>();
+        _panels[HEMeshDataPanel().getPanelName()] = Common::makeShared<HEMeshDataPanel>();
+        _heMeshPanel = Common::makeShared<HEMeshPanel>();
+        _panels[_heMeshPanel->getPanelName()] = _heMeshPanel;
         _panels[MeshRenderSettingPanel().getPanelName()] =
             Common::makeShared<MeshRenderSettingPanel>();
         _panels[LightSettingPanel().getPanelName()] = Common::makeShared<LightSettingPanel>();
@@ -59,6 +64,13 @@ namespace EgLab::Platform
             return Common::Return::Succeed;
         }
         return Common::Return::Failed;
+    }
+
+    void PanelManager::openHEMeshPanel(const Common::SharedPtr<ME::Mesh>& mesh,
+                                       const Common::String& meshName)
+    {
+        _heMeshPanel->setMesh(mesh, meshName);
+        _heMeshPanel->show();
     }
 
     void PanelManager::loop()

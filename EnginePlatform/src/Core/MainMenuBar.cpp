@@ -85,6 +85,7 @@ namespace EgLab::Platform
                 {
                     requestShowPanel("HEMesh");
                 }
+                ImGui::EndMenu();
             }
 
             ImGui::EndMainMenuBar();

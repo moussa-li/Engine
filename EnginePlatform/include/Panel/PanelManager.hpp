@@ -13,6 +13,16 @@
 namespace EgLab::Platform
 {
     class IPanel;
+    class HEMeshPanel;
+} // namespace EgLab::Platform
+
+namespace EgLab::ME
+{
+    class Mesh;
+}
+
+namespace EgLab::Platform
+{
     class PanelManager
     {
     public:
@@ -23,11 +33,14 @@ namespace EgLab::Platform
         Common::Return showPanel(const Common::String&);
         Common::Return queueShowPanel(const Common::String&);
         Common::Return hidePanel(const Common::String&);
+        void openHEMeshPanel(const Common::SharedPtr<ME::Mesh>& mesh,
+                             const Common::String& meshName);
 
         // const Common::SharedPtr<IPanel> getPanel() const;
 
     private:
         Common::HashMap<Common::String, Common::SharedPtr<IPanel>> _panels;
+        Common::SharedPtr<HEMeshPanel> _heMeshPanel;
         Common::MemoryQueue _requestQueue;
         Common::Publisher _publisher;
         Common::Subscriber _subscriber;

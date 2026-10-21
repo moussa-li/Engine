@@ -25,7 +25,8 @@
 namespace EgLab::ME
 {
     class Mesh;
-}
+    class HEMesh;
+} // namespace EgLab::ME
 
 namespace EgLab::RE
 {
@@ -102,6 +103,8 @@ namespace EgLab::Platform
         void setHighlightedMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
         void setHighlightedMeshes(
             const Common::DynamicArray<Common::SharedPtr<EgLab::ME::Mesh>>& meshes);
+        void setHEMeshHighlight(const Common::SharedPtr<ME::HEMesh>& mesh, uint32_t vertexIndex,
+                                uint32_t halfEdgeIndex = UINT32_MAX);
         void setMeshColor(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
                           const Common::Vector4f& color);
         void removeMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
@@ -114,6 +117,8 @@ namespace EgLab::Platform
             MeshColor,
             MeshRemoval,
             Highlight,
+            HEMeshHighlight,
+            FitView,
         };
 
         struct RenderEvent
@@ -122,6 +127,9 @@ namespace EgLab::Platform
             std::vector<uint8_t> payload;
             Common::SharedPtr<ME::Mesh> mesh;
             Common::DynamicArray<Common::SharedPtr<ME::Mesh>> meshes;
+            Common::SharedPtr<ME::HEMesh> heMesh;
+            uint32_t heMeshVertexIndex{UINT32_MAX};
+            uint32_t heMeshHalfEdgeIndex{UINT32_MAX};
             Common::Vector4f color;
             RenderPacket packet;
         };
@@ -136,6 +144,7 @@ namespace EgLab::Platform
         void materializeMesh(const UpdateMeshParam& params,
                              const Common::SharedPtr<EgLab::ME::Mesh>& sourceMesh);
         void updateMeshHighlight();
+        void updateHEMeshHighlight(const RenderEvent& event);
         void publishPickInfo(const RE::PrimitivePickInfo& info);
 
     private:
@@ -179,6 +188,8 @@ namespace EgLab::Platform
         Common::DynamicArray<Common::SharedPtr<EgLab::ME::Mesh>> _activeHighlightedMeshes;
         Common::SharedPtr<RE::Shader> _highlightShader;
         Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _highlightPrimitives;
+        Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _heMeshHighlightPrimitives;
+        Common::SharedPtr<RE::Shader> _heMeshHighlightShader;
 
         friend class RenderUpdate;
 

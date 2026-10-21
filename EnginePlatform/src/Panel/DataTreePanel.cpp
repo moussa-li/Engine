@@ -59,6 +59,11 @@ namespace EgLab::Platform
 
         if (ImGui::BeginPopupContextItem())
         {
+            if (ImGui::MenuItem("Create Half-Edge Mesh"))
+            {
+                Context::instance().getPanelManager().openHEMeshPanel(mesh, meshData.getName());
+            }
+
             if (ImGui::MenuItem("delete Mesh"))
             {
                 Common::DynamicArray<Common::SharedPtr<ME::Mesh>> meshesToDelete;

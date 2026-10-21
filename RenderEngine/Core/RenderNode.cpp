@@ -18,6 +18,11 @@ namespace EgLab::RE
         _vertices = nodes;
     }
 
+    void RenderNode::setColor(const Common::Vector4f &color)
+    {
+        _color = color;
+    }
+
     Common::BBox<Scalar, 3> RenderNode::getBounds() const
     {
         Common::BBox<Scalar, 3> bounds;
@@ -44,7 +49,7 @@ namespace EgLab::RE
     {
         shader->bind();
         shader->setUniform1f("u_PointSize", 3.0f);
-        shader->setUniform4f("u_Color", Common::Vector4f(0.18f, 0.24f, 0.30f, 1.0f));
+        shader->setUniform4f("u_Color", _color);
         _vertexArray->bind();
         glDrawArrays(GL_POINTS, 0, _vertices.size());
         glDepthMask(GL_TRUE);

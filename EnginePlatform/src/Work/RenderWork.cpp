@@ -7,6 +7,7 @@
 
 #include "Common/Log.hpp"
 #include "Common/Performance.hpp"
+#include "MeshEngine/MeshData/HEMesh.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "MeshEngine/MeshData/MeshPOD.hpp"
 #include "MeshEngine/MeshData/MeshToPOD.hpp"
@@ -363,6 +364,12 @@ namespace EgLab::Platform
                 materializeMesh(params, event.mesh);
                 break;
             }
+            case RenderEventType::FitView:
+                if (_camera && _scene)
+                {
+                    _camera->fitView(_scene->getBounds(), 2);
+                }
+                break;
             case RenderEventType::RenderPacket:
             {
                 RenderPacket& packet = event.packet;
@@ -511,6 +518,9 @@ namespace EgLab::Platform
                     }
                 }
                 break;
+            case RenderEventType::HEMeshHighlight:
+                updateHEMeshHighlight(event);
+                break;
             }
         }
     }
@@ -574,7 +584,9 @@ namespace EgLab::Platform
 
     void RenderWork::fitView()
     {
-        _camera->fitView(_scene->getBounds(), 2);
+        RenderEvent event{};
+        event.type = RenderEventType::FitView;
+        queueRenderEvent(Common::move(event));
     }
 
     void RenderWork::onUpdateMesh(const UpdateMeshParam& params)
@@ -604,6 +616,17 @@ namespace EgLab::Platform
         RenderEvent event{};
         event.type = RenderEventType::Highlight;
         event.meshes = meshes;
+        queueRenderEvent(Common::move(event));
+    }
+
+    void RenderWork::setHEMeshHighlight(const Common::SharedPtr<ME::HEMesh>& mesh,
+                                        uint32_t vertexIndex, uint32_t halfEdgeIndex)
+    {
+        RenderEvent event{};
+        event.type = RenderEventType::HEMeshHighlight;
+        event.heMesh = mesh;
+        event.heMeshVertexIndex = vertexIndex;
+        event.heMeshHalfEdgeIndex = halfEdgeIndex;
         queueRenderEvent(Common::move(event));
     }
 
@@ -700,6 +723,76 @@ namespace EgLab::Platform
                 continue;
             }
             _highlightPrimitives.pushBack(primitive);
+        }
+    }
+
+    void RenderWork::updateHEMeshHighlight(const RenderEvent& event)
+    {
+        if (!_scene)
+        {
+            return;
+        }
+        for (const auto& primitive : _heMeshHighlightPrimitives)
+        {
+            _scene->removePrimitive(_heMeshHighlightShader, primitive);
+        }
+        _heMeshHighlightPrimitives.clear();
+
+        if (!event.heMesh || event.heMeshVertexIndex >= event.heMesh->getVertexCount())
+        {
+            return;
+        }
+        if (!_heMeshHighlightShader)
+        {
+            RE::ShaderLib::instance().getHighlightShader(_heMeshHighlightShader);
+        }
+
+        const Common::Vector4f highlightColor(1.0f, 0.28f, 0.04f, 1.0f);
+        const auto selectedVertex = event.heMesh->getVertex(event.heMeshVertexIndex);
+        Common::DynamicArray<RE::CoordType> nodeCoordinates;
+        RE::CoordType nodeCoordinate(selectedVertex._coord.x(), selectedVertex._coord.y(),
+                                     selectedVertex._coord.z());
+        nodeCoordinates.pushBack(nodeCoordinate);
+        auto nodePrimitive = Common::makeShared<RE::RenderNode>();
+        nodePrimitive->setNodes(Common::move(nodeCoordinates));
+        nodePrimitive->setColor(highlightColor);
+        nodePrimitive->setup();
+        if (_scene->addPrimitive(_heMeshHighlightShader, nodePrimitive) == Common::Return::Succeed)
+        {
+            _heMeshHighlightPrimitives.pushBack(nodePrimitive);
+        }
+
+        if (event.heMeshHalfEdgeIndex >= event.heMesh->getHalfEdgeCount())
+        {
+            return;
+        }
+        const auto halfEdge = event.heMesh->getHalfEdge(event.heMeshHalfEdgeIndex);
+        if (halfEdge.vertex != event.heMeshVertexIndex ||
+            halfEdge.next >= event.heMesh->getHalfEdgeCount())
+        {
+            return;
+        }
+        const auto nextHalfEdge = event.heMesh->getHalfEdge(halfEdge.next);
+        const auto nextVertex = event.heMesh->getVertex(nextHalfEdge.vertex);
+        Common::DynamicArray<RE::CoordType> edgeCoordinates;
+        RE::CoordType edgeStart(selectedVertex._coord.x(), selectedVertex._coord.y(),
+                                selectedVertex._coord.z());
+        RE::CoordType edgeEnd(nextVertex._coord.x(), nextVertex._coord.y(), nextVertex._coord.z());
+        edgeCoordinates.pushBack(edgeStart);
+        edgeCoordinates.pushBack(edgeEnd);
+        Common::DynamicArray<RE::IdxType> edgeIndices;
+        RE::IdxType firstIndex = 0;
+        RE::IdxType secondIndex = 1;
+        edgeIndices.pushBack(firstIndex);
+        edgeIndices.pushBack(secondIndex);
+        auto linePrimitive = Common::makeShared<RE::RenderLine>();
+        linePrimitive->setNodes(Common::move(edgeCoordinates));
+        linePrimitive->setIndices(Common::move(edgeIndices));
+        linePrimitive->setColor(highlightColor);
+        linePrimitive->setup();
+        if (_scene->addPrimitive(_heMeshHighlightShader, linePrimitive) == Common::Return::Succeed)
+        {
+            _heMeshHighlightPrimitives.pushBack(linePrimitive);
         }
     }
 } // namespace EgLab::Platform

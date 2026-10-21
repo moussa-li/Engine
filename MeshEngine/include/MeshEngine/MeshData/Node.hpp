@@ -3,6 +3,7 @@
 #include "Common/DynamicArray.hpp"
 #include "Common/Return.hpp"
 #include "MeshEngine/Common/Definitions.hpp"
+#include "MeshEngine/Common/SoaContainer.hpp"
 
 namespace EgLab::ME
 {
@@ -55,22 +56,17 @@ namespace EgLab::ME
         }
 
     private:
+        friend struct SoaRegistrar<Node>;
         IdType _id;
         CoordType _coord;
     };
 
-    // class Nodes
-    // {
-    // public:
-    //     Common::Return addNodes(IdType, Node);
+    BEGIN_SOA_REG(Node)
+    SOA_REGISTERED_TYPE(Node)
+    REG_COL(IdType, _id)
+    REG_COL(CoordType, _coord)
+    END_SOA_REG()
 
-    //     Common::Return delNodes(IdType);
-
-    //     Common::Return setNodes(IdType, Node);
-
-    // private:
-    //     Common::DynamicArray<Node> _nodes;
-    //     Common::DynamicArray<IdType> _ids;
-    // };
+    using Nodes = ME::SoaContainer<Node>;
 
 } // namespace EgLab::ME

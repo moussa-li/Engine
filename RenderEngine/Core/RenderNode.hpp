@@ -24,11 +24,13 @@ namespace EgLab::RE
         virtual Common::BBox<Scalar, 3> getBounds() const override;
 
         void setNodes(Common::DynamicArray<CoordType> &&);
+        void setColor(const Common::Vector4f &color);
 
         virtual IdxType touch(const PickContext &context) override;
 
     private:
         Common::DynamicArray<CoordType> _vertices;
+        Common::Vector4f _color{0.18f, 0.24f, 0.30f, 1.0f};
         Common::SharedPtr<VertexArray> _vertexArray;
         Common::SharedPtr<VertexBuffer> _vertexBuffer;
     };
