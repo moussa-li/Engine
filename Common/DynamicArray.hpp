@@ -108,7 +108,7 @@ namespace EgLab::Common
             _end = _start;
         }
 
-        void pushBack(T &data)
+        void pushBack(const T &data)
         {
             if (_datas == nullptr)
             {

@@ -3,10 +3,13 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
+#include <map>
 #include <sstream>
+#include <utility>
 
 #include "Common/Log.hpp"
 #include "Common/Performance.hpp"
+#include "MeshEngine/Algorithm/ExtractSurface.hpp"
 #include "MeshEngine/MeshData/HEMesh.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "MeshEngine/MeshData/MeshPOD.hpp"
@@ -38,6 +41,137 @@ namespace EgLab::Platform
             uint32_t elemDataOffset{0};
             uint32_t totalDataSize{0};
         };
+
+        struct SilhouetteEdgeFacing
+        {
+            uint32_t frontFaces{0};
+            uint32_t backFaces{0};
+        };
+
+        Common::DynamicArray<RE::IdxType> getSilhouetteEdgeIndices(
+            const Common::SharedPtr<ME::Mesh>& mesh, const RE::CoordType& cameraPosition,
+            Common::DynamicArray<RE::CoordType>& nodeCoordinates)
+        {
+            Common::DynamicArray<RE::IdxType> indices;
+            if (!mesh || mesh->getNodeNumber() == 0 || mesh->getElemNumber() == 0)
+            {
+                return indices;
+            }
+
+            ME::MeshIterator meshIterator(*mesh);
+            do
+            {
+                const auto& node = meshIterator.currentNode();
+                nodeCoordinates.pushBack(RE::CoordType(node.x(), node.y(), node.z()));
+            } while (meshIterator.nextNode());
+
+            std::map<std::pair<ME::IdType, ME::IdType>, SilhouetteEdgeFacing> edgeFacing;
+            ME::ExtractSurface surfaceExtractor(mesh);
+            const auto surfaceFaces = surfaceExtractor.getSurface();
+            for (const auto& surfaceFace : surfaceFaces)
+            {
+                auto& element = mesh->getElemById(surfaceFace.first);
+                ME::ElemFaceGetter faceGetter(element);
+                const int faceNodeCount = faceGetter.elemFaceNodeNumber(surfaceFace.second);
+                if (faceNodeCount < 3)
+                {
+                    continue;
+                }
+
+                Common::DynamicArray<ME::IdType> faceNodeIds;
+                Common::DynamicArray<RE::CoordType> facePoints;
+                RE::CoordType faceCenter(0.0f, 0.0f, 0.0f);
+                bool validFace = true;
+                for (int node = 0; node < faceNodeCount; ++node)
+                {
+                    const ME::IdType nodeId = faceGetter.elemFace(surfaceFace.second, node);
+                    const ME::IdxType nodeIndex = mesh->getNodeIdx(nodeId);
+                    if (nodeIndex >= nodeCoordinates.size())
+                    {
+                        validFace = false;
+                        break;
+                    }
+                    faceNodeIds.pushBack(nodeId);
+                    facePoints.pushBack(nodeCoordinates[nodeIndex]);
+                    faceCenter = faceCenter + nodeCoordinates[nodeIndex];
+                }
+                if (!validFace || facePoints.size() < 3)
+                {
+                    continue;
+                }
+                faceCenter = faceCenter * (1.0f / static_cast<float>(facePoints.size()));
+
+                RE::CoordType normal =
+                    (facePoints[1] - facePoints[0]).cross(facePoints[2] - facePoints[0]);
+                if (normal.length2() < 1e-12f)
+                {
+                    continue;
+                }
+                normal.normalize();
+
+                RE::CoordType elementCenter(0.0f, 0.0f, 0.0f);
+                const auto& elementNodeIds = element.getNodes();
+                uint32_t validElementNodeCount = 0;
+                for (ME::IdType nodeId : elementNodeIds)
+                {
+                    const ME::IdxType nodeIndex = mesh->getNodeIdx(nodeId);
+                    if (nodeIndex < nodeCoordinates.size())
+                    {
+                        elementCenter = elementCenter + nodeCoordinates[nodeIndex];
+                        ++validElementNodeCount;
+                    }
+                }
+                if (validElementNodeCount > 0)
+                {
+                    elementCenter =
+                        elementCenter * (1.0f / static_cast<float>(validElementNodeCount));
+                    if (normal.dot(faceCenter - elementCenter) < 0.0f)
+                    {
+                        normal = normal * -1.0f;
+                    }
+                }
+
+                const bool frontFacing = normal.dot(cameraPosition - faceCenter) >= -1e-6f;
+                for (size_t edge = 0; edge < faceNodeIds.size(); ++edge)
+                {
+                    ME::IdType firstNode = faceNodeIds[edge];
+                    ME::IdType secondNode = faceNodeIds[(edge + 1) % faceNodeIds.size()];
+                    if (secondNode < firstNode)
+                    {
+                        std::swap(firstNode, secondNode);
+                    }
+                    auto& facing = edgeFacing[{firstNode, secondNode}];
+                    if (frontFacing)
+                    {
+                        ++facing.frontFaces;
+                    }
+                    else
+                    {
+                        ++facing.backFaces;
+                    }
+                }
+            }
+
+            for (const auto& edge : edgeFacing)
+            {
+                const auto& facing = edge.second;
+                const bool silhouette =
+                    facing.frontFaces > 0 &&
+                    (facing.backFaces > 0 || facing.frontFaces + facing.backFaces == 1);
+                if (!silhouette)
+                {
+                    continue;
+                }
+                const ME::IdxType firstIndex = mesh->getNodeIdx(edge.first.first);
+                const ME::IdxType secondIndex = mesh->getNodeIdx(edge.first.second);
+                if (firstIndex < nodeCoordinates.size() && secondIndex < nodeCoordinates.size())
+                {
+                    indices.pushBack(static_cast<RE::IdxType>(firstIndex));
+                    indices.pushBack(static_cast<RE::IdxType>(secondIndex));
+                }
+            }
+            return indices;
+        }
     } // namespace
 
     class RenderUpdate : public ICommand
@@ -134,6 +268,7 @@ namespace EgLab::Platform
                 _window->activeContext();
                 drainRenderEvents();
                 updateMeshHighlight();
+                updateViewDependentHighlights();
                 _scene->update(deltaTime);
                 _renderer->update(deltaTime);
                 _renderer->draw(_scene, _camera);
@@ -695,6 +830,12 @@ namespace EgLab::Platform
             }
         }
         _highlightPrimitives.clear();
+        for (size_t index = 0; index < _highlightContourPrimitives.size(); ++index)
+        {
+            _scene->removePrimitive(_highlightShader, _highlightContourPrimitives[index]);
+        }
+        _highlightContourPrimitives.clear();
+        _highlightViewValid = false;
         _activeHighlightedMeshes = _requestedHighlightedMeshes;
 
         if (_activeHighlightedMeshes.empty())
@@ -713,7 +854,7 @@ namespace EgLab::Platform
             RE::MeshPrimitiveCreator creator(mesh);
             auto primitive = creator.getPrimitive<RE::RenderFace>();
             auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(primitive);
-            face->setColor(Common::Vector4f(1.0f, 0.75f, 0.1f, 1.0f));
+            face->setColor(Common::Vector4f(1.0f, 0.75f, 0.1f, 0.3f));
             face->setDepthOffset(-1.0f, -1.0f);
             primitive->setup();
 
@@ -723,6 +864,51 @@ namespace EgLab::Platform
                 continue;
             }
             _highlightPrimitives.pushBack(primitive);
+        }
+    }
+
+    void RenderWork::updateViewDependentHighlights()
+    {
+        if (!_scene || !_camera || _activeHighlightedMeshes.empty())
+        {
+            return;
+        }
+
+        const RE::CoordType cameraPosition = _camera->getPosition();
+        const RE::CoordType cameraFront = _camera->getFront();
+        if (_highlightViewValid && (cameraPosition - _highlightViewPosition).length2() < 1e-8f &&
+            (cameraFront - _highlightViewFront).length2() < 1e-8f)
+        {
+            return;
+        }
+
+        for (const auto& primitive : _highlightContourPrimitives)
+        {
+            _scene->removePrimitive(_highlightShader, primitive);
+        }
+        _highlightContourPrimitives.clear();
+        _highlightViewPosition = cameraPosition;
+        _highlightViewFront = cameraFront;
+        _highlightViewValid = true;
+
+        for (const auto& mesh : _activeHighlightedMeshes)
+        {
+            Common::DynamicArray<RE::CoordType> nodeCoordinates;
+            auto indices = getSilhouetteEdgeIndices(mesh, cameraPosition, nodeCoordinates);
+            if (indices.empty())
+            {
+                continue;
+            }
+
+            auto linePrimitive = Common::makeShared<RE::RenderLine>();
+            linePrimitive->setNodes(Common::move(nodeCoordinates));
+            linePrimitive->setIndices(Common::move(indices));
+            linePrimitive->setColor(Common::Vector4f(1.0f, 0.75f, 0.1f, 1.0f));
+            linePrimitive->setup();
+            if (_scene->addPrimitive(_highlightShader, linePrimitive) == Common::Return::Succeed)
+            {
+                _highlightContourPrimitives.pushBack(linePrimitive);
+            }
         }
     }
 

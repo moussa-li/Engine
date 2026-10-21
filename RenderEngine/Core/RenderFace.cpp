@@ -117,8 +117,31 @@ namespace EgLab::RE
 
     void RenderFace::draw(Common::SharedPtr<Shader> shader)
     {
+        const bool transparent = !_colors.empty() && _colors[0][3] < 1.0f;
+        GLboolean previousBlend = glIsEnabled(GL_BLEND);
+        GLboolean previousDepthMask = GL_TRUE;
+        GLint previousBlendSrcRgb = GL_ONE;
+        GLint previousBlendDstRgb = GL_ZERO;
+        GLint previousBlendSrcAlpha = GL_ONE;
+        GLint previousBlendDstAlpha = GL_ZERO;
+        if (transparent)
+        {
+            glGetBooleanv(GL_DEPTH_WRITEMASK, &previousDepthMask);
+            glGetIntegerv(GL_BLEND_SRC_RGB, &previousBlendSrcRgb);
+            glGetIntegerv(GL_BLEND_DST_RGB, &previousBlendDstRgb);
+            glGetIntegerv(GL_BLEND_SRC_ALPHA, &previousBlendSrcAlpha);
+            glGetIntegerv(GL_BLEND_DST_ALPHA, &previousBlendDstAlpha);
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDepthMask(GL_FALSE);
+        }
+
         shader->bind();
         shader->setUniform1i("isPureColor", 0);
+        if (!_colors.empty())
+        {
+            shader->setUniform4f("u_Color", _colors[0]);
+        }
         if (_highlightScaleEnabled)
         {
             shader->setUniformMat4f("scale", _highlightScaleMatrix);
@@ -145,8 +168,25 @@ namespace EgLab::RE
             _vertexArray->unBind();
             _indexBuffer->unBind();
         }
-        glDepthMask(GL_TRUE);
         glDisable(GL_POLYGON_OFFSET_FILL);
+        if (transparent)
+        {
+            glDepthMask(previousDepthMask);
+            glBlendFuncSeparate(previousBlendSrcRgb, previousBlendDstRgb, previousBlendSrcAlpha,
+                                previousBlendDstAlpha);
+            if (previousBlend)
+            {
+                glEnable(GL_BLEND);
+            }
+            else
+            {
+                glDisable(GL_BLEND);
+            }
+        }
+        else
+        {
+            glDepthMask(GL_TRUE);
+        }
 
         shader->unBind();
     }

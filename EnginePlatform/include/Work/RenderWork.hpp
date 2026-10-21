@@ -144,6 +144,7 @@ namespace EgLab::Platform
         void materializeMesh(const UpdateMeshParam& params,
                              const Common::SharedPtr<EgLab::ME::Mesh>& sourceMesh);
         void updateMeshHighlight();
+        void updateViewDependentHighlights();
         void updateHEMeshHighlight(const RenderEvent& event);
         void publishPickInfo(const RE::PrimitivePickInfo& info);
 
@@ -188,6 +189,10 @@ namespace EgLab::Platform
         Common::DynamicArray<Common::SharedPtr<EgLab::ME::Mesh>> _activeHighlightedMeshes;
         Common::SharedPtr<RE::Shader> _highlightShader;
         Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _highlightPrimitives;
+        Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _highlightContourPrimitives;
+        RE::CoordType _highlightViewPosition;
+        RE::CoordType _highlightViewFront;
+        bool _highlightViewValid{false};
         Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _heMeshHighlightPrimitives;
         Common::SharedPtr<RE::Shader> _heMeshHighlightShader;
 

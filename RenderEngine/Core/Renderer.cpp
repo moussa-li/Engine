@@ -19,6 +19,7 @@
 #include "RenderEngine/Core/RenderPrimitive.hpp"
 #include "RenderEngine/Core/Scene.hpp"
 #include "RenderEngine/Core/Selector.hpp"
+#include "RenderEngine/Core/ShaderLib.hpp"
 #include "RenderEngine/Core/Window.hpp"
 
 namespace EgLab::RE
@@ -192,13 +193,20 @@ namespace EgLab::RE
             pickContext.view = camera->view();
             pickContext.projection = camera->perspective(scene->getBounds());
 
+            Common::SharedPtr<Shader> highlightShader;
+            ShaderLib::instance().getHighlightShader(highlightShader);
+
             for (auto it = renderBuckets.begin(); it.hasNext(); it.next())
             {
                 const auto &shader = it.data().first;
                 const auto &primitives = it.data().second;
 
-                loadCamera(shader, camera, scene);
-                loadLight(shader, camera);
+                const bool deferredHighlight = shader == highlightShader;
+                if (!deferredHighlight)
+                {
+                    loadCamera(shader, camera, scene);
+                    loadLight(shader, camera);
+                }
 
                 for (auto primitiveIt = primitives.begin(); primitiveIt.hasNext();
                      primitiveIt.next())
@@ -207,20 +215,46 @@ namespace EgLab::RE
                     {
                         continue;
                     }
-                    primitiveIt.data()->draw(shader);
-                    if (selected)
+                    if (!deferredHighlight)
                     {
-                        const IdxType nodeIndex = primitiveIt.data()->touch(pickContext);
-                        if (nodeIndex != static_cast<IdxType>(-1))
+                        primitiveIt.data()->draw(shader);
+                        if (selected)
                         {
-                            _pickedPrimitive = primitiveIt.data();
-                            _pickedNodeIndex = nodeIndex;
-                            if (_selector)
+                            const IdxType nodeIndex = primitiveIt.data()->touch(pickContext);
+                            if (nodeIndex != static_cast<IdxType>(-1))
                             {
-                                _selector->processPick(_pickedPrimitive, _pickedNodeIndex);
+                                _pickedPrimitive = primitiveIt.data();
+                                _pickedNodeIndex = nodeIndex;
+                                if (_selector)
+                                {
+                                    _selector->processPick(_pickedPrimitive, _pickedNodeIndex);
+                                }
                             }
                         }
                     }
+                }
+            }
+
+            if (highlightShader != nullptr)
+            {
+                for (auto it = renderBuckets.begin(); it.hasNext(); it.next())
+                {
+                    const auto &shader = it.data().first;
+                    if (shader != highlightShader)
+                    {
+                        continue;
+                    }
+                    loadCamera(shader, camera, scene);
+                    loadLight(shader, camera);
+                    for (auto primitiveIt = it.data().second.begin(); primitiveIt.hasNext();
+                         primitiveIt.next())
+                    {
+                        if (isPrimitiveVisible(primitiveIt.data()))
+                        {
+                            primitiveIt.data()->draw(shader);
+                        }
+                    }
+                    break;
                 }
             }
 
