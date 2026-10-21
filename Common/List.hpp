@@ -52,13 +52,7 @@ namespace EgLab::Common
 
         ~List()
         {
-            Node* current = head;
-            while (current != nullptr)
-            {
-                Node* nextNode = current->next;
-                allocator.free(current);
-                current = nextNode;
-            }
+            clear();
         }
 
         bool empty() const
@@ -165,7 +159,7 @@ namespace EgLab::Common
                 tail = nodeToRemove->prev;
             }
 
-            // nodeToRemove->data.~T();
+            nodeToRemove->data.~T();
             allocator.free(nodeToRemove);
 
             _size--;
