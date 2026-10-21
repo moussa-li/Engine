@@ -1,10 +1,13 @@
 #include "Command/ImportMeshCmd.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <filesystem>
 
 #include "Common/Log.hpp"
 #include "DataBase/Context.hpp"
 #include "MeshEngine/IO/GmshImporter.hpp"
+#include "MeshEngine/IO/GrdImporter.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "Work/RenderWork.hpp"
 
@@ -21,14 +24,34 @@ namespace EgLab::Platform
 
     Common::Return ImportMeshCmd::execImpl()
     {
-        EgLab::ME::GmshImporter importer(getParams().fileDir);
-        Common::SharedPtr<ME::Mesh> mesh = importer.getMesh();
+        const std::filesystem::path meshPath(getParams().fileDir);
+        std::string extension = meshPath.extension().string();
+        std::transform(
+            extension.begin(), extension.end(), extension.begin(),
+            [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
+
+        Common::SharedPtr<ME::Mesh> mesh;
+        if (extension == ".msh")
+        {
+            EgLab::ME::GmshImporter importer(getParams().fileDir);
+            mesh = importer.getMesh();
+        }
+        else if (extension == ".grd")
+        {
+            EgLab::ME::GrdImporter importer(getParams().fileDir);
+            mesh = importer.getMesh();
+        }
+        else
+        {
+            LOG(ERROR) << "Unsupported mesh file extension: " << extension;
+            return Common::Return::BadInput;
+        }
+
         if (mesh == nullptr)
         {
             return Common::Return::Failed;
         }
 
-        const std::filesystem::path meshPath(getParams().fileDir);
         const Common::String meshName(meshPath.filename().string().c_str());
         if (Context::instance().addMeshData(mesh, meshName) != Common::Return::Succeed)
         {

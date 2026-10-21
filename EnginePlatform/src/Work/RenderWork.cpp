@@ -714,7 +714,7 @@ namespace EgLab::Platform
             auto primitive = creator.getPrimitive<RE::RenderFace>();
             auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(primitive);
             face->setColor(Common::Vector4f(1.0f, 0.75f, 0.1f, 1.0f));
-            face->setHighlightScale(1.05f);
+            face->setDepthOffset(-1.0f, -1.0f);
             primitive->setup();
 
             if (_scene->addPrimitive(_highlightShader, primitive) != Common::Return::Succeed)

@@ -14,8 +14,8 @@ namespace EgLab::Platform
     {
         IGFD::FileDialogConfig config;
         config.path = ".";
-        ImGuiFileDialog::Instance()->OpenDialog("ImportMesh", "Please Select a Mesh File", ".msh",
-                                                config);
+        ImGuiFileDialog::Instance()->OpenDialog("ImportMesh", "Please Select a Mesh File",
+                                                "Mesh files{.msh,.grd}", config);
     }
 
     void MeshImportPanel::render()
