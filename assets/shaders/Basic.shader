@@ -124,6 +124,7 @@ void main()
     
     // lighting using baseColor
     vec3 result = CalcPointLight(pointLights, norm, FragPos, viewDir, baseColor);
+    result += CalcDirLight(dirLight, norm, viewDir, baseColor);
     // optionally add other lights (commented out as before)
     // for(int i = 0; i < NR_POINT_LIGHTS; i++) result += CalcPointLight(pointLights, norm, FragPos, viewDir, baseColor);
     // result += CalcSpotLight(spotLight, norm, FragPos, viewDir, baseColor);
