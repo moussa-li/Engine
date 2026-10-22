@@ -502,9 +502,14 @@ TEST_F(TestCommon, sharedPtrPreservesControlBlockAcrossBaseConversion)
 
     auto casted = EgLab::Common::dynamicSharedPtrCast<Derived>(base);
     EXPECT_NE(casted.get(), nullptr);
-    base = nullptr;
+    {
+        const EgLab::Common::SharedPtr<Base> constBase = base;
+        auto constCasted = EgLab::Common::dynamicSharedPtrCast<Derived>(constBase);
+        EXPECT_EQ(constCasted.get(), casted.get());
+        base = nullptr;
+        EXPECT_EQ(destroyed, 0);
+    }
     EXPECT_EQ(destroyed, 0);
-
     casted = nullptr;
     EXPECT_EQ(destroyed, 1);
 }
@@ -851,6 +856,38 @@ TEST_F(TestList, clear)
     //  l.clear();
 }
 
+TEST_F(TestList, destroysElementsOnEraseAndDestruction)
+{
+    struct Tracked
+    {
+        explicit Tracked(int& destructorCount) : destructorCount(destructorCount)
+        {
+        }
+        Tracked(const Tracked& other) : destructorCount(other.destructorCount)
+        {
+        }
+        ~Tracked()
+        {
+            ++destructorCount;
+        }
+
+        int& destructorCount;
+    };
+
+    int destructorCount = 0;
+    Tracked value(destructorCount);
+    {
+        EgLab::Common::List<Tracked> list;
+        list.pushBack(value);
+        auto it = list.begin();
+        EXPECT_TRUE(list.erase(it));
+        EXPECT_EQ(destructorCount, 1);
+
+        list.pushBack(value);
+    }
+    EXPECT_EQ(destructorCount, 2);
+}
+
 TEST_F(TestCommon, DynamicArrayTest)
 {
     EgLab::Common::DynamicArray<int> arr;
@@ -874,6 +911,10 @@ TEST_F(TestCommon, DynamicArrayTest)
     EXPECT_GT(arr.capacity(), 2); // 容量应�?��?�加
 
     EXPECT_EQ(arr[2], 3);
+
+    const int constValue = 4;
+    arr.pushBack(constValue);
+    EXPECT_EQ(arr[3], constValue);
 
     for (int i = 0; i < arr.size(); i++)
     {
