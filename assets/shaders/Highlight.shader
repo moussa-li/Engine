@@ -12,12 +12,14 @@ uniform mat4 proj;
 uniform mat4 view;
 uniform mat4 model;
 uniform mat4 scale = mat4(1.0);
+uniform float u_PointSize = 1.0;
 
 void main()
 {
     FragPos = (scale * vec4(position, 1.0)).xyz;
     Normal = normalize(mat3(transpose(inverse(model))) * normal);
     TexCoords = texCoord;
+    gl_PointSize = u_PointSize;
     gl_Position = proj * view * vec4(FragPos, 1.0);
 };
 

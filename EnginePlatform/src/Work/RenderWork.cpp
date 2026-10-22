@@ -961,6 +961,8 @@ namespace EgLab::Platform
         auto nodePrimitive = Common::makeShared<RE::RenderNode>();
         nodePrimitive->setNodes(Common::move(nodeCoordinates));
         nodePrimitive->setColor(highlightColor);
+        nodePrimitive->setPointSize(12.0f);
+        nodePrimitive->setDepthTestEnabled(false);
         nodePrimitive->setup();
         if (_scene->addPrimitive(_heMeshHighlightShader, nodePrimitive) == Common::Return::Succeed)
         {
@@ -994,6 +996,7 @@ namespace EgLab::Platform
         linePrimitive->setNodes(Common::move(edgeCoordinates));
         linePrimitive->setIndices(Common::move(edgeIndices));
         linePrimitive->setColor(highlightColor);
+        linePrimitive->setLineWidth(5.0f);
         linePrimitive->setup();
         if (_scene->addPrimitive(_heMeshHighlightShader, linePrimitive) == Common::Return::Succeed)
         {

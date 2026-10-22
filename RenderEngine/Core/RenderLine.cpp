@@ -27,6 +27,11 @@ namespace EgLab::RE
         _hasColor = true;
     }
 
+    void RenderLine::setLineWidth(float width)
+    {
+        _lineWidth = width;
+    }
+
     Common::BBox<Scalar, 3> RenderLine::getBounds() const
     {
         Common::BBox<Scalar, 3> bounds;
@@ -62,7 +67,7 @@ namespace EgLab::RE
         }
         _vertexArray->bind();
         _indexBuffer->bind();
-        glLineWidth(_hasColor ? 2.0f : 1.0f);
+        glLineWidth(_hasColor ? _lineWidth : 1.0f);
         glDrawElements(GL_LINES, _indices.size(), GL_UNSIGNED_INT, 0);
         if (_hasColor)
         {

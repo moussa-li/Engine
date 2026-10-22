@@ -418,7 +418,7 @@ namespace EgLab::RE
         shader->setUniform3f("pointLights.specular", settings.specular);
         shader->setUniform3f("dirLight.direction", Common::Vector3f(-0.2f, -1.0f, -0.3f));
         shader->setUniform3f("dirLight.ambient", Common::Vector3f(0.15f, 0.15f, 0.15f));
-        shader->setUniform3f("dirLight.diffuse", Common::Vector3f(0.8f, 0.8f, 0.8f));
+        shader->setUniform3f("dirLight.diffuse", Common::Vector3f(0.4f, 0.4f, 0.4f));
         shader->setUniform3f("dirLight.specular", Common::Vector3f(0.35f, 0.35f, 0.35f));
         shader->setUniform1f("material.shininess", settings.shininess);
         shader->unBind();

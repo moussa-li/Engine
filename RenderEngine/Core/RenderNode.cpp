@@ -23,6 +23,16 @@ namespace EgLab::RE
         _color = color;
     }
 
+    void RenderNode::setPointSize(float pointSize)
+    {
+        _pointSize = pointSize;
+    }
+
+    void RenderNode::setDepthTestEnabled(bool enabled)
+    {
+        _depthTestEnabled = enabled;
+    }
+
     Common::BBox<Scalar, 3> RenderNode::getBounds() const
     {
         Common::BBox<Scalar, 3> bounds;
@@ -47,15 +57,28 @@ namespace EgLab::RE
 
     void RenderNode::draw(Common::SharedPtr<Shader> shader)
     {
+        const GLboolean depthTestWasEnabled = glIsEnabled(GL_DEPTH_TEST);
+        if (!_depthTestEnabled)
+        {
+            glDisable(GL_DEPTH_TEST);
+        }
+        glEnable(GL_PROGRAM_POINT_SIZE);
         shader->bind();
-        shader->setUniform1f("u_PointSize", 3.0f);
+        shader->setUniform1f("u_PointSize", _pointSize);
         shader->setUniform4f("u_Color", _color);
         _vertexArray->bind();
         glDrawArrays(GL_POINTS, 0, _vertices.size());
         glDepthMask(GL_TRUE);
-        glEnable(GL_PROGRAM_POINT_SIZE);
         _vertexArray->unBind();
         shader->unBind();
+        if (depthTestWasEnabled)
+        {
+            glEnable(GL_DEPTH_TEST);
+        }
+        else
+        {
+            glDisable(GL_DEPTH_TEST);
+        }
     }
 
     void RenderNode::drawHighlight(Common::SharedPtr<Shader> shader, IdxType nodeIndex)

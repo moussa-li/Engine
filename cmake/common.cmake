@@ -15,6 +15,7 @@ file(MAKE_DIRECTORY ${GEN_EMBED_OUTPUT_SRC_DIR})
 
 # 依次处理文件
 foreach(input_src ${EMBED_FILES})
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${input_src}")
     # 配置输出文件名
     file(SIZE ${input_src} embed_file_size)
     get_filename_component(embed_file ${input_src} NAME)
