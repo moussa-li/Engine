@@ -29,5 +29,6 @@ namespace EgLab::Platform
         Common::String _status{"Select a mesh from the Data Tree."};
         ME::IdType _nodeId{0};
         ME::IdxType _selectedVertexIndex{ME::INVALID_IDX};
+        ME::IdxType _selectedHalfEdgeIndex{ME::INVALID_IDX};
     };
 } // namespace EgLab::Platform

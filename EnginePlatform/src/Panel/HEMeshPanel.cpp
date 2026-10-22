@@ -15,6 +15,7 @@ namespace EgLab::Platform
         _halfEdgeMesh = nullptr;
         _nodeId = 0;
         _selectedVertexIndex = ME::INVALID_IDX;
+        _selectedHalfEdgeIndex = ME::INVALID_IDX;
 
         if (ME::MeshToHEMesh::convert(_sourceMesh, _halfEdgeMesh) == Common::Return::Succeed)
         {
@@ -46,11 +47,13 @@ namespace EgLab::Platform
                     if (_selectedVertexIndex == ME::INVALID_IDX)
                     {
                         _status = "Node ID was not found.";
+                        _selectedHalfEdgeIndex = ME::INVALID_IDX;
                         RenderWork::instance().setHEMeshHighlight(nullptr, ME::INVALID_IDX);
                     }
                     else
                     {
                         _status = "Node highlighted.";
+                        _selectedHalfEdgeIndex = ME::INVALID_IDX;
                         RenderWork::instance().setHEMeshHighlight(_halfEdgeMesh,
                                                                   _selectedVertexIndex);
                     }
@@ -63,6 +66,7 @@ namespace EgLab::Platform
                     if (_selectedVertexIndex == ME::INVALID_IDX)
                     {
                         _status = "Node ID was not found.";
+                        _selectedHalfEdgeIndex = ME::INVALID_IDX;
                         RenderWork::instance().setHEMeshHighlight(nullptr, ME::INVALID_IDX);
                     }
                     else
@@ -71,16 +75,69 @@ namespace EgLab::Platform
                         if (vertex._halfEdge == ME::INVALID_IDX)
                         {
                             _status = "Node has no incident half-edge.";
+                            _selectedHalfEdgeIndex = ME::INVALID_IDX;
                             RenderWork::instance().setHEMeshHighlight(_halfEdgeMesh,
                                                                       _selectedVertexIndex);
                         }
                         else
                         {
+                            _selectedHalfEdgeIndex = vertex._halfEdge;
                             _status = "Node and outgoing half-edge highlighted.";
                             RenderWork::instance().setHEMeshHighlight(
                                 _halfEdgeMesh, _selectedVertexIndex, vertex._halfEdge);
                         }
                     }
+                }
+
+                ImGui::Separator();
+                const auto navigateEdge = [this](ME::IdxType ME::HalfEdge::* adjacentEdge,
+                                                 const char* successStatus,
+                                                 const char* missingStatus) {
+                    if (_selectedHalfEdgeIndex == ME::INVALID_IDX ||
+                        _selectedHalfEdgeIndex >= _halfEdgeMesh->getHalfEdgeCount())
+                    {
+                        _status = "Select an edge first.";
+                        return;
+                    }
+
+                    const auto currentEdge = _halfEdgeMesh->getHalfEdge(_selectedHalfEdgeIndex);
+                    const auto adjacentEdgeIndex = currentEdge.*adjacentEdge;
+                    if (adjacentEdgeIndex == ME::INVALID_IDX ||
+                        adjacentEdgeIndex >= _halfEdgeMesh->getHalfEdgeCount())
+                    {
+                        _status = missingStatus;
+                        return;
+                    }
+
+                    const auto nextEdge = _halfEdgeMesh->getHalfEdge(adjacentEdgeIndex);
+                    if (nextEdge.vertex >= _halfEdgeMesh->getVertexCount())
+                    {
+                        _status = missingStatus;
+                        return;
+                    }
+                    _selectedHalfEdgeIndex = adjacentEdgeIndex;
+                    _selectedVertexIndex = nextEdge.vertex;
+                    _status = successStatus;
+                    RenderWork::instance().setHEMeshHighlight(_halfEdgeMesh, _selectedVertexIndex,
+                                                              _selectedHalfEdgeIndex);
+                };
+
+                if (ImGui::Button("nextEdge"))
+                {
+                    navigateEdge(&ME::HalfEdge::next, "Next edge highlighted.",
+                                 "Next edge was not found.");
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("prevEdge"))
+                {
+                    navigateEdge(&ME::HalfEdge::prev, "Previous edge highlighted.",
+                                 "Previous edge was not found.");
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("twinEdge"))
+                {
+                    navigateEdge(&ME::HalfEdge::twin, "Twin edge highlighted.",
+                                 "Twin edge was not found.");
                 }
             }
             ImGui::TextWrapped("%s", _status.c_str());
@@ -88,12 +145,14 @@ namespace EgLab::Platform
         ImGui::End();
         if (!_show)
         {
+            _selectedHalfEdgeIndex = ME::INVALID_IDX;
             RenderWork::instance().setHEMeshHighlight(nullptr, ME::INVALID_IDX);
         }
     }
 
     void HEMeshPanel::abortClose()
     {
+        _selectedHalfEdgeIndex = ME::INVALID_IDX;
         RenderWork::instance().setHEMeshHighlight(nullptr, ME::INVALID_IDX);
     }
 } // namespace EgLab::Platform
