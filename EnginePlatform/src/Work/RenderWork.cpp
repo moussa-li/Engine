@@ -268,7 +268,7 @@ namespace EgLab::Platform
                 _window->activeContext();
                 drainRenderEvents();
                 updateMeshHighlight();
-                updateViewDependentHighlights();
+                // updateViewDependentHighlights();
                 _scene->update(deltaTime);
                 _renderer->update(deltaTime);
                 _renderer->draw(_scene, _camera);
@@ -911,22 +911,22 @@ namespace EgLab::Platform
 
         for (const auto& mesh : _activeHighlightedMeshes)
         {
-            Common::DynamicArray<RE::CoordType> nodeCoordinates;
-            auto indices = getSilhouetteEdgeIndices(mesh, cameraPosition, nodeCoordinates);
-            if (indices.empty())
-            {
-                continue;
-            }
+            // Common::DynamicArray<RE::CoordType> nodeCoordinates;
+            // auto indices = getSilhouetteEdgeIndices(mesh, cameraPosition, nodeCoordinates);
+            // if (indices.empty())
+            // {
+            //     continue;
+            // }
 
-            auto linePrimitive = Common::makeShared<RE::RenderLine>();
-            linePrimitive->setNodes(Common::move(nodeCoordinates));
-            linePrimitive->setIndices(Common::move(indices));
-            linePrimitive->setColor(Common::Vector4f(1.0f, 0.75f, 0.1f, 1.0f));
-            linePrimitive->setup();
-            if (_scene->addPrimitive(_highlightShader, linePrimitive) == Common::Return::Succeed)
-            {
-                _highlightContourPrimitives.pushBack(linePrimitive);
-            }
+            // auto linePrimitive = Common::makeShared<RE::RenderLine>();
+            // linePrimitive->setNodes(Common::move(nodeCoordinates));
+            // linePrimitive->setIndices(Common::move(indices));
+            // linePrimitive->setColor(Common::Vector4f(1.0f, 0.75f, 0.1f, 1.0f));
+            // linePrimitive->setup();
+            // if (_scene->addPrimitive(_highlightShader, linePrimitive) == Common::Return::Succeed)
+            // {
+            //     _highlightContourPrimitives.pushBack(linePrimitive);
+            // }
         }
     }
 
