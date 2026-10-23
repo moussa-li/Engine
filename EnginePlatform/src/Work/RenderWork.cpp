@@ -280,7 +280,6 @@ namespace EgLab::Platform
                 {
                     _window->deal();
                 }
-                std::this_thread::sleep_for(std::chrono::milliseconds(2));
             }
         });
     }

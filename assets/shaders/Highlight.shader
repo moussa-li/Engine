@@ -19,8 +19,9 @@ void main()
     FragPos = (scale * vec4(position, 1.0)).xyz;
     Normal = normalize(mat3(transpose(inverse(model))) * normal);
     TexCoords = texCoord;
-    gl_PointSize = u_PointSize;
-    gl_Position = proj * view * vec4(FragPos, 1.0);
+    vec4 viewPosition = view * vec4(FragPos, 1.0);
+    gl_PointSize = clamp(u_PointSize * 10.0 / max(-viewPosition.z, 0.1), 1.0, 8.0);
+    gl_Position = proj * viewPosition;
 };
 
 #shader fragment

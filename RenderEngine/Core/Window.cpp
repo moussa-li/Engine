@@ -61,6 +61,8 @@ namespace EgLab::RE
                 LOG(ERROR) << "Error";
             }
 
+            glfwSwapInterval(1);
+
             glEnable(GL_DEBUG_OUTPUT);
             glDebugMessageCallback(MessageCallback, 0);
             glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);

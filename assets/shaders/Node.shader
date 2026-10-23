@@ -8,9 +8,9 @@ uniform float u_PointSize;
 
 void main()
 {
-    //gl_Position = vec4(position, 1.0);
-    gl_Position = proj*view*vec4(position, 1.0);
-    gl_PointSize = u_PointSize;
+    vec4 viewPosition = view * vec4(position, 1.0);
+    gl_Position = proj * viewPosition;
+    gl_PointSize = clamp(u_PointSize * 10.0 / max(-viewPosition.z, 0.1), 1.0, 3.0);
 };
 
 #shader fragment
