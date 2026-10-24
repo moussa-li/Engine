@@ -83,6 +83,11 @@ namespace EgLab::RE
             glfwPollEvents();
         }
 
+        void swapBuffers() const
+        {
+            glfwSwapBuffers(_window);
+        }
+
         static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
         {
             Impl *impl = static_cast<Impl *>(glfwGetWindowUserPointer(window));
@@ -173,6 +178,7 @@ namespace EgLab::RE
     {
         if (_impl != nullptr)
         {
+            terminate();
             delete _impl;
             _impl = nullptr;
         }
@@ -233,6 +239,13 @@ namespace EgLab::RE
         deactiveContext();
     }
 
+    void Window::swapBuffers() const
+    {
+        activeContext();
+        _impl->swapBuffers();
+        deactiveContext();
+    }
+
     void Window::setCameraController(Common::SharedPtr<CameraController> cmaeraController)
     {
         _impl->_cameraController = cmaeraController;
@@ -245,6 +258,11 @@ namespace EgLab::RE
 
     void Window::terminate()
     {
+        if (_impl != nullptr && _impl->_window != nullptr)
+        {
+            glfwDestroyWindow(_impl->_window);
+            _impl->_window = nullptr;
+        }
         glfwTerminate();
     }
 

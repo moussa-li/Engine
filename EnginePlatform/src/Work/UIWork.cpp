@@ -46,7 +46,9 @@ namespace EgLab::Platform
     {
         if (_running == false) return;
         _running = false;
+        activeContext();
         shutdownImGui();
+        deactiveContext();
     }
 
     void UIWork::subscribe(EventId eventId)
@@ -65,7 +67,6 @@ namespace EgLab::Platform
         if (_window)
         {
             activeContext();
-            glfwPollEvents();
             beginImGuiFrame();
             Context::instance().getPanelManager().loop();
             _window->maskEvent(ImGui::GetIO().WantCaptureMouse);

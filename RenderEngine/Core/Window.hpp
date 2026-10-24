@@ -29,6 +29,8 @@ namespace EgLab::RE
 
         void deal() const;
 
+        void swapBuffers() const;
+
         void terminate();
 
         void setCameraController(Common::SharedPtr<CameraController>);

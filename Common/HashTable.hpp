@@ -6,6 +6,7 @@
 #include "Common/Iterator.hpp"
 #include "Common/List.hpp"
 #include "Common/MemAllocator.hpp"
+#include "Common/Pair.hpp"
 #include "Common/String.hpp"
 
 namespace EgLab::Common
@@ -29,6 +30,17 @@ namespace EgLab::Common
         size_t operator()(unsigned int x) const
         {
             return static_cast<size_t>(x);
+        }
+    };
+
+    template <typename F, typename S>
+    struct hash<Pair<F, S>>
+    {
+        size_t operator()(const Pair<F, S> &value) const
+        {
+            const size_t firstHash = hash<F>()(value.first);
+            const size_t secondHash = hash<S>()(value.second);
+            return firstHash ^ (secondHash + 0x9e3779b9u + (firstHash << 6) + (firstHash >> 2));
         }
     };
 
@@ -164,7 +176,9 @@ namespace EgLab::Common
             buckets.resize(newBucketSize);
 
             // typename Element::IteratorT its[newBucketSize];
-            DynamicArray<typename Element::IteratorT, StaticSizeAllocator<typename Element::IteratorT>> its;
+            DynamicArray<typename Element::IteratorT,
+                         StaticSizeAllocator<typename Element::IteratorT>>
+                its;
             its.resize(newBucketSize);
             for (size_t i = 0; i < bucketSize; ++i)
             {
@@ -205,16 +219,17 @@ namespace EgLab::Common
 
         void setItData(
             Iterator<HashTable<T, Hash, Equal, Allocator>> &it, const size_t &bucketIndex,
-            const typename List<ValueType, StaticSizeAllocator<ListNode<T>>>::ListCIterator &bucketIterator)
+            const typename List<ValueType, StaticSizeAllocator<ListNode<T>>>::ListCIterator
+                &bucketIterator)
         {
             it._bucketIndex = bucketIndex;
             it._bucketIterator = bucketIterator;
         }
 
-        void setItData(CIterator<HashTable<T, Hash, Equal, Allocator>> &it,
-                       const size_t &bucketIndex,
-                       const typename List<ValueType, StaticSizeAllocator<ListNode<T>>>::ListCIterator
-                           &bucketIterator) const
+        void setItData(
+            CIterator<HashTable<T, Hash, Equal, Allocator>> &it, const size_t &bucketIndex,
+            const typename List<ValueType, StaticSizeAllocator<ListNode<T>>>::ListCIterator
+                &bucketIterator) const
         {
             it._bucketIndex = bucketIndex;
             it._bucketIterator = bucketIterator;
@@ -245,13 +260,13 @@ namespace EgLab::Common
         {
             return _bucketIndex != _table.buckets.size();
         }
-        ValueRef next()
+        ValueCRef next()
         {
             // if (!hasNext())
             // {
             //     throw OutOfMemoryException("No more elements in HashTable iterator");
             // }
-            ValueRef value = *_bucketIterator;
+            ValueCRef value = *_bucketIterator;
             ++*this;
             return value;
         }

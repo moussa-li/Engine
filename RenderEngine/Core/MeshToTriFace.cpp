@@ -1,6 +1,9 @@
 #include "RenderEngine/Core/MeshToTriFace.hpp"
 
 #include "Common/DynamicArray.hpp"
+#include "Common/HashMap.hpp"
+#include "Common/HashSet.hpp"
+#include "Common/Pair.hpp"
 #include "MeshEngine/Algorithm/ExtractSurface.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 
@@ -13,6 +16,7 @@ namespace EgLab::RE
         Common::DynamicArray<IdxType> _boundaryFaceIdx;
         Common::DynamicArray<IdxType> _boundaryFaceNodeIdx;
         Common::DynamicArray<IdxType> _boundaryLineIdx;
+        Common::DynamicArray<IdxType> _boundaryElementEdgeIdx;
         Common::DynamicArray<ME::ElemFaceLocation> _boundaryFaceLocations;
         Common::DynamicArray<ME::ElemFaceEdgeLocation> _boundaryLineLocations;
 
@@ -24,6 +28,7 @@ namespace EgLab::RE
             _boundaryFaceIdx.clear();
             _boundaryFaceNodeIdx.clear();
             _boundaryLineIdx.clear();
+            _boundaryElementEdgeIdx.clear();
             _boundaryFaceLocations.clear();
             _boundaryLineLocations.clear();
 
@@ -89,6 +94,53 @@ namespace EgLab::RE
             {
                 _boundaryLineIdx[i] = _mesh->getNodeIdx(_boundaryLineIdx[i]);
             }
+
+            using Edge = Common::Pair<ME::IdType, ME::IdType>;
+            Common::HashMap<Edge, size_t> edgeUseCounts;
+            ME::MeshIterator elemIterator(*_mesh);
+            do
+            {
+                const auto& elem = elemIterator.currentElem();
+                const auto type = elem.getType();
+                if (type != ME::ElemType::Tri3 && type != ME::ElemType::Quad4 &&
+                    type != ME::ElemType::Tet4)
+                {
+                    continue;
+                }
+
+                Common::HashSet<Edge> elementEdges;
+                ME::ElemFaceGetter getter(elem);
+                for (int face = 0; face < getter.elemFaceNumber(); ++face)
+                {
+                    const auto lineNodes = getter.getLineNodes(face);
+                    for (size_t node = 0; node + 1 < lineNodes.size(); node += 2)
+                    {
+                        const auto node0 = lineNodes[node];
+                        const auto node1 = lineNodes[node + 1];
+                        elementEdges.insert(node0 < node1 ? Edge(node0, node1)
+                                                          : Edge(node1, node0));
+                    }
+                }
+                for (auto edge = elementEdges.begin(); edge.hasNext(); edge.next())
+                {
+                    ++edgeUseCounts[edge.data()];
+                }
+            } while (elemIterator.nextElem());
+
+            for (auto edgeUse = edgeUseCounts.begin(); edgeUse.hasNext(); edgeUse.next())
+            {
+                if (edgeUse.data().second != 1)
+                {
+                    continue;
+                }
+                const IdxType node0 = _mesh->getNodeIdx(edgeUse.data().first.first);
+                const IdxType node1 = _mesh->getNodeIdx(edgeUse.data().first.second);
+                if (node0 < _mesh->getNodeNumber() && node1 < _mesh->getNodeNumber())
+                {
+                    _boundaryElementEdgeIdx.pushBack(node0);
+                    _boundaryElementEdgeIdx.pushBack(node1);
+                }
+            }
         }
     };
 
@@ -125,6 +177,13 @@ namespace EgLab::RE
         if (_impl->_dirty) _impl->setup();
 
         return _impl->_boundaryLineIdx;
+    }
+
+    Common::DynamicArray<IdxType> MeshToTriFace::getBoundaryElementEdgeIdx() const
+    {
+        if (_impl->_dirty) _impl->setup();
+
+        return _impl->_boundaryElementEdgeIdx;
     }
 
     const Common::DynamicArray<ME::ElemFaceLocation>& MeshToTriFace::getBoundaryFaceLocations()

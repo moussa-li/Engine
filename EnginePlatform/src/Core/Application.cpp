@@ -40,6 +40,12 @@ namespace EgLab::Platform
 
     Application::~Application()
     {
+        RenderWork::instance().stop();
+        UIWork::instance().stop();
+        if (window)
+        {
+            window->terminate();
+        }
     }
 
     void Application::exec()
@@ -51,15 +57,9 @@ namespace EgLab::Platform
             deltaTime = currentFrame - lastFrame;
             lastFrame = currentFrame;
 
-            // Mouse, keyboard and scroll events are already dispatched by the
-            // GLFW callbacks attached in Window::Impl::start(); do not block
-            // the application thread with glfwWaitEvents() here.
-            glfwWaitEvents();
+            // GLFW event processing must remain on the main thread.
+            glfwWaitEventsTimeout(0.016);
             cameraController->update(deltaTime);
-
-            // Main/application thread prepares data only and leaves all GL
-            // draw preparation to the render worker's thread-owned context.
-            // window->deal();
         }
 
         RenderWork::instance().stop();

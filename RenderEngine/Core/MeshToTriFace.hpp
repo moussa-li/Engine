@@ -5,6 +5,7 @@
 #include "Common/UniquePtr.hpp"
 #include "MeshEngine/MeshData/Element.hpp"
 #include "RenderEngine/Core/Definites.hpp"
+#include "RenderEngine/Core/RenderEngineAPI.hpp"
 
 namespace EgLab::ME
 {
@@ -13,7 +14,7 @@ namespace EgLab::ME
 
 namespace EgLab::RE
 {
-    class MeshToTriFace
+    class RenderEngineAPI MeshToTriFace
     {
     public:
         MeshToTriFace();
@@ -26,6 +27,8 @@ namespace EgLab::RE
         const Common::DynamicArray<IdxType>& getBoundaryFaceNodeIdx() const;
 
         Common::DynamicArray<IdxType> getBoundaryLineIdx() const;
+
+        Common::DynamicArray<IdxType> getBoundaryElementEdgeIdx() const;
 
         const Common::DynamicArray<ME::ElemFaceLocation>& getBoundaryFaceLocations() const;
 

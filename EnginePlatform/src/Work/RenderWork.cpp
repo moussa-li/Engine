@@ -259,8 +259,8 @@ namespace EgLab::Platform
 
             while (_running.load())
             {
-                // UI frame draw and ImGui state update move into the render
-                // worker thread where the GL/GLFW context is started and owned.
+                // UI frame draw and ImGui state update run on the render
+                // worker thread where the OpenGL context is owned.
                 float currentFrame = _window->getTime();
                 deltaTime = currentFrame - lastFrame;
                 lastFrame = currentFrame;
@@ -278,7 +278,7 @@ namespace EgLab::Platform
 
                 if (_window)
                 {
-                    _window->deal();
+                    _window->swapBuffers();
                 }
             }
         });
@@ -882,6 +882,17 @@ namespace EgLab::Platform
                 continue;
             }
             _highlightPrimitives.pushBack(primitive);
+
+            auto linePrimitive = Common::dynamicSharedPtrCast<RE::RenderLine>(
+                creator.getPrimitive<RE::RenderLine>());
+            linePrimitive->setIndices(creator.getTranslator()->getBoundaryElementEdgeIdx());
+            linePrimitive->setColor(Common::Vector4f(1.0f, 0.75f, 0.1f, 1.0f));
+            linePrimitive->setLineWidth(3.0f);
+            linePrimitive->setup();
+            if (_scene->addPrimitive(_highlightShader, linePrimitive) == Common::Return::Succeed)
+            {
+                _highlightContourPrimitives.pushBack(linePrimitive);
+            }
         }
     }
 
