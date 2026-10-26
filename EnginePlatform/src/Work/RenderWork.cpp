@@ -59,12 +59,12 @@ namespace EgLab::Platform
             }
 
             ME::MeshIterator meshIterator(*mesh);
-            do
-            {
-                const auto& node = meshIterator.currentNode();
-                nodeCoordinates.pushBack(RE::CoordType(node.x(), node.y(), node.z()));
-            } while (meshIterator.nextNode());
 
+            for (; meshIterator.hasMoreNode(); meshIterator.nextNode())
+            {
+                auto& node = meshIterator.currentNode();
+                nodeCoordinates.pushBack(RE::CoordType(node.x(), node.y(), node.z()));
+            }
             std::map<std::pair<ME::IdType, ME::IdType>, SilhouetteEdgeFacing> edgeFacing;
             ME::ExtractSurface surfaceExtractor(mesh);
             const auto surfaceFaces = surfaceExtractor.getSurface();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Command/CommandParam.hpp"
+#include "Common/Exception.hpp"
 #include "Common/Log.hpp"
 #include "Common/Performance.hpp"
 #include "Common/Return.hpp"
@@ -66,13 +67,14 @@ namespace EgLab::Platform
                           << ", elapsed_ms=" << _performance.getElapsedMilliseconds();
                 return ret;
             }
-            catch (...)
+            catch (Common::Exception& e)
             {
                 _performance.stop();
+                LOG(ERROR) << e.what();
                 LOG(ERROR) << "Command failed: " << getCmdName()
                            << ", end_ms=" << _performance.getEndTimestampMs()
                            << ", elapsed_ms=" << _performance.getElapsedMilliseconds();
-                throw;
+                return Common::Return::Failed;
             }
         }
 

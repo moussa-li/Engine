@@ -2,6 +2,8 @@
 
 #include <GLFW/glfw3.h>
 
+#include <chrono>
+
 #include "Common/StringLineIterator.hpp"
 #include "MeshEngine/IO/GmshImporter.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
@@ -110,10 +112,11 @@ public:
     ~SimpleApp() = default;
     void exec()
     {
-        while (window->shouldClose() == false)
+        const auto startTime = std::chrono::steady_clock::now();
+        while (window->shouldClose() == false &&
+               std::chrono::steady_clock::now() - startTime < std::chrono::seconds(1))
         {
             float currentFrame = window->getTime();
-            if (currentFrame > 1) break;
             deltaTime = currentFrame - lastFrame;
             lastFrame = currentFrame;
 
@@ -129,9 +132,11 @@ public:
             window->deal();
         };
 
+        window->activeContext();
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
+        window->deactiveContext();
         window->terminate();
     }
 };
@@ -407,12 +412,12 @@ TEST_F(TestRender, trimesh)
     EgLab::ME::MeshIterator meshIt(*mesh);
 
     int i = 1;
-    do
+    for (; meshIt.hasMoreNode(); meshIt.nextNode())
     {
         auto &n = meshIt.currentNode();
         EXPECT_EQ(n.getId(), i);
         i++;
-    } while (meshIt.nextNode());
+    }
 
     auto &elem = meshIt.currentElem();
     EXPECT_EQ(elem.getId(), 1);
@@ -475,14 +480,15 @@ TEST_F(TestRender, mesh)
     EgLab::ME::MeshIterator meshIt(*mesh);
 
     int i = 1;
-    do
+    for (; meshIt.hasMoreNode(); meshIt.nextNode())
     {
         auto &n = meshIt.currentNode();
         EXPECT_EQ(n.getId(), i);
         i++;
-    } while (meshIt.nextNode());
+    }
 
     auto &elem = meshIt.currentElem();
+
     EXPECT_EQ(elem.getId(), 1);
 
     EgLab::RE::MeshPrimitiveCreator creator(mesh);

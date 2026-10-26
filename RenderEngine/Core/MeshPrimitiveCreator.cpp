@@ -29,12 +29,12 @@ namespace EgLab::RE
         Common::DynamicArray<RE::CoordType> nodes;
         nodes.reserve(_mesh->getNodeNumber());
 
-        do
+        for (; meshIt.hasMoreNode(); meshIt.nextNode())
         {
             auto& n = meshIt.currentNode();
             RE::CoordType c(n.x(), n.y(), n.z());
             nodes.pushBack(c);
-        } while (meshIt.nextNode());
+        }
 
         primitive->setNodes(Common::move(nodes));
     }
@@ -44,12 +44,12 @@ namespace EgLab::RE
         ME::MeshIterator meshIt(*_mesh);
         Common::DynamicArray<RE::CoordType> nodes;
         nodes.reserve(_mesh->getNodeNumber());
-        do
+        for (; meshIt.hasMoreNode(); meshIt.nextNode())
         {
             auto& n = meshIt.currentNode();
             RE::CoordType c(n.x(), n.y(), n.z());
             nodes.pushBack(c);
-        } while (meshIt.nextNode());
+        }
 
         primitive->setNodes(Common::move(nodes));
 
@@ -61,12 +61,12 @@ namespace EgLab::RE
         ME::MeshIterator meshIt(*_mesh);
         Common::DynamicArray<RE::CoordType> nodes;
         nodes.reserve(_mesh->getNodeNumber());
-        do
+        for (; meshIt.hasMoreNode(); meshIt.nextNode())
         {
             auto& n = meshIt.currentNode();
             RE::CoordType c(n.x(), n.y(), n.z());
             nodes.pushBack(c);
-        } while (meshIt.nextNode());
+        }
 
         Common::DynamicArray<RE::CoordType> faceNodes;
         const auto& faceNodeIndices = _translator->getBoundaryFaceNodeIdx();

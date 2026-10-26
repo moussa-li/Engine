@@ -33,17 +33,17 @@ namespace EgLab::ME
         {
             return Common::Return::BadInput;
         }
-        do
+        for (; validationIterator.hasMoreElem(); validationIterator.nextElem())
         {
             if (!isSupportedElement(validationIterator.currentElem().getType(), dimension))
             {
                 return Common::Return::BadInput;
             }
-        } while (validationIterator.nextElem());
+        }
 
         auto result = Common::makeShared<HEMesh>();
         MeshIterator nodeIterator(*mesh);
-        do
+        for (; nodeIterator.hasMoreNode(); nodeIterator.nextNode())
         {
             auto& node = nodeIterator.currentNode();
             if (result->createVertex(node.getId(), static_cast<float>(node.x()),
@@ -52,19 +52,19 @@ namespace EgLab::ME
             {
                 return Common::Return::BadInput;
             }
-        } while (nodeIterator.nextNode());
+        }
 
         if (dimension == 2)
         {
             MeshIterator elementIterator(*mesh);
-            do
+            for (; elementIterator.hasMoreNode(); elementIterator.nextNode())
             {
                 const auto& nodes = elementIterator.currentElem().getNodes();
                 if (result->createFace(nodes) != Common::Return::Succeed)
                 {
                     return Common::Return::BadInput;
                 }
-            } while (elementIterator.nextElem());
+            }
         }
         else
         {

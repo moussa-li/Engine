@@ -123,7 +123,7 @@ namespace EgLab::ME
 
         MeshIterator it(*_impl->_mesh);
 
-        do
+        for (; it.hasMoreElem(); it.nextElem())
         {
             auto& e = it.currentElem();
             ElemFaceGetter getter(e);
@@ -133,8 +133,7 @@ namespace EgLab::ME
                 ElemFace ef(e, i);
                 elemFaces.pushBack(Common::move(ef));
             }
-
-        } while (it.nextElem());
+        }
 
         Common::sort(elemFaces);
 

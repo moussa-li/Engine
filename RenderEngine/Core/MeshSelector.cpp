@@ -108,7 +108,7 @@ namespace EgLab::RE
                         info.position = CoordType(node.x(), node.y(), node.z());
                         break;
                     }
-                    if (!iterator.nextNode())
+                    if (!iterator.hasMoreNode())
                     {
                         break;
                     }

@@ -10,7 +10,6 @@
 #include "MeshEngine/MeshData/MeshToPOD.hpp"
 #include "test_utils.hpp"
 
-
 TEST_F(TestMesh, createMesh)
 {
     EgLab::ME::Mesh mesh;
@@ -35,12 +34,12 @@ TEST_F(TestMesh, createMesh)
     EgLab::ME::MeshIterator meshIt(mesh);
 
     int i = 1;
-    do
+    for (; meshIt.hasMoreNode(); meshIt.nextNode())
     {
         auto &n = meshIt.currentNode();
         EXPECT_EQ(n.getId(), i);
         i++;
-    } while (meshIt.nextNode());
+    }
 
     auto &elem = meshIt.currentElem();
     EXPECT_EQ(elem.getId(), 1);

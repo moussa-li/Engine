@@ -29,9 +29,9 @@ namespace EgLab::Platform
         void render() override;
 
     private:
-        void renderNode(DataTree& node);
+        bool renderNode(DataTree& node);
 
-        void renderMeshNode(MeshData& meshData);
+        bool renderMeshNode(MeshData& meshData);
 
         bool renderCommonNode(DataTree& node, bool isSelected = false);
 

@@ -7,6 +7,11 @@ namespace EgLab::Platform
     {
     }
 
+    Common::SharedPtr<ME::Mesh>& MeshData::getMesh()
+    {
+        return _mesh;
+    }
+
     const Common::SharedPtr<ME::Mesh>& MeshData::getMesh() const
     {
         return _mesh;

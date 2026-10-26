@@ -4,7 +4,6 @@
 #include "DataBase/DataTree.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 
-
 namespace EgLab::Platform
 {
     class MeshData : public DataTree
@@ -12,6 +11,7 @@ namespace EgLab::Platform
     public:
         MeshData(const Common::String& name, const Common::SharedPtr<ME::Mesh>& mesh);
 
+        Common::SharedPtr<ME::Mesh>& getMesh();
         const Common::SharedPtr<ME::Mesh>& getMesh() const;
         const Common::Vector4f& getColor() const;
         void setColor(const Common::Vector4f& color);

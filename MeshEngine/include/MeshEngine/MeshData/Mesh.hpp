@@ -90,13 +90,17 @@ namespace EgLab::ME
 
         Node &currentNode();
 
-        bool nextNode();
+        void nextNode();
+
+        bool hasMoreNode() const;
 
         const Elem &currentElem() const;
 
         Elem &currentElem();
 
-        bool nextElem();
+        void nextElem();
+
+        bool hasMoreElem() const;
 
     protected:
         class Impl;

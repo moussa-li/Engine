@@ -167,15 +167,18 @@ namespace EgLab::ME
         return *_impl->_nodeIt;
     }
 
-    bool MeshIterator::nextNode()
+    void MeshIterator::nextNode()
     {
         do
         {
             _impl->_nodeStatusIt.next();
             _impl->_nodeIt.next();
         } while (_impl->_nodeIt.hasNext() && *_impl->_nodeStatusIt == NodeStatus::Delete);
+    }
 
-        return _impl->_nodeIt != _impl->_mesh->_nodes.end();
+    bool MeshIterator::hasMoreNode() const
+    {
+        return _impl->_nodeIt.hasNext();
     }
 
     const Elem &MeshIterator::currentElem() const
@@ -188,14 +191,18 @@ namespace EgLab::ME
         return *_impl->_elemIt;
     }
 
-    bool MeshIterator::nextElem()
+    void MeshIterator::nextElem()
     {
         do
         {
             _impl->_elemStatusIt.next();
             _impl->_elemIt.next();
         } while (_impl->_elemIt.hasNext() && *_impl->_elemStatusIt == ElemStatus::Delete);
-        return _impl->_elemIt != _impl->_mesh->_elems.end();
+    }
+
+    bool MeshIterator::hasMoreElem() const
+    {
+        return _impl->_elemIt.hasNext();
     }
 
 } // namespace EgLab::ME

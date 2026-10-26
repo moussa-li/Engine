@@ -10,7 +10,7 @@ namespace EgLab::ME
         explicit GrdImporter(const Common::String &fileDir);
         ~GrdImporter() override;
 
-        Common::SharedPtr<Mesh> getMesh() override;
+        Common::SharedPtr<Mesh> getMesh(int dim = -1) override;
     };
 
 } // namespace EgLab::ME

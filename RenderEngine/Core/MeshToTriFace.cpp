@@ -98,7 +98,7 @@ namespace EgLab::RE
             using Edge = Common::Pair<ME::IdType, ME::IdType>;
             Common::HashMap<Edge, size_t> edgeUseCounts;
             ME::MeshIterator elemIterator(*_mesh);
-            do
+            for (; elemIterator.hasMoreElem(); elemIterator.nextElem())
             {
                 const auto& elem = elemIterator.currentElem();
                 const auto type = elem.getType();
@@ -125,7 +125,7 @@ namespace EgLab::RE
                 {
                     ++edgeUseCounts[edge.data()];
                 }
-            } while (elemIterator.nextElem());
+            }
 
             for (auto edgeUse = edgeUseCounts.begin(); edgeUse.hasNext(); edgeUse.next())
             {

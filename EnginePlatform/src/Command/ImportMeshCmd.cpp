@@ -6,6 +6,7 @@
 
 #include "Common/Log.hpp"
 #include "DataBase/Context.hpp"
+#include "DataBase/MeshData.hpp"
 #include "MeshEngine/IO/GmshImporter.hpp"
 #include "MeshEngine/IO/GrdImporter.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
@@ -30,16 +31,22 @@ namespace EgLab::Platform
             extension.begin(), extension.end(), extension.begin(),
             [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
 
-        Common::SharedPtr<ME::Mesh> mesh;
+        Common::SharedPtr<ME::Mesh> mesh3d = nullptr;
+        Common::SharedPtr<ME::Mesh> mesh2d = nullptr;
+        MeshData* meshData = new MeshData(meshPath.filename().string().c_str(), nullptr);
         if (extension == ".msh")
         {
             EgLab::ME::GmshImporter importer(getParams().fileDir);
-            mesh = importer.getMesh();
+            mesh3d = importer.getMesh(3);
+            meshData->getMesh() = mesh3d;
+            mesh2d = importer.getMesh(2);
+            auto meshData2d = new MeshData("2D Surface", mesh2d);
+            meshData->addTree(meshData2d);
         }
         else if (extension == ".grd")
         {
             EgLab::ME::GrdImporter importer(getParams().fileDir);
-            mesh = importer.getMesh();
+            mesh2d = importer.getMesh(2);
         }
         else
         {
@@ -47,19 +54,20 @@ namespace EgLab::Platform
             return Common::Return::BadInput;
         }
 
-        if (mesh == nullptr)
+        if (meshData == nullptr)
         {
             return Common::Return::Failed;
         }
 
         const Common::String meshName(meshPath.filename().string().c_str());
-        if (Context::instance().addMeshData(mesh, meshName) != Common::Return::Succeed)
+        if (Context::instance().getDataTree().addTree(meshData) != Common::Return::Succeed)
         {
             LOG(ERROR) << "ImportMeshCmd::exec() failed to register imported mesh data";
             return Common::Return::Failed;
         }
 
-        RenderWork::instance().onUpdateMesh(mesh);
+        RenderWork::instance().onUpdateMesh(mesh3d);
+        RenderWork::instance().onUpdateMesh(mesh2d);
 
         LOG(INFO) << "ImportMeshCmd::exec() imported mesh and queued it for rendering";
         return Common::Return::Succeed;

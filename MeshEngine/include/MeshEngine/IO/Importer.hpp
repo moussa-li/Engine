@@ -17,7 +17,7 @@ namespace EgLab::ME
 
         const Common::String &getFileDir() const;
 
-        virtual Common::SharedPtr<Mesh> getMesh() = 0;
+        virtual Common::SharedPtr<Mesh> getMesh(int dim = -1) = 0;
 
     private:
         class Impl;

@@ -9,7 +9,8 @@ namespace EgLab::ME
 {
     namespace
     {
-        inline void writePrimitive(uint8_t *buffer, uint32_t offset, const void *value, uint32_t byteSize)
+        inline void writePrimitive(uint8_t *buffer, uint32_t offset, const void *value,
+                                   uint32_t byteSize)
         {
             if (buffer == nullptr || value == nullptr)
             {
@@ -48,11 +49,12 @@ namespace EgLab::ME
 
         uint32_t elemDataSize = 0;
         MeshIterator elemIt(*mesh);
-        do
+        while (elemIt.hasMoreElem())
         {
             auto &elem = elemIt.currentElem();
             elemDataSize += static_cast<uint32_t>(getNodeNumber(elem.getType()) * sizeof(IdType));
-        } while (elemIt.nextElem());
+            elemIt.nextElem();
+        }
 
         pod.nodeIdsOffset = 0;
         pod.nodeDataOffset = nodeIdsSize;
@@ -65,28 +67,33 @@ namespace EgLab::ME
 
         MeshIterator nodeIt(*mesh);
         uint32_t nodeIndex = 0;
-        do
+        while (nodeIt.hasMoreNode())
         {
             auto &node = nodeIt.currentNode();
             IdType id = node.getId();
-            writePrimitive(pod.data, pod.nodeIdsOffset + nodeIndex * sizeof(IdType), &id, sizeof(IdType));
+            writePrimitive(pod.data, pod.nodeIdsOffset + nodeIndex * sizeof(IdType), &id,
+                           sizeof(IdType));
 
             Scalar xyz[3] = {node.x(), node.y(), node.z()};
-            writePrimitive(pod.data, pod.nodeDataOffset + nodeIndex * sizeof(Scalar) * 3, xyz, sizeof(Scalar) * 3);
+            writePrimitive(pod.data, pod.nodeDataOffset + nodeIndex * sizeof(Scalar) * 3, xyz,
+                           sizeof(Scalar) * 3);
             ++nodeIndex;
-        } while (nodeIt.nextNode());
+            nodeIt.nextNode();
+        }
 
         MeshIterator elemIt2(*mesh);
         uint32_t elemIndex = 0;
         uint32_t elemCursor = pod.elemDataOffset;
-        do
+        while (elemIt2.hasMoreElem())
         {
             auto &elem = elemIt2.currentElem();
             IdType elemId = elem.getId();
-            writePrimitive(pod.data, pod.elemIdsOffset + elemIndex * sizeof(IdType), &elemId, sizeof(IdType));
+            writePrimitive(pod.data, pod.elemIdsOffset + elemIndex * sizeof(IdType), &elemId,
+                           sizeof(IdType));
 
             int elemType = static_cast<int>(elem.getType());
-            writePrimitive(pod.data, pod.elemTypesOffset + elemIndex * sizeof(int), &elemType, sizeof(int));
+            writePrimitive(pod.data, pod.elemTypesOffset + elemIndex * sizeof(int), &elemType,
+                           sizeof(int));
 
             const auto &nodes = elem.getNodes();
             for (IdxType j = 0; j < nodes.size(); ++j)
@@ -97,7 +104,8 @@ namespace EgLab::ME
 
             elemCursor += static_cast<uint32_t>(getNodeNumber(elem.getType()) * sizeof(IdType));
             ++elemIndex;
-        } while (elemIt2.nextElem());
+            elemIt2.nextElem();
+        }
 
         return pod;
     }
@@ -114,9 +122,12 @@ namespace EgLab::ME
         for (uint32_t i = 0; i < pod.nodeNumber; ++i)
         {
             IdType nodeId = readPrimitive<IdType>(pod.data, pod.nodeIdsOffset + i * sizeof(IdType));
-            Scalar x = readPrimitive<Scalar>(pod.data, pod.nodeDataOffset + i * sizeof(Scalar) * 3 + 0 * sizeof(Scalar));
-            Scalar y = readPrimitive<Scalar>(pod.data, pod.nodeDataOffset + i * sizeof(Scalar) * 3 + 1 * sizeof(Scalar));
-            Scalar z = readPrimitive<Scalar>(pod.data, pod.nodeDataOffset + i * sizeof(Scalar) * 3 + 2 * sizeof(Scalar));
+            Scalar x = readPrimitive<Scalar>(
+                pod.data, pod.nodeDataOffset + i * sizeof(Scalar) * 3 + 0 * sizeof(Scalar));
+            Scalar y = readPrimitive<Scalar>(
+                pod.data, pod.nodeDataOffset + i * sizeof(Scalar) * 3 + 1 * sizeof(Scalar));
+            Scalar z = readPrimitive<Scalar>(
+                pod.data, pod.nodeDataOffset + i * sizeof(Scalar) * 3 + 2 * sizeof(Scalar));
 
             Node node;
             node.setId(nodeId);

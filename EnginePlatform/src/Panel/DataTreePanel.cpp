@@ -11,7 +11,7 @@
 
 namespace EgLab::Platform
 {
-    void DataTreePanel::renderMeshNode(MeshData& meshData)
+    bool DataTreePanel::renderMeshNode(MeshData& meshData)
     {
         const auto& mesh = meshData.getMesh();
         size_t selectedIndex = _selectedMeshes.size();
@@ -111,24 +111,7 @@ namespace EgLab::Platform
             ImGui::EndPopup();
         }
 
-        if (isOpen)
-        {
-            // ImGui::PushID(&meshData);
-            // ImGui::TreeNodeEx("Color",
-            //                   ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-            // ImGui::SameLine();
-            // const auto& color = meshData.getColor();
-            // float editableColor[] = {color[0], color[1], color[2], color[3]};
-            // if (ImGui::ColorEdit4("##MeshColor", editableColor,
-            //                       ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar))
-            // {
-            //     const Common::Vector4f newColor(editableColor[0], editableColor[1],
-            //                                     editableColor[2], editableColor[3]);
-            //     meshData.setColor(newColor);
-            //     RenderWork::instance().setMeshColor(meshData.getMesh(), newColor);
-            // }
-            // ImGui::PopID();
-        }
+        return isOpen;
     }
 
     bool DataTreePanel::renderCommonNode(DataTree& node, bool isSelected)
@@ -144,33 +127,40 @@ namespace EgLab::Platform
         {
             flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
         }
-        // if (defaultOpen)
-        // {
-        //     flags |= ImGuiTreeNodeFlags_DefaultOpen;
-        // }
-
         const bool isOpen = ImGui::TreeNodeEx(&node, flags, "%s", node.getName().c_str());
         return isOpen;
     }
 
-    void DataTreePanel::renderNode(DataTree& node)
+    bool DataTreePanel::renderNode(DataTree& node)
     {
         auto* meshData = dynamic_cast<MeshData*>(&node);
+        bool isOpen = false;
         if (meshData != nullptr)
         {
-            return renderMeshNode(*meshData);
+            isOpen = renderMeshNode(*meshData);
+        }
+        else
+        {
+            isOpen = renderCommonNode(node);
         }
 
         const auto children = node.getChildrens();
-        const auto isOpen = renderCommonNode(node);
+
         if (isOpen && (!children.empty()))
         {
             for (DataTree* child : children)
             {
-                renderNode(*child);
+                if (renderNode(*child))
+                {
+                    // ImGui::TreePop();
+                }
             }
+        }
+        if (isOpen && (!children.empty()))
+        {
             ImGui::TreePop();
         }
+        return isOpen;
     }
 
     DataTreePanel::DataTreePanel()

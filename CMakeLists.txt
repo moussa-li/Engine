@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.21)
 
 project(EngineLab)
 
@@ -43,10 +43,13 @@ endif()
 set(BUILD_UTILS OFF CACHE BOOL "Disable GLEW utility executables" FORCE)
 
 if(BUILD_TESTS)
+    set(INSTALL_GTEST OFF CACHE BOOL "Disable installation of bundled googletest" FORCE)
     enable_testing()
     add_subdirectory(test)
 endif()
 
+set(GLFW_BUILD_DOCS OFF)
+set(GLFW_INSTALL OFF)
 add_subdirectory(3rd/glfw-3.4)
 add_subdirectory(3rd/glew/build/cmake)
 
@@ -54,6 +57,22 @@ add_subdirectory(Common)
 add_subdirectory(RenderEngine)
 add_subdirectory(MeshEngine)
 add_subdirectory(EnginePlatform)
+
+get_filename_component(ENGINEPLATFORM_RUNTIME_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+install(TARGETS EnginePlatform Common RenderEngine glfw
+    RUNTIME_DEPENDENCIES
+        DIRECTORIES "${ENGINEPLATFORM_RUNTIME_DIR}"
+        PRE_EXCLUDE_REGEXES
+            "api-ms-" "ext-ms-"
+            "[Aa]dvapi32\\.dll" "[Gg]di32\\.dll" "[Gg]lu32\\.dll"
+            "[Kk]ernel32\\.dll" "[Kk]ernel[Bb]ase\\.dll" "[Oo]pengl32\\.dll"
+            "[Rr]pcrt4\\.dll" "[Ss]echost\\.dll" "[Ss]hell32\\.dll"
+            "[Uu]ser32\\.dll" "[Mm]svcp_win\\.dll" "[Mm]svcrt\\.dll"
+            "[Nn]tdll\\.dll" "[Ww]in32u\\.dll"
+        POST_EXCLUDE_REGEXES ".*/Windows/System32/.*"
+    RUNTIME DESTINATION .
+)
+install(FILES "${CMAKE_SOURCE_DIR}/render_settings.ini" DESTINATION .)
 
 
 if(BUILD_DOC)

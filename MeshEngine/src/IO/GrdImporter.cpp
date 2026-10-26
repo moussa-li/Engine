@@ -45,7 +45,7 @@ namespace EgLab::ME
 
     GrdImporter::~GrdImporter() = default;
 
-    Common::SharedPtr<Mesh> GrdImporter::getMesh()
+    Common::SharedPtr<Mesh> GrdImporter::getMesh(int dim)
     {
         auto mesh = Common::makeShared<Mesh>();
         std::ifstream file(getFileDir().c_str());

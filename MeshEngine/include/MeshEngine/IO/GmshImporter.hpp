@@ -10,7 +10,7 @@ namespace EgLab::ME
         GmshImporter(const Common::String &fileDir);
         virtual ~GmshImporter();
 
-        virtual Common::SharedPtr<Mesh> getMesh() override;
+        virtual Common::SharedPtr<Mesh> getMesh(int dim = -1) override;
 
     private:
         class Impl;
