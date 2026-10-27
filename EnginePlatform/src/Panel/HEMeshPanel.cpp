@@ -35,7 +35,7 @@ namespace EgLab::Platform
             if (_halfEdgeMesh)
             {
                 ImGui::Text("Mesh: %s", _meshName.c_str());
-                ImGui::Text("Vertices: %zu  Faces: %zu  Half-edges: %zu",
+                ImGui::Text("Vertices: %u  Faces: %u  Half-edges: %u",
                             _halfEdgeMesh->getVertexCount(), _halfEdgeMesh->getFaceCount(),
                             _halfEdgeMesh->getHalfEdgeCount());
                 ImGui::Separator();

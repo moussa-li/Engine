@@ -64,7 +64,7 @@ namespace EgLab::ME
         Common::DynamicArray<IdxType> vertexIndices;
         vertexIndices.reserve(vertexIds.size());
         Common::HashSet<IdxType> uniqueVertices;
-        for (std::size_t i = 0; i < vertexIds.size(); ++i)
+        for (IdxType i = 0; i < vertexIds.size(); ++i)
         {
             const auto found = _impl->_vertexIdToIdx.find(vertexIds[i]);
             if (found == _impl->_vertexIdToIdx.end() || !uniqueVertices.insert((*found).second))
@@ -78,11 +78,11 @@ namespace EgLab::ME
         Common::DynamicArray<IdxType> twinIndices;
         twinIndices.reserve(vertexIndices.size());
         auto invalidIndex = INVALID_IDX;
-        for (std::size_t edge = 0; edge < vertexIndices.size(); ++edge)
+        for (IdxType edge = 0; edge < vertexIndices.size(); ++edge)
         {
             twinIndices.pushBack(invalidIndex);
         }
-        for (std::size_t edge = 0; edge < vertexIndices.size(); ++edge)
+        for (IdxType edge = 0; edge < vertexIndices.size(); ++edge)
         {
             const auto from = vertexIndices[edge];
             const auto to = vertexIndices[(edge + 1) % vertexIndices.size()];
@@ -111,7 +111,7 @@ namespace EgLab::ME
         HEFace face{static_cast<IdType>(faceIndex + 1), firstHalfEdge};
         _impl->_faces.pushBack(face);
 
-        for (std::size_t edge = 0; edge < vertexIndices.size(); ++edge)
+        for (IdxType edge = 0; edge < vertexIndices.size(); ++edge)
         {
             const auto halfEdgeIndex = firstHalfEdge + static_cast<IdxType>(edge);
             HalfEdge halfEdge{
@@ -134,17 +134,17 @@ namespace EgLab::ME
         return Common::Return::Succeed;
     }
 
-    std::size_t HEMesh::getVertexCount() const
+    IdxType HEMesh::getVertexCount() const
     {
         return _impl->_vertices.size();
     }
 
-    std::size_t HEMesh::getFaceCount() const
+    IdxType HEMesh::getFaceCount() const
     {
         return _impl->_faces.size();
     }
 
-    std::size_t HEMesh::getHalfEdgeCount() const
+    IdxType HEMesh::getHalfEdgeCount() const
     {
         return _impl->_halfEdges.size();
     }

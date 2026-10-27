@@ -24,11 +24,11 @@ namespace EgLab::ME
 
         Common::Return createFace(const Common::DynamicArray<IdType>& vertexIds);
 
-        std::size_t getVertexCount() const;
+        IdxType getVertexCount() const;
 
-        std::size_t getFaceCount() const;
+        IdxType getFaceCount() const;
 
-        std::size_t getHalfEdgeCount() const;
+        IdxType getHalfEdgeCount() const;
 
         HENode getVertex(IdxType index) const;
 
