@@ -137,9 +137,10 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec4 baseColor)
 {
     vec3 lightDir = normalize(-light.direction);
     // diffuse shading
-    float diff = max(dot(normal, lightDir), 0.0);
+    //float diff = max(dot(normal, lightDir), 0.0);
+    float diff = (abs(dot(normal, lightDir)), 0.0);
     // specular shading
-    vec3 reflectDir = reflect(-lightDir, normal);
+    vec3 reflectDir = abs(reflect(-lightDir, normal));
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
     // combine results
     vec3 ambient = light.ambient * baseColor.rgb;
@@ -154,7 +155,7 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
 {
     vec3 lightDir = normalize(light.position - fragPos);
     // diffuse shading
-    float diff = max(dot(normal, lightDir), 0.0);
+    float diff = max(abs(dot(normal, lightDir)), 0.0);
     // specular shading
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
