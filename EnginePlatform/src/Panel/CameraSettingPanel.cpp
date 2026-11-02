@@ -1,6 +1,7 @@
 #include "Panel/CameraSettingPanel.hpp"
 
 #include "Command/CommandManager.hpp"
+#include "Core/IniManager.hpp"
 #include "DataBase/Context.hpp"
 #include "imgui.h"
 
@@ -52,14 +53,17 @@ namespace EgLab::Platform
             if (ImGui::SliderFloat("Move Sensitivity", &moveSens, 0.1f, 5.0f, "%.2f") && camera)
             {
                 camera->setMoveSensitivity(moveSens);
+                IniManager::instance().setFloat("camera.moveSensitivity", moveSens);
             }
             if (ImGui::SliderFloat("Rotate Sensitivity", &rotateSens, 0.1f, 5.0f, "%.2f") && camera)
             {
                 camera->setRotateSensitivity(rotateSens);
+                IniManager::instance().setFloat("camera.rotateSensitivity", rotateSens);
             }
             if (ImGui::SliderFloat("Zoom Sensitivity", &zoomSens, 0.1f, 5.0f, "%.2f") && camera)
             {
                 camera->setZoomSensitivity(zoomSens);
+                IniManager::instance().setFloat("camera.zoomSensitivity", zoomSens);
             }
 
             ImGui::Separator();
@@ -86,6 +90,10 @@ namespace EgLab::Platform
                     camera->setRotateSensitivity(1.0f);
                     camera->setZoomSensitivity(1.0f);
                 }
+                auto &ini = IniManager::instance();
+                ini.setFloat("camera.moveSensitivity", 1.0f);
+                ini.setFloat("camera.rotateSensitivity", 1.0f);
+                ini.setFloat("camera.zoomSensitivity", 1.0f);
             }
 
             ImGui::Separator();

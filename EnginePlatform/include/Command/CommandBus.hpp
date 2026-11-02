@@ -17,6 +17,8 @@ namespace EgLab::Platform
 
         ~CommandBus();
 
+        void stop(bool discardPending = false);
+
         Common::Return dispatch(Common::SharedPtr<ICommand> command);
 
     private:

@@ -32,6 +32,7 @@ namespace EgLab::RE
         void init()
         {
             if (!glfwInit()) return;
+            _glfwInitialized = true;
 
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -44,6 +45,7 @@ namespace EgLab::RE
             if (!_window)
             {
                 glfwTerminate();
+                _glfwInitialized = false;
                 return;
             }
         }
@@ -155,6 +157,7 @@ namespace EgLab::RE
 
     public:
         GLFWwindow *_window{nullptr};
+        bool _glfwInitialized{false};
         Common::SharedPtr<CameraController> _cameraController;
 
         unsigned int _width;
@@ -263,7 +266,11 @@ namespace EgLab::RE
             glfwDestroyWindow(_impl->_window);
             _impl->_window = nullptr;
         }
-        glfwTerminate();
+        if (_impl != nullptr && _impl->_glfwInitialized)
+        {
+            glfwTerminate();
+            _impl->_glfwInitialized = false;
+        }
     }
 
     void Window::maskEvent(bool mask)

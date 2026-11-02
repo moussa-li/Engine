@@ -310,7 +310,7 @@ namespace EgLab::Common
             return *this;
         }
 
-        ValueCRef data()
+        ValueCRef data() const
         {
             if (!hasNext())
             {
@@ -445,7 +445,7 @@ namespace EgLab::Common
             return *this;
         }
 
-        ValueCRef data()
+        ValueCRef data() const
         {
             if (!hasNext())
             {

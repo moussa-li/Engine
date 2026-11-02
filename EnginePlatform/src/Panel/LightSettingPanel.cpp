@@ -1,5 +1,6 @@
 #include "Panel/LightSettingPanel.hpp"
 
+#include "Core/IniManager.hpp"
 #include "DataBase/Context.hpp"
 #include "RenderEngine/Core/Renderer.hpp"
 #include "imgui.h"
@@ -32,6 +33,18 @@ namespace EgLab::Platform
                     settings.diffuse = Common::Vector3f(diffuse[0], diffuse[1], diffuse[2]);
                     settings.specular = Common::Vector3f(specular[0], specular[1], specular[2]);
                     renderer->setLightSettings(settings);
+
+                    auto &ini = IniManager::instance();
+                    ini.setFloat("light.ambient.r", ambient[0]);
+                    ini.setFloat("light.ambient.g", ambient[1]);
+                    ini.setFloat("light.ambient.b", ambient[2]);
+                    ini.setFloat("light.diffuse.r", diffuse[0]);
+                    ini.setFloat("light.diffuse.g", diffuse[1]);
+                    ini.setFloat("light.diffuse.b", diffuse[2]);
+                    ini.setFloat("light.specular.r", specular[0]);
+                    ini.setFloat("light.specular.g", specular[1]);
+                    ini.setFloat("light.specular.b", specular[2]);
+                    ini.setFloat("light.shininess", settings.shininess);
                 }
             }
         }

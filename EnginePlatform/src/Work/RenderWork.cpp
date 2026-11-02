@@ -185,6 +185,11 @@ namespace EgLab::Platform
 
         Common::Return exec()
         {
+            if (!_worker->_running.load())
+            {
+                return Common::Return::Succeed;
+            }
+
             Common::Performance perf;
             EgLab::RE::MeshPrimitiveCreator creator(_mesh);
             perf.start();
@@ -267,15 +272,29 @@ namespace EgLab::Platform
 
                 _window->activeContext();
                 drainRenderEvents();
+                if (!_running.load())
+                {
+                    _window->deactiveContext();
+                    break;
+                }
                 updateMeshHighlight();
                 // updateViewDependentHighlights();
                 _scene->update(deltaTime);
                 _renderer->update(deltaTime);
+                if (!_running.load())
+                {
+                    _window->deactiveContext();
+                    break;
+                }
                 _renderer->draw(_scene, _camera);
                 _window->deactiveContext();
 
                 UIWork::instance().renderFrame();
 
+                if (!_running.load())
+                {
+                    break;
+                }
                 if (_window)
                 {
                     _window->swapBuffers();
@@ -317,6 +336,38 @@ namespace EgLab::Platform
         {
             _thread.join();
         }
+        _renderUpdateBus.stop(true);
+    }
+
+    void RenderWork::releaseResources()
+    {
+        stop();
+
+        if (_renderer)
+        {
+            _renderer->setSelector(nullptr);
+        }
+        _meshSelector = nullptr;
+        _activeMeshPackets.clear();
+        _meshColors.clear();
+        _removedMeshes.clear();
+        _requestedHighlightedMeshes.clear();
+        _activeHighlightedMeshes.clear();
+        _highlightPrimitives.clear();
+        _highlightContourPrimitives.clear();
+        _heMeshHighlightPrimitives.clear();
+        _highlightShader = nullptr;
+        _heMeshHighlightShader = nullptr;
+
+        {
+            std::lock_guard<std::mutex> lock(_renderEventMutex);
+            _renderEventQueue.clear();
+        }
+
+        _scene = nullptr;
+        _renderer = nullptr;
+        _camera = nullptr;
+        _window = nullptr;
     }
 
     void RenderWork::subscribe(EventId eventId)
@@ -484,6 +535,11 @@ namespace EgLab::Platform
 
         for (auto& event : events)
         {
+            if (!_running.load())
+            {
+                break;
+            }
+
             switch (event.type)
             {
             case RenderEventType::MeshUpdate:

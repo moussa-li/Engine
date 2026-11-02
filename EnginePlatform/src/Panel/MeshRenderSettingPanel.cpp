@@ -2,12 +2,26 @@
 
 #include <sstream>
 
+#include "Core/IniManager.hpp"
 #include "DataBase/Context.hpp"
 #include "Work/RenderWork.hpp"
 #include "imgui.h"
 
 namespace EgLab::Platform
 {
+    MeshRenderSettingPanel::MeshRenderSettingPanel()
+    {
+        auto &ini = IniManager::instance();
+        _showNodeInfo = ini.getBool("mesh.showNodeInfo", _showNodeInfo);
+        _showElementInfo = ini.getBool("mesh.showElementInfo", _showElementInfo);
+        _showElementEdgeInfo = ini.getBool("mesh.showElementEdgeInfo", _showElementEdgeInfo);
+        _showElementFaceInfo = ini.getBool("mesh.showElementFaceInfo", _showElementFaceInfo);
+        _highlightColor[0] = ini.getFloat("mesh.highlight.r", _highlightColor[0]);
+        _highlightColor[1] = ini.getFloat("mesh.highlight.g", _highlightColor[1]);
+        _highlightColor[2] = ini.getFloat("mesh.highlight.b", _highlightColor[2]);
+        _highlightColor[3] = ini.getFloat("mesh.highlight.a", _highlightColor[3]);
+    }
+
     MeshRenderSettingPanel::~MeshRenderSettingPanel()
     {
         if (_pickInfoSubscriptionId != 0)
@@ -43,14 +57,17 @@ namespace EgLab::Platform
             if (ImGui::Checkbox("Nodes", &renderNodes))
             {
                 renderer->setRenderNodesEnabled(renderNodes);
+                IniManager::instance().setBool("mesh.renderNodes", renderNodes);
             }
             if (ImGui::Checkbox("Edges", &renderEdges))
             {
                 renderer->setRenderEdgesEnabled(renderEdges);
+                IniManager::instance().setBool("mesh.renderEdges", renderEdges);
             }
             if (ImGui::Checkbox("Faces", &renderFaces))
             {
                 renderer->setRenderFacesEnabled(renderFaces);
+                IniManager::instance().setBool("mesh.renderFaces", renderFaces);
             }
 
             if (ImGui::ColorEdit4("Highlight Color", _highlightColor))
@@ -58,13 +75,30 @@ namespace EgLab::Platform
                 RenderWork::instance().setHighlightColor(
                     Common::Vector4f(_highlightColor[0], _highlightColor[1], _highlightColor[2],
                                      _highlightColor[3]));
+                auto &ini = IniManager::instance();
+                ini.setFloat("mesh.highlight.r", _highlightColor[0]);
+                ini.setFloat("mesh.highlight.g", _highlightColor[1]);
+                ini.setFloat("mesh.highlight.b", _highlightColor[2]);
+                ini.setFloat("mesh.highlight.a", _highlightColor[3]);
             }
 
             ImGui::Separator();
-            ImGui::Checkbox("Node Info", &_showNodeInfo);
-            ImGui::Checkbox("Element Info", &_showElementInfo);
-            ImGui::Checkbox("Element Edge Info", &_showElementEdgeInfo);
-            ImGui::Checkbox("Element Face Info", &_showElementFaceInfo);
+            if (ImGui::Checkbox("Node Info", &_showNodeInfo))
+            {
+                IniManager::instance().setBool("mesh.showNodeInfo", _showNodeInfo);
+            }
+            if (ImGui::Checkbox("Element Info", &_showElementInfo))
+            {
+                IniManager::instance().setBool("mesh.showElementInfo", _showElementInfo);
+            }
+            if (ImGui::Checkbox("Element Edge Info", &_showElementEdgeInfo))
+            {
+                IniManager::instance().setBool("mesh.showElementEdgeInfo", _showElementEdgeInfo);
+            }
+            if (ImGui::Checkbox("Element Face Info", &_showElementFaceInfo))
+            {
+                IniManager::instance().setBool("mesh.showElementFaceInfo", _showElementFaceInfo);
+            }
         }
 
         ImGui::End();

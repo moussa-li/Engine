@@ -1,6 +1,7 @@
 #include "RenderEngine/Core/RenderFace.hpp"
 
 #include <GL/glew.h>
+#include <GLFW/glfw3.h>
 
 #include "Common/Performance.hpp"
 #include "Common/Utils.hpp"
@@ -11,11 +12,11 @@ namespace EgLab::RE
 {
     RenderFace::~RenderFace()
     {
-        if (_colorSSBO != 0)
+        if (_colorSSBO != 0 && glfwGetCurrentContext() != nullptr)
         {
             glDeleteBuffers(1, &_colorSSBO);
-            _colorSSBO = 0;
         }
+        _colorSSBO = 0;
     }
 
     void RenderFace::setup()

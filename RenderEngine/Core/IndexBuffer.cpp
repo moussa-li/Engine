@@ -1,6 +1,7 @@
 #include "IndexBuffer.hpp"
 
 #include <GL/glew.h>
+#include <GLFW/glfw3.h>
 
 namespace EgLab::RE
 {
@@ -18,7 +19,10 @@ namespace EgLab::RE
 
         ~Impl()
         {
-            glDeleteBuffers(1, &_rendererId);
+            if (_rendererId != 0 && glfwGetCurrentContext() != nullptr)
+            {
+                glDeleteBuffers(1, &_rendererId);
+            }
         }
 
         void bind() const
@@ -31,8 +35,8 @@ namespace EgLab::RE
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
         }
 
-        IdType _rendererId;
-        IdxType _count;
+        IdType _rendererId{0};
+        IdxType _count{0};
     };
 
     IndexBuffer::IndexBuffer(const Common::DynamicArray<IdxType>& indeices)

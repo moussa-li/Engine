@@ -7,7 +7,14 @@ namespace EgLab::RE
 
     void GLClearError()
     {
-        while (glGetError() != GL_NO_ERROR);
+        constexpr unsigned int maxErrorReads = 32;
+        for (unsigned int attempt = 0; attempt < maxErrorReads; ++attempt)
+        {
+            if (glGetError() == GL_NO_ERROR)
+            {
+                return;
+            }
+        }
     }
 
     bool GLLogCall(const char* function, const char* file, int line)

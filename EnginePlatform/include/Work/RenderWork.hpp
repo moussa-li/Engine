@@ -86,6 +86,7 @@ namespace EgLab::Platform
 
         void start();
         void stop();
+        void releaseResources();
         void bindWindow(const Common::SharedPtr<EgLab::RE::Window>& window);
         void bindRenderer(const Common::SharedPtr<EgLab::RE::Renderer>& renderer);
         void bindScene(const Common::SharedPtr<EgLab::RE::Scene>& scene);

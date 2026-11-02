@@ -379,6 +379,19 @@ TEST_F(TestCommon, HashMap_operator)
     EXPECT_EQ(map[0], "bbb");
 }
 
+TEST_F(TestCommon, HashMap_const_lookup)
+{
+    EgLab::Common::HashMap<int, EgLab::Common::String> map;
+    const auto& emptyMap = map;
+    EXPECT_TRUE(emptyMap.find(7) == emptyMap.end());
+
+    map[7] = "seven";
+    const auto& populatedMap = map;
+    const auto iter = populatedMap.find(7);
+    ASSERT_TRUE(iter != populatedMap.end());
+    EXPECT_EQ(iter.data().second, "seven");
+}
+
 TEST_F(TestCommon, mix)
 {
     int data[] = {1,       3,    2,    1,   4,     5,       6,     6,   7,     1,     12,

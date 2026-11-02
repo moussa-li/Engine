@@ -4,6 +4,7 @@
 #include "MeshEngine/Algorithm/ExtractSurface.hpp"
 #include "MeshEngine/IO/GmshImporter.hpp"
 #include "MeshEngine/IO/GrdImporter.hpp"
+#include "MeshEngine/MeshCheck/TypeChecker.hpp"
 #include "MeshEngine/MeshData/HEMesh.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "MeshEngine/MeshData/MeshToHEMesh.hpp"
@@ -276,4 +277,20 @@ TEST_F(TestMesh, convertTetMeshToHalfEdgeBoundary)
     EXPECT_EQ(halfEdgeMesh->getVertexCount(), 4u);
     EXPECT_EQ(halfEdgeMesh->getFaceCount(), 4u);
     EXPECT_EQ(halfEdgeMesh->getHalfEdgeCount(), 12u);
+}
+
+TEST_F(TestMesh, typeChecker)
+{
+    EgLab::ME::GmshImporter importer(EgLab::getTestDataDir("daodan.msh"));
+
+    auto mesh = importer.getMesh(2);
+    EgLab::ME::TypeChecker checker(mesh);
+    EXPECT_EQ(checker.allTypeIs(EgLab::ME::ElemType::Quad4), false);
+}
+
+TEST_F(TestMesh, midSurfGen)
+{
+    EgLab::ME::GmshImporter importer(EgLab::getTestDataDir("daodan.msh"));
+
+    auto mesh = importer.getMesh();
 }

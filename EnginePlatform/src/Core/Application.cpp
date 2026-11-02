@@ -1,5 +1,8 @@
 #include "Core/Application.hpp"
 
+#include <algorithm>
+
+#include "Core/IniManager.hpp"
 #include "Core/MainMenuBar.hpp"
 #include "GLFW/glfw3.h"
 #include "RenderEngine/Core/OrbitCameraController.hpp"
@@ -10,11 +13,21 @@
 namespace EgLab::Platform
 {
 
-    Application::Application() : window(EgLab::Common::makeShared<EgLab::RE::Window>(800, 800))
+    Application::Application()
     {
+        auto &ini = IniManager::instance();
+        ini.start();
+        const auto width = static_cast<unsigned int>(std::max(1, ini.getInt("window.width", 800)));
+        const auto height =
+            static_cast<unsigned int>(std::max(1, ini.getInt("window.height", 800)));
+        window = EgLab::Common::makeShared<EgLab::RE::Window>(width, height);
+
         window->activeContext();
         camera = EgLab::Common::makeShared<EgLab::RE::Camera>(
-            800, 800, EgLab::RE::CoordType(0.0f, 0.0f, 1000.0f));
+            width, height, EgLab::RE::CoordType(0.0f, 0.0f, 1000.0f));
+        camera->setMoveSensitivity(ini.getFloat("camera.moveSensitivity", 1.0f));
+        camera->setRotateSensitivity(ini.getFloat("camera.rotateSensitivity", 1.0f));
+        camera->setZoomSensitivity(ini.getFloat("camera.zoomSensitivity", 1.0f));
         cameraController = EgLab::Common::makeShared<EgLab::RE::OrbitCameraController>();
         cameraController->setCamera(camera);
         window->setCameraController(cameraController);
@@ -27,15 +40,45 @@ namespace EgLab::Platform
         viewport.window = window;
         viewport.x = 0;
         viewport.y = 0;
-        viewport.width = 800;
-        viewport.height = 800;
+        viewport.width = static_cast<int>(width);
+        viewport.height = static_cast<int>(height);
         renderer->addViewport(viewport);
+
+        auto background = renderer->getBackGroundColor();
+        background[0] = ini.getFloat("appearance.background.r", background[0]);
+        background[1] = ini.getFloat("appearance.background.g", background[1]);
+        background[2] = ini.getFloat("appearance.background.b", background[2]);
+        background[3] = ini.getFloat("appearance.background.a", background[3]);
+        renderer->setBackGroundColor(background);
+
+        auto light = renderer->getLightSettings();
+        light.ambient[0] = ini.getFloat("light.ambient.r", light.ambient[0]);
+        light.ambient[1] = ini.getFloat("light.ambient.g", light.ambient[1]);
+        light.ambient[2] = ini.getFloat("light.ambient.b", light.ambient[2]);
+        light.diffuse[0] = ini.getFloat("light.diffuse.r", light.diffuse[0]);
+        light.diffuse[1] = ini.getFloat("light.diffuse.g", light.diffuse[1]);
+        light.diffuse[2] = ini.getFloat("light.diffuse.b", light.diffuse[2]);
+        light.specular[0] = ini.getFloat("light.specular.r", light.specular[0]);
+        light.specular[1] = ini.getFloat("light.specular.g", light.specular[1]);
+        light.specular[2] = ini.getFloat("light.specular.b", light.specular[2]);
+        light.shininess = ini.getFloat("light.shininess", light.shininess);
+        renderer->setLightSettings(light);
+        renderer->setRenderNodesEnabled(
+            ini.getBool("mesh.renderNodes", renderer->isRenderNodesEnabled()));
+        renderer->setRenderEdgesEnabled(
+            ini.getBool("mesh.renderEdges", renderer->isRenderEdgesEnabled()));
+        renderer->setRenderFacesEnabled(
+            ini.getBool("mesh.renderFaces", renderer->isRenderFacesEnabled()));
 
         RenderWork::instance().bindWindow(window);
         RenderWork::instance().bindRenderer(renderer);
         RenderWork::instance().bindScene(scene);
         RenderWork::instance().bindCamera(camera);
         UIWork::instance().bindWindow(window);
+
+        RenderWork::instance().setHighlightColor(Common::Vector4f(
+            ini.getFloat("mesh.highlight.r", 1.0f), ini.getFloat("mesh.highlight.g", 0.75f),
+            ini.getFloat("mesh.highlight.b", 0.7f), ini.getFloat("mesh.highlight.a", 0.3f)));
     }
 
     Application::~Application()
@@ -44,6 +87,26 @@ namespace EgLab::Platform
         UIWork::instance().stop();
         if (window)
         {
+            if (window->getNative())
+            {
+                unsigned int width = 0;
+                unsigned int height = 0;
+                window->getWindowSize(width, height);
+                IniManager::instance().setInt("window.width", static_cast<int>(width));
+                IniManager::instance().setInt("window.height", static_cast<int>(height));
+            }
+        }
+        IniManager::instance().shutdown();
+        if (window)
+        {
+            if (window->getNative())
+            {
+                window->activeContext();
+                RenderWork::instance().releaseResources();
+                scene = nullptr;
+                renderer = nullptr;
+                window->deactiveContext();
+            }
             window->terminate();
         }
     }
@@ -64,6 +127,10 @@ namespace EgLab::Platform
 
         RenderWork::instance().stop();
         UIWork::instance().stop();
-        window->terminate();
+        unsigned int width = 0;
+        unsigned int height = 0;
+        window->getWindowSize(width, height);
+        IniManager::instance().setInt("window.width", static_cast<int>(width));
+        IniManager::instance().setInt("window.height", static_cast<int>(height));
     }
 } // namespace EgLab::Platform

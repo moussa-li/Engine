@@ -1,6 +1,7 @@
 #include "VertexArray.hpp"
 
 #include <GL/glew.h>
+#include <GLFW/glfw3.h>
 
 #include "GLWrapper.hpp"
 
@@ -16,7 +17,10 @@ namespace EgLab::RE
 
         ~Impl()
         {
-            GLCall(glDeleteVertexArrays(1, &_renderId));
+            if (_renderId != 0 && glfwGetCurrentContext() != nullptr)
+            {
+                glDeleteVertexArrays(1, &_renderId);
+            }
         }
 
         unsigned int getGLType(BufferType bt)
@@ -63,7 +67,7 @@ namespace EgLab::RE
         }
 
     private:
-        GLuint _renderId;
+        GLuint _renderId{0};
     };
 
     VertexArray::VertexArray() : _impl(new Impl)

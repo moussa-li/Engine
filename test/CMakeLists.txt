@@ -21,7 +21,9 @@ add_executable(engine_tests
 
 add_executable(common_test
     test_common.cpp
+    test_command_bus.cpp
     test_main.cpp
+    ${CMAKE_SOURCE_DIR}/EnginePlatform/src/Command/CommandBus.cpp
 )
 
 add_executable(mesh_test
@@ -59,6 +61,7 @@ target_include_directories(engine_tests PRIVATE
 target_include_directories(common_test PRIVATE
     ${CMAKE_SOURCE_DIR}/3rd/gtest/googletest/include
     ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/EnginePlatform/include
 )
 
 target_link_libraries(engine_tests PRIVATE

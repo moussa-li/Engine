@@ -1,5 +1,6 @@
 #include "Panel/BackGroundSettingPanel.hpp"
 
+#include "Core/IniManager.hpp"
 #include "DataBase/Context.hpp"
 #include "Work/RenderWork.hpp"
 #include "imgui.h"
@@ -32,7 +33,7 @@ namespace EgLab::Platform
         // ImGuiColorEditFlags_NoInputs: 不显示 RGB 输入框，只显示颜色块
         // ImGuiColorEditFlags_AlphaBar: 显示透明度条
         bool colorChanged =
-            ImGui::ColorEdit4("Window Background", (float*)&bgColor,
+            ImGui::ColorEdit4("Window Background", (float *)&bgColor,
                               ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
 
         // 预设颜色按钮（可选）
@@ -59,6 +60,11 @@ namespace EgLab::Platform
         {
             color = Common::Vector4f(bgColor.x, bgColor.y, bgColor.z, bgColor.w);
             render->setBackGroundColor(color);
+            auto &ini = IniManager::instance();
+            ini.setFloat("appearance.background.r", bgColor.x);
+            ini.setFloat("appearance.background.g", bgColor.y);
+            ini.setFloat("appearance.background.b", bgColor.z);
+            ini.setFloat("appearance.background.a", bgColor.w);
         }
 
         ImGui::End();

@@ -8,6 +8,7 @@ namespace EgLab::Platform
     class MeshRenderSettingPanel : public IPanel
     {
     public:
+        MeshRenderSettingPanel();
         ~MeshRenderSettingPanel() override;
 
         Common::String getPanelName() override
