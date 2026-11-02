@@ -2,8 +2,9 @@
 
 namespace EgLab::Platform
 {
-    MeshData::MeshData(const Common::String& name, const Common::SharedPtr<ME::Mesh>& mesh)
-        : DataTree(Common::String("MeshData: ") + name), _mesh(mesh)
+    MeshData::MeshData(DataNodeId id, const Common::String& name,
+                       const Common::SharedPtr<ME::Mesh>& mesh)
+        : DataNode(id, Common::String("MeshData: ") + name), _mesh(mesh)
     {
     }
 

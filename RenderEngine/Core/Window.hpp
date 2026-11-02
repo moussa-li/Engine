@@ -18,6 +18,8 @@ namespace EgLab::RE
         Window(const unsigned int &width, const unsigned int &height);
 
         void setSize(const unsigned int &width, const unsigned int &height);
+        void setMaximized(bool maximized);
+        bool isMaximized() const;
 
         bool shouldClose() const;
 

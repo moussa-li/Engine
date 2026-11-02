@@ -2,6 +2,7 @@
 
 #include "Common/Log.hpp"
 #include "DataBase/Context.hpp"
+#include "DataBase/MeshData.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "Work/RenderWork.hpp"
 
@@ -14,15 +15,25 @@ namespace EgLab::Platform
 
     Common::Return DeleteMeshCmd::execImpl()
     {
-        auto* mesh = reinterpret_cast<ME::Mesh*>(getParams().meshAddress);
-        auto removedMesh = Context::instance().removeMeshData(mesh);
-        if (!removedMesh)
+        auto& context = Context::instance();
+        auto node = context.getDataNode(getParams().dataNodeId);
+        auto* meshData = dynamic_cast<MeshData*>(node.get());
+        if (meshData == nullptr)
         {
-            LOG(WARNING) << "DeleteMeshCmd::exec() could not find mesh data";
+            LOG(WARNING) << "DeleteMeshCmd::exec() could not find mesh data node";
             return Common::Return::Failed;
         }
 
-        RenderWork::instance().removeMesh(removedMesh);
+        auto mesh = meshData->getMesh();
+        auto removedNode = context.removeDataNode(getParams().dataNodeId);
+        if (!removedNode)
+        {
+            return Common::Return::Failed;
+        }
+        if (mesh)
+        {
+            RenderWork::instance().removeMesh(mesh);
+        }
         LOG(INFO) << "DeleteMeshCmd::exec() removed mesh data and queued render cleanup";
         return Common::Return::Succeed;
     }

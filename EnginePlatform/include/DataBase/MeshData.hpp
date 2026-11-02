@@ -1,15 +1,16 @@
 #pragma once
 #include "Common/SharedPtr.hpp"
 #include "Common/Vector.hpp"
-#include "DataBase/DataTree.hpp"
+#include "DataBase/DataNode.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 
 namespace EgLab::Platform
 {
-    class MeshData : public DataTree
+    class MeshData : public DataNode
     {
     public:
-        MeshData(const Common::String& name, const Common::SharedPtr<ME::Mesh>& mesh);
+        MeshData(DataNodeId id, const Common::String& name,
+                 const Common::SharedPtr<ME::Mesh>& mesh);
 
         Common::SharedPtr<ME::Mesh>& getMesh();
         const Common::SharedPtr<ME::Mesh>& getMesh() const;

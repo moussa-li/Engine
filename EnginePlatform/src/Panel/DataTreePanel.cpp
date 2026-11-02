@@ -1,7 +1,5 @@
 #include "Panel/DataTreePanel.hpp"
 
-#include <cstdint>
-
 #include "Command/CommandManager.hpp"
 #include "DataBase/Context.hpp"
 #include "DataBase/DataTree.hpp"
@@ -17,14 +15,19 @@ namespace EgLab::Platform
         size_t selectedIndex = _selectedMeshes.size();
         for (size_t index = 0; index < _selectedMeshes.size(); ++index)
         {
-            if (_selectedMeshes[index] == mesh)
+            if (_selectedDataNodeIds[index] == meshData.getId())
             {
                 selectedIndex = index;
                 break;
             }
         }
         const bool isSelected = selectedIndex < _selectedMeshes.size();
-        const bool isOpen = renderCommonNode(meshData, isSelected);
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+        if (isSelected)
+        {
+            flags |= ImGuiTreeNodeFlags_Selected;
+        }
+        ImGui::TreeNodeEx(&meshData, flags, "%s", meshData.getName().c_str());
         const bool isClicked = ImGui::IsItemClicked(ImGuiMouseButton_Left);
 
         if (isClicked)
@@ -33,26 +36,32 @@ namespace EgLab::Platform
             if (!shiftDown)
             {
                 _selectedMeshes.clear();
+                _selectedDataNodeIds.clear();
                 auto selectedMesh = mesh;
                 _selectedMeshes.pushBack(selectedMesh);
+                _selectedDataNodeIds.pushBack(meshData.getId());
             }
             else if (!isSelected)
             {
                 auto selectedMesh = mesh;
                 _selectedMeshes.pushBack(selectedMesh);
+                _selectedDataNodeIds.pushBack(meshData.getId());
             }
             else
             {
                 Common::DynamicArray<Common::SharedPtr<ME::Mesh>> remainingMeshes;
+                Common::DynamicArray<DataNodeId> remainingNodeIds;
                 for (size_t index = 0; index < _selectedMeshes.size(); ++index)
                 {
                     if (index != selectedIndex)
                     {
                         auto selectedMesh = _selectedMeshes[index];
                         remainingMeshes.pushBack(selectedMesh);
+                        remainingNodeIds.pushBack(_selectedDataNodeIds[index]);
                     }
                 }
                 _selectedMeshes = Common::move(remainingMeshes);
+                _selectedDataNodeIds = Common::move(remainingNodeIds);
             }
             RenderWork::instance().setHighlightedMeshes(_selectedMeshes);
         }
@@ -66,28 +75,26 @@ namespace EgLab::Platform
 
             if (ImGui::MenuItem("delete Mesh"))
             {
-                Common::DynamicArray<Common::SharedPtr<ME::Mesh>> meshesToDelete;
+                Common::DynamicArray<DataNodeId> nodeIdsToDelete;
                 if (isSelected)
                 {
-                    for (size_t index = 0; index < _selectedMeshes.size(); ++index)
+                    for (size_t index = 0; index < _selectedDataNodeIds.size(); ++index)
                     {
-                        auto selectedMesh = _selectedMeshes[index];
-                        meshesToDelete.pushBack(selectedMesh);
+                        nodeIdsToDelete.pushBack(_selectedDataNodeIds[index]);
                     }
                 }
                 else
                 {
-                    auto meshToDelete = mesh;
-                    meshesToDelete.pushBack(meshToDelete);
+                    nodeIdsToDelete.pushBack(meshData.getId());
                 }
 
                 _selectedMeshes.clear();
+                _selectedDataNodeIds.clear();
                 RenderWork::instance().setHighlightedMeshes(_selectedMeshes);
-                for (size_t index = 0; index < meshesToDelete.size(); ++index)
+                for (size_t index = 0; index < nodeIdsToDelete.size(); ++index)
                 {
-                    auto meshToDelete = reinterpret_cast<uintptr_t>(meshesToDelete[index].get());
                     EventPacket packet;
-                    packet.setData("meshAddress", meshToDelete);
+                    packet.setData("dataNodeId", nodeIdsToDelete[index]);
                     CommandManager::instance().call(EventId::MeshDelete, packet);
                 }
             }
@@ -111,19 +118,19 @@ namespace EgLab::Platform
             ImGui::EndPopup();
         }
 
-        return isOpen;
+        return false;
     }
 
     bool DataTreePanel::renderCommonNode(DataTree& node, bool isSelected)
     {
-        const auto children = node.getChildrens();
+        const auto nodes = node.getDataNodes();
         ImGuiTreeNodeFlags flags =
             ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
         if (isSelected)
         {
             flags |= ImGuiTreeNodeFlags_Selected;
         }
-        if (children.empty())
+        if (nodes.empty())
         {
             flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
         }
@@ -133,33 +140,26 @@ namespace EgLab::Platform
 
     bool DataTreePanel::renderNode(DataTree& node)
     {
-        auto* meshData = dynamic_cast<MeshData*>(&node);
-        bool isOpen = false;
-        if (meshData != nullptr)
+        const bool isOpen = renderCommonNode(node);
+        if (!isOpen)
         {
-            isOpen = renderMeshNode(*meshData);
-        }
-        else
-        {
-            isOpen = renderCommonNode(node);
+            return false;
         }
 
-        const auto children = node.getChildrens();
-
-        if (isOpen && (!children.empty()))
+        for (const auto& dataNode : node.getDataNodes())
         {
-            for (DataTree* child : children)
+            if (auto* meshData = dynamic_cast<MeshData*>(dataNode.get()))
             {
-                if (renderNode(*child))
-                {
-                    // ImGui::TreePop();
-                }
+                renderMeshNode(*meshData);
+            }
+            else
+            {
+                ImGui::TreeNodeEx(dataNode.get(),
+                                  ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen,
+                                  "%s", dataNode->getName().c_str());
             }
         }
-        if (isOpen && (!children.empty()))
-        {
-            ImGui::TreePop();
-        }
+        ImGui::TreePop();
         return isOpen;
     }
 
@@ -182,6 +182,7 @@ namespace EgLab::Platform
                 ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())
             {
                 _selectedMeshes.clear();
+                _selectedDataNodeIds.clear();
                 RenderWork::instance().setHighlightedMeshes(_selectedMeshes);
             }
         }

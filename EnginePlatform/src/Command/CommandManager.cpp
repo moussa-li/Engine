@@ -152,7 +152,7 @@ namespace EgLab::Platform
 
             _packetCreator[EventId::MeshDelete] = [](const EventPacket& packet) {
                 PacketPOD pod{};
-                DeleteMeshParam param{packet.getData<uintptr_t>("meshAddress")};
+                DeleteMeshParam param{packet.getData<uint64_t>("dataNodeId")};
                 pod.dataSize = sizeof(param);
                 std::memcpy(pod.data, &param, sizeof(param));
                 return pod;

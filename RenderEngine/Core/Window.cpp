@@ -224,6 +224,29 @@ namespace EgLab::RE
         height = static_cast<unsigned int>(framebufferHeight);
     }
 
+    void Window::setMaximized(bool maximized)
+    {
+        if (_impl == nullptr || _impl->_window == nullptr)
+        {
+            return;
+        }
+
+        if (maximized)
+        {
+            glfwMaximizeWindow(_impl->_window);
+        }
+        else
+        {
+            glfwRestoreWindow(_impl->_window);
+        }
+    }
+
+    bool Window::isMaximized() const
+    {
+        return _impl != nullptr && _impl->_window != nullptr &&
+               glfwGetWindowAttrib(_impl->_window, GLFW_MAXIMIZED) == GLFW_TRUE;
+    }
+
     bool Window::shouldClose() const
     {
         return _impl->shouldClose();

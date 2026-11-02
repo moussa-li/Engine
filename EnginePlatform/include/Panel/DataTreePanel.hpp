@@ -2,6 +2,7 @@
 
 #include "Common/DynamicArray.hpp"
 #include "Common/SharedPtr.hpp"
+#include "DataBase/DataNode.hpp"
 #include "Panel/IPanel.hpp"
 
 namespace EgLab::ME
@@ -37,5 +38,6 @@ namespace EgLab::Platform
 
     private:
         Common::DynamicArray<Common::SharedPtr<ME::Mesh>> _selectedMeshes;
+        Common::DynamicArray<DataNodeId> _selectedDataNodeIds;
     };
 } // namespace EgLab::Platform

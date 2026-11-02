@@ -22,8 +22,10 @@ add_executable(engine_tests
 add_executable(common_test
     test_common.cpp
     test_command_bus.cpp
+    test_data_node.cpp
     test_main.cpp
     ${CMAKE_SOURCE_DIR}/EnginePlatform/src/Command/CommandBus.cpp
+    ${CMAKE_SOURCE_DIR}/EnginePlatform/src/DataBase/DataTree.cpp
 )
 
 add_executable(mesh_test

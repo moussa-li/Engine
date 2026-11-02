@@ -35,20 +35,23 @@ namespace EgLab::Platform
 
     void HEMeshDataPanel::renderNode(DataTree& node)
     {
-        if (auto* meshData = dynamic_cast<MeshData*>(&node))
-        {
-            renderMeshNode(*meshData);
-            return;
-        }
-
-        const auto children = node.getChildrens();
+        const auto dataNodes = node.getDataNodes();
         const ImGuiTreeNodeFlags flags =
             ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
         if (ImGui::TreeNodeEx(&node, flags, "%s", node.getName().c_str()))
         {
-            for (DataTree* child : children)
+            for (const auto& dataNode : dataNodes)
             {
-                renderNode(*child);
+                if (auto* meshData = dynamic_cast<MeshData*>(dataNode.get()))
+                {
+                    renderMeshNode(*meshData);
+                }
+                else
+                {
+                    ImGui::TreeNodeEx(dataNode.get(),
+                                      ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen,
+                                      "%s", dataNode->getName().c_str());
+                }
             }
             ImGui::TreePop();
         }

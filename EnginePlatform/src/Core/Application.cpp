@@ -21,6 +21,7 @@ namespace EgLab::Platform
         const auto height =
             static_cast<unsigned int>(std::max(1, ini.getInt("window.height", 800)));
         window = EgLab::Common::makeShared<EgLab::RE::Window>(width, height);
+        window->setMaximized(ini.getBool("window.maximized", false));
 
         window->activeContext();
         camera = EgLab::Common::makeShared<EgLab::RE::Camera>(
@@ -94,6 +95,7 @@ namespace EgLab::Platform
                 window->getWindowSize(width, height);
                 IniManager::instance().setInt("window.width", static_cast<int>(width));
                 IniManager::instance().setInt("window.height", static_cast<int>(height));
+                IniManager::instance().setBool("window.maximized", window->isMaximized());
             }
         }
         IniManager::instance().shutdown();
@@ -132,5 +134,6 @@ namespace EgLab::Platform
         window->getWindowSize(width, height);
         IniManager::instance().setInt("window.width", static_cast<int>(width));
         IniManager::instance().setInt("window.height", static_cast<int>(height));
+        IniManager::instance().setBool("window.maximized", window->isMaximized());
     }
 } // namespace EgLab::Platform

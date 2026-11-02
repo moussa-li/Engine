@@ -1,7 +1,5 @@
 #include "DataBase/Context.hpp"
 
-#include "DataBase/MeshData.hpp"
-
 namespace EgLab::Platform
 {
     Context::Context()
@@ -12,47 +10,18 @@ namespace EgLab::Platform
     {
     }
 
-    Common::Return Context::addMeshData(const Common::SharedPtr<ME::Mesh>& mesh,
-                                        const Common::String& name)
+    Common::Return Context::addDataNode(const Common::SharedPtr<DataNode>& node)
     {
-        std::lock_guard<std::mutex> lock(_dataTreeMutex);
-        if (!mesh)
-        {
-            return Common::Return::BadInput;
-        }
-
-        auto* meshData = new MeshData(name, mesh);
-        const Common::Return result = _dataTree.addTree(meshData);
-        if (result != Common::Return::Succeed)
-        {
-            delete meshData;
-        }
-        return result;
+        return _dataTree.addNode(node);
     }
 
-    Common::SharedPtr<ME::Mesh> Context::removeMeshData(const ME::Mesh* mesh)
+    Common::SharedPtr<DataNode> Context::getDataNode(DataNodeId id) const
     {
-        std::lock_guard<std::mutex> lock(_dataTreeMutex);
-        if (mesh == nullptr)
-        {
-            return nullptr;
-        }
+        return _dataTree.findNode(id);
+    }
 
-        for (DataTree* child : _dataTree.getChildrens())
-        {
-            auto* meshData = dynamic_cast<MeshData*>(child);
-            if (meshData == nullptr || meshData->getMesh().get() != mesh)
-            {
-                continue;
-            }
-
-            Common::SharedPtr<ME::Mesh> removedMesh = meshData->getMesh();
-            if (_dataTree.removeTree(child) == Common::Return::Succeed)
-            {
-                return removedMesh;
-            }
-            return nullptr;
-        }
-        return nullptr;
+    Common::SharedPtr<DataNode> Context::removeDataNode(DataNodeId id)
+    {
+        return _dataTree.removeNode(id);
     }
 } // namespace EgLab::Platform

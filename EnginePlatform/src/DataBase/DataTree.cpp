@@ -4,77 +4,65 @@
 
 namespace EgLab::Platform
 {
-    DataTree::DataTree(DataTree* parent) : DataTree("DataTree", parent)
+    DataTree::DataTree(const Common::String& name) : _name(name)
     {
     }
 
-    DataTree::DataTree(const Common::String& name, DataTree* parent) : _name(name), _parent(nullptr)
+    Common::Return DataTree::addNode(const Common::SharedPtr<DataNode>& node)
     {
-        if (parent != nullptr)
-        {
-            parent->addTree(this);
-        }
-    }
-
-    Common::Return DataTree::addTree(DataTree* child)
-    {
-        if (child == nullptr || child == this)
+        if (!node)
         {
             return Common::Return::BadInput;
         }
 
-        std::scoped_lock lock(_childrenMutex, child->_childrenMutex);
-        if (child->_parent != nullptr)
+        std::lock_guard<std::mutex> lock(_nodesMutex);
+        for (const auto& current : _dataNodes)
         {
-            return Common::Return::Failed;
-        }
-
-        for (auto* ancestor = this; ancestor != nullptr; ancestor = ancestor->_parent)
-        {
-            if (ancestor == child)
-            {
-                return Common::Return::BadInput;
-            }
-        }
-
-        _childrens.pushBack(child);
-        child->_parent = this;
-        return Common::Return::Succeed;
-    }
-
-    Common::Return DataTree::removeTree(DataTree* child)
-    {
-        if (child == nullptr || child == this)
-        {
-            return Common::Return::BadInput;
-        }
-
-        {
-            std::scoped_lock lock(_childrenMutex, child->_childrenMutex);
-            Common::DynamicArray<DataTree*> remaining;
-            bool found = false;
-            for (DataTree* current : _childrens)
-            {
-                if (current == child)
-                {
-                    found = true;
-                }
-                else
-                {
-                    remaining.pushBack(current);
-                }
-            }
-            if (!found || child->_parent != this)
+            if (current->getId() == node->getId())
             {
                 return Common::Return::Failed;
             }
-
-            _childrens = Common::move(remaining);
-            child->_parent = nullptr;
         }
 
-        delete child;
+        _dataNodes.pushBack(node);
         return Common::Return::Succeed;
+    }
+
+    Common::SharedPtr<DataNode> DataTree::findNode(DataNodeId id) const
+    {
+        std::lock_guard<std::mutex> lock(_nodesMutex);
+        for (const auto& node : _dataNodes)
+        {
+            if (node->getId() == id)
+            {
+                return node;
+            }
+        }
+        return nullptr;
+    }
+
+    Common::SharedPtr<DataNode> DataTree::removeNode(DataNodeId id)
+    {
+        std::lock_guard<std::mutex> lock(_nodesMutex);
+        Common::DynamicArray<Common::SharedPtr<DataNode>> remaining;
+        Common::SharedPtr<DataNode> removed;
+        for (const auto& node : _dataNodes)
+        {
+            if (node->getId() == id)
+            {
+                removed = node;
+            }
+            else
+            {
+                remaining.pushBack(node);
+            }
+        }
+
+        if (removed)
+        {
+            _dataNodes = Common::move(remaining);
+        }
+        return removed;
     }
 
     const Common::String& DataTree::getName() const
@@ -82,17 +70,13 @@ namespace EgLab::Platform
         return _name;
     }
 
-    Common::DynamicArray<DataTree*> DataTree::getChildrens() const
+    Common::DynamicArray<Common::SharedPtr<DataNode>> DataTree::getDataNodes() const
     {
-        std::lock_guard<std::mutex> lock(_childrenMutex);
-        return _childrens;
+        std::lock_guard<std::mutex> lock(_nodesMutex);
+        return _dataNodes;
     }
 
     DataTree::~DataTree()
     {
-        for (DataTree* child : _childrens)
-        {
-            delete child;
-        }
     }
 } // namespace EgLab::Platform

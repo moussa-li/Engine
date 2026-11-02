@@ -6,6 +6,7 @@
 
 #include "Common/Log.hpp"
 #include "DataBase/Context.hpp"
+#include "DataBase/DataNodeFactory.hpp"
 #include "DataBase/MeshData.hpp"
 #include "MeshEngine/IO/GmshImporter.hpp"
 #include "MeshEngine/IO/GrdImporter.hpp"
@@ -33,15 +34,12 @@ namespace EgLab::Platform
 
         Common::SharedPtr<ME::Mesh> mesh3d = nullptr;
         Common::SharedPtr<ME::Mesh> mesh2d = nullptr;
-        MeshData* meshData = new MeshData(meshPath.filename().string().c_str(), nullptr);
+        const Common::String meshName(meshPath.filename().string().c_str());
         if (extension == ".msh")
         {
             EgLab::ME::GmshImporter importer(getParams().fileDir);
             mesh3d = importer.getMesh(3);
-            meshData->getMesh() = mesh3d;
             mesh2d = importer.getMesh(2);
-            auto meshData2d = new MeshData("2D Surface", mesh2d);
-            meshData->addTree(meshData2d);
         }
         else if (extension == ".grd")
         {
@@ -54,20 +52,41 @@ namespace EgLab::Platform
             return Common::Return::BadInput;
         }
 
-        if (meshData == nullptr)
+        if (!mesh3d && !mesh2d)
         {
             return Common::Return::Failed;
         }
 
-        const Common::String meshName(meshPath.filename().string().c_str());
-        if (Context::instance().getDataTree().addTree(meshData) != Common::Return::Succeed)
+        auto& context = Context::instance();
+        auto& factory = DataNodeFactory::instance();
+        if (mesh3d)
         {
-            LOG(ERROR) << "ImportMeshCmd::exec() failed to register imported mesh data";
-            return Common::Return::Failed;
+            auto node = factory.create<MeshData>(meshName, mesh3d);
+            if (context.addDataNode(node) != Common::Return::Succeed)
+            {
+                return Common::Return::Failed;
+            }
         }
 
-        RenderWork::instance().onUpdateMesh(mesh3d);
-        RenderWork::instance().onUpdateMesh(mesh2d);
+        if (mesh2d)
+        {
+            const Common::String surfaceName =
+                mesh3d ? Common::String("2D Surface: ") + meshName : meshName;
+            auto node = factory.create<MeshData>(surfaceName, mesh2d);
+            if (context.addDataNode(node) != Common::Return::Succeed)
+            {
+                return Common::Return::Failed;
+            }
+        }
+
+        if (mesh3d)
+        {
+            RenderWork::instance().onUpdateMesh(mesh3d);
+        }
+        if (mesh2d)
+        {
+            RenderWork::instance().onUpdateMesh(mesh2d);
+        }
 
         LOG(INFO) << "ImportMeshCmd::exec() imported mesh and queued it for rendering";
         return Common::Return::Succeed;

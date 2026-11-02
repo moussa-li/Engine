@@ -27,7 +27,7 @@ namespace EgLab::Platform
 
     struct DeleteMeshParam
     {
-        uintptr_t meshAddress;
+        uint64_t dataNodeId;
     };
 
     static_assert(std::is_trivially_copyable<ShowPanelParam>::value,
