@@ -89,7 +89,6 @@ namespace EgLab::Common
     {
     };
 
-    // cv 限定符版本
     template <typename Ret, typename... Args>
     struct isFunction<Ret(Args...) const> : TrueType
     {
@@ -105,7 +104,6 @@ namespace EgLab::Common
     {
     };
 
-    // ref 限定符版本
     template <typename Ret, typename... Args>
     struct isFunction<Ret(Args...) &> : TrueType
     {
