@@ -21,6 +21,7 @@ add_library(${PROJECT_NAME} ${LIB_TYPE}
     ${CPP_FILES}
 )
 
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
@@ -30,11 +31,7 @@ target_include_directories(${PROJECT_NAME}
         ${PROJECT_SOURCE_DIR}/include/Common
 )
 
-if(MSVC)
-    target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads Assets)
-else()
-    target_link_libraries(${PROJECT_NAME} PUBLIC pthread Assets)
-endif()
+target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads Assets)
 
 if(WIN32 AND BUILD_COMMON_SHARED)
     target_compile_definitions(${PROJECT_NAME} PRIVATE EgLabCommon)

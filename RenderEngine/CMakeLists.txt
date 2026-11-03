@@ -31,9 +31,13 @@ add_library(${PROJECT_NAME} ${LIB_TYPE}
     ${CPP_FILES}
 )
 
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
+
 target_include_directories(${PROJECT_NAME} PUBLIC
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/RenderEngine
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+    $<INSTALL_INTERFACE:include/RenderEngine>
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC Common)
@@ -43,10 +47,12 @@ target_link_libraries(${PROJECT_NAME} PUBLIC MeshEngine)
 target_link_libraries(${PROJECT_NAME} PUBLIC glfw)
 
 if(TARGET glew_s)
-    target_link_libraries(${PROJECT_NAME} PUBLIC glew_s)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC GLEW_STATIC)
+    target_link_libraries(${PROJECT_NAME} PUBLIC
+        $<BUILD_INTERFACE:glew_s>
+        $<INSTALL_INTERFACE:GLEW::GLEW>
+    )
 else()
-    find_package(GLEW REQUIRED)
+    find_package(GLEW CONFIG REQUIRED)
     target_link_libraries(${PROJECT_NAME} PUBLIC GLEW::GLEW)
 endif()
 

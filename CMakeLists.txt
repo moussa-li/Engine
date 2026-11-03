@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(EngineLab)
+project(EngineLab VERSION 0.1.0)
 
 if(WIN32)
     enable_language(RC)
@@ -26,6 +26,8 @@ option(BUILD_DOC "generate the documentation with doxygen" OFF)
 
 
 include(cmake/common.cmake)
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
 set_common_variable()
 find_package(Threads REQUIRED)
@@ -57,7 +59,7 @@ if(BUILD_TESTS)
 endif()
 
 set(GLFW_BUILD_DOCS OFF)
-set(GLFW_INSTALL OFF)
+set(GLFW_INSTALL ON)
 add_subdirectory(3rd/glfw-3.4)
 add_subdirectory(3rd/glew/build/cmake)
 
@@ -66,54 +68,58 @@ add_subdirectory(RenderEngine)
 add_subdirectory(MeshEngine)
 add_subdirectory(EnginePlatform)
 
-get_filename_component(ENGINEPLATFORM_RUNTIME_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
-install(TARGETS EnginePlatform Common MeshEngine RenderEngine glfw
-    RUNTIME_DEPENDENCIES
-        DIRECTORIES "${ENGINEPLATFORM_RUNTIME_DIR}"
-        PRE_EXCLUDE_REGEXES
-            "api-ms-" "ext-ms-"
-            "[Aa]dvapi32\\.dll" "[Gg]di32\\.dll" "[Gg]lu32\\.dll"
-            "[Kk]ernel32\\.dll" "[Kk]ernel[Bb]ase\\.dll" "[Oo]pengl32\\.dll"
-            "[Rr]pcrt4\\.dll" "[Ss]echost\\.dll" "[Ss]hell32\\.dll"
-            "[Uu]ser32\\.dll" "[Mm]svcp_win\\.dll" "[Mm]svcrt\\.dll"
-            "[Nn]tdll\\.dll" "[Ww]in32u\\.dll"
-        POST_EXCLUDE_REGEXES ".*/Windows/System32/.*"
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION bin
-    ARCHIVE DESTINATION lib
+install(TARGETS EnginePlatform
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(TARGETS Common MeshEngine RenderEngine Assets
+    EXPORT EngineLabTargets
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
 install(DIRECTORY Common/include/Common/
-    DESTINATION include/Common
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Common
     FILES_MATCHING
         PATTERN "*.h"
         PATTERN "*.hpp"
 )
 
 install(DIRECTORY MeshEngine/include/MeshEngine
-    DESTINATION include
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     FILES_MATCHING
         PATTERN "*.h"
         PATTERN "*.hpp"
 )
 
 install(DIRECTORY RenderEngine/
-    DESTINATION include/RenderEngine
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/RenderEngine
     FILES_MATCHING
         PATTERN "*.h"
         PATTERN "*.hpp"
 )
 
-install(DIRECTORY 3rd/glfw-3.4/include/GLFW
-    DESTINATION include
-    FILES_MATCHING
-        PATTERN "*.h"
+set(EngineLab_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/EngineLab")
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EngineLabConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/EngineLabConfig.cmake"
+    INSTALL_DESTINATION "${EngineLab_INSTALL_CMAKEDIR}"
 )
-
-install(DIRECTORY 3rd/glew/include/GL
-    DESTINATION include
-    FILES_MATCHING
-        PATTERN "*.h"
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/EngineLabConfigVersion.cmake"
+    VERSION "${PROJECT_VERSION}"
+    COMPATIBILITY SameMajorVersion
+)
+install(EXPORT EngineLabTargets
+    FILE EngineLabTargets.cmake
+    NAMESPACE EngineLab::
+    DESTINATION "${EngineLab_INSTALL_CMAKEDIR}"
+)
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/EngineLabConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/EngineLabConfigVersion.cmake"
+    DESTINATION "${EngineLab_INSTALL_CMAKEDIR}"
 )
 
 #install(FILES "${CMAKE_SOURCE_DIR}/render_settings.ini" DESTINATION .)

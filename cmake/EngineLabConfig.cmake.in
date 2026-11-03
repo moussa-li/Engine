@@ -1,0 +1,12 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+find_dependency(Threads REQUIRED)
+find_dependency(OpenGL REQUIRED)
+find_dependency(glfw3 3.4 CONFIG REQUIRED)
+find_dependency(GLEW CONFIG REQUIRED)
+
+include("${CMAKE_CURRENT_LIST_DIR}/EngineLabTargets.cmake")
+
+check_required_components(EngineLab)

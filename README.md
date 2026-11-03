@@ -43,7 +43,7 @@ The design goal is a focused platform rather than a monolithic engine: applicati
 ## Requirements
 
 - Windows with an OpenGL-capable graphics driver.
-- CMake 3.14 or newer.
+- CMake 3.21 or newer.
 - A C++20 compiler. The checked-in presets cover Clang/MinGW and MSVC/Ninja configurations.
 - GLFW, GLEW, Dear ImGui, ImGuiFileDialog, and GoogleTest are included under `3rd/`.
 
@@ -70,6 +70,27 @@ cmake --build build/win-ninja-debug --target EnginePlatform
 ```
 
 The CMake configuration also exposes library targets such as `Common`, `MeshEngine`, and `RenderEngine`.
+
+## Install and use from another CMake project
+
+Install EngineLab to a prefix:
+
+```powershell
+cmake --preset clang-debug
+cmake --build build/clang-debug
+cmake --install build/clang-debug
+```
+
+In another project, set `EngineLab_DIR` to the installed `lib/cmake/EngineLab` directory (or add the install prefix to `CMAKE_PREFIX_PATH`), then link the exported targets:
+
+```cmake
+find_package(EngineLab CONFIG REQUIRED)
+
+add_executable(MyApp main.cpp)
+target_link_libraries(MyApp PRIVATE EngineLab::MeshEngine)
+```
+
+The primary targets are `EngineLab::Common`, `EngineLab::MeshEngine`, and `EngineLab::RenderEngine`; `EngineLab::Assets` is also exported for `Common`'s resource dependency. Linking `EngineLab::RenderEngine` brings in its OpenGL, GLFW, and GLEW dependencies.
 
 ## Run the engine platform
 
