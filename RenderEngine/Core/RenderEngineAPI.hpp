@@ -1,5 +1,6 @@
 #pragma once
 
+/// Controls symbol visibility when building or consuming the RenderEngine library.
 #ifdef _WIN32
 #ifdef RenderEngine
 #define RenderEngineAPI __declspec(dllexport)

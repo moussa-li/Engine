@@ -15,14 +15,23 @@ namespace EgLab::RE
 
     struct PickContext
     {
+        /// Cursor x-coordinate in viewport pixels.
         Scalar x{0.0f};
+        /// Cursor y-coordinate in viewport pixels.
         Scalar y{0.0f};
+        /// Viewport width in pixels.
         unsigned int width{0};
+        /// Viewport height in pixels.
         unsigned int height{0};
+        /// Maximum screen-space picking distance in pixels.
         Scalar radius{6.0f};
+        /// View matrix used to project world-space points.
         Common::Matrix4f view;
+        /// Projection matrix used to project world-space points.
         Common::Matrix4f projection;
+        /// Best depth found so far during a pick query.
         mutable Scalar bestDepth{std::numeric_limits<Scalar>::max()};
+        /// Best squared screen-space distance found so far.
         mutable Scalar bestDistanceSquared{std::numeric_limits<Scalar>::max()};
     };
 
@@ -30,11 +39,21 @@ namespace EgLab::RE
     {
         struct ScreenPoint
         {
+            /// Horizontal screen coordinate in pixels.
             Scalar x;
+            /// Vertical screen coordinate in pixels.
             Scalar y;
+            /// Normalized device depth.
             Scalar depth;
         };
 
+        /**
+         * @brief Projects a world-space point into viewport coordinates.
+         * @param point World-space point to project.
+         * @param context Viewport dimensions and camera matrices.
+         * @param screenPoint Receives projected coordinates on success.
+         * @return true if the point is in front of the camera and within the depth range.
+         */
         inline bool projectPoint(const CoordType &point, const PickContext &context,
                                  ScreenPoint &screenPoint)
         {
@@ -74,17 +93,26 @@ namespace EgLab::RE
         }
     } // namespace PickUtils
 
+    /// Abstract base class for renderable and pickable geometry primitives.
     class RenderEngineAPI RenderPrimitive
     {
     public:
+        /// @brief Releases resources owned by the primitive.
         virtual ~RenderPrimitive();
+        /// @brief Initializes the primitive's rendering resources.
         virtual void setup() = 0;
+        /// @brief Draws the primitive using the specified shader.
+        /// @param shader Shader used for rendering.
         virtual void draw(Common::SharedPtr<Shader> shader) = 0;
+        /// @brief Returns the world-space bounds of the primitive.
         virtual Common::BBox<Scalar, 3> getBounds() const = 0;
+        /// @brief Draws a highlighted element; the default implementation does nothing.
         virtual void drawHighlight(Common::SharedPtr<Shader>, IdxType)
         {
         }
 
+        /// @brief Tests the primitive for a pick; the default implementation reports no hit.
+        /// @return The invalid index when picking is not implemented.
         virtual IdxType touch(const PickContext &)
         {
             return static_cast<IdxType>(-1);

@@ -3,12 +3,26 @@
 
 namespace EgLab::RE
 {
+    /// Quaternion with scalar-first component order (w, x, y, z).
     class Quatf : public Common::Vector4f
     {
     public:
+        /**
+         * @brief Constructs a quaternion from its scalar and vector components.
+         * @param w Scalar component.
+         * @param x X component of the vector part.
+         * @param y Y component of the vector part.
+         * @param z Z component of the vector part.
+         */
         Quatf(float w, float x, float y, float z) : Common::Vector4f(w, x, y, z)
         {
         }
+        /**
+         * @brief Creates a quaternion representing a rotation around an axis.
+         * @param axis Rotation axis; it is normalized before use.
+         * @param angleRad Rotation angle in radians.
+         * @return The corresponding rotation quaternion.
+         */
         static Quatf fromAxisAndAngle(const Common::Vector3f& axis, float angleRad)
         {
             float halfAngle = angleRad * float(0.5);
@@ -26,8 +40,11 @@ namespace EgLab::RE
         //     return this->_data[0][dim];
         // }
 
-        // 4. 四元数乘法 (Hamilton Product)
-        // 用于叠加旋转，注意四元数乘法不满足交换律！
+        /**
+         * @brief Multiplies this quaternion by another using the Hamilton product.
+         * @param q Right-hand quaternion.
+         * @return The product quaternion; multiplication is not commutative.
+         */
         Quatf operator*(const Quatf& q) const
         {
             const float &w1 = (*this)[0], x1 = (*this)[1], y1 = (*this)[2], z1 = (*this)[3];
@@ -38,15 +55,18 @@ namespace EgLab::RE
                 w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2, w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2);
         }
 
-        // 5. 用四元数旋转一个 3D 向量 (v' = q * v * q^-1)
-        // 这是将相机的局部坐标轴转换到世界坐标系的唯一正确方法
+        /**
+         * @brief Rotates a three-dimensional vector by this quaternion.
+         * @param v Vector to rotate.
+         * @return The rotated vector.
+         */
         Common::Vector3f rotateVector(const Common::Vector3f& v) const
         {
-            // 提取四元数的向量部分 (x, y, z)
+            // Extract the vector part of the quaternion (x, y, z).
             Common::Vector3f u((*this)[1], (*this)[2], (*this)[3]);
 
-            // 公式展开：v + 2.0 * (u × (u × v + w * v))
-            // 这种写法比转换成旋转矩阵再相乘要快得多，且无万向锁
+            // Expanded form: v + 2.0 * (u x (u x v + w * v)).
+            // This avoids converting the quaternion to a rotation matrix.
             Common::Vector3f uv = u.cross(v);
             Common::Vector3f uuv = u.cross(uv);
 

@@ -11,33 +11,62 @@
 
 namespace EgLab::RE
 {
+    /// Renderable surface primitive supporting indexed or array drawing and picking.
     class RenderEngineAPI RenderFace : public RenderPrimitive
     {
     public:
+        /// Selects whether face vertices are drawn from arrays or an index buffer.
         enum class DrawMode
         {
+            /// Draw vertices as a sequential array.
             Arrays,
+            /// Draw vertices using element indices.
             Elements
         };
 
+        /// @brief Releases face rendering resources.
         virtual ~RenderFace();
+        /// @brief Creates or updates GPU resources for the face data.
         virtual void setup() override;
+        /// @brief Draws the face using the specified shader.
+        /// @param shader Shader used for rendering.
         virtual void draw(Common::SharedPtr<Shader> shader) override;
+        /// @brief Draws the specified face with its highlight effect.
+        /// @param shader Shader used for highlighting.
+        /// @param faceIndex Index of the face to highlight.
         virtual void drawHighlight(Common::SharedPtr<Shader> shader, IdxType faceIndex) override;
+        /// @brief Returns the axis-aligned bounds of the face data.
         virtual Common::BBox<Scalar, 3> getBounds() const override;
+        /// @brief Tests the face data against a picking context.
+        /// @param context Screen-space picking parameters and camera matrices.
+        /// @return Index of the picked face, or the invalid index when nothing is hit.
         virtual IdxType touch(const PickContext &context) override;
 
+        /// @brief Replaces the face vertex positions.
         void setNodes(Common::DynamicArray<CoordType> &&);
+        /// @brief Replaces the face element indices.
         void setIndices(Common::DynamicArray<IdxType> &&);
+        /// @brief Replaces the face vertex normals.
         void setNormals(Common::DynamicArray<CoordType> &&);
 
-        // Set per-triangle colors. Each element is a vec4 (RGBA).
-        // If not called, colors default to gray in setup().
+        /** @brief Sets one RGBA color per triangle.
+         * @param colors Triangle colors; gray is used when no colors are provided.
+         */
         void setColors(Common::DynamicArray<Common::Vector4f> &&colors);
+        /// @brief Sets a uniform RGBA color for the faces.
+        /// @param color Color applied to the faces.
         void setColor(const Common::Vector4f &color);
+        /// @brief Sets the scale applied to highlighted faces.
+        /// @param scale Highlight scale factor.
         void setHighlightScale(float scale);
+        /// @brief Sets the depth bias used when drawing faces.
+        /// @param factor Slope-scaled depth bias factor.
+        /// @param units Constant depth bias units.
         void setDepthOffset(float factor, float units);
+        /// @brief Selects the face drawing mode.
+        /// @param mode Array or indexed drawing mode.
         void setDrawMode(DrawMode mode);
+        /// @brief Returns the current face drawing mode.
         DrawMode getDrawMode() const;
 
     private:

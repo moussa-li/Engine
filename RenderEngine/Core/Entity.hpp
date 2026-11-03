@@ -17,8 +17,7 @@ namespace EgLab::RE
     class RenderPrimitive;
 
     /**
-     * @brief the basic of any render object
-     *
+     * @brief Base class for objects that contribute primitives to a scene.
      */
     class RenderEngineAPI Entity
     {
@@ -26,16 +25,14 @@ namespace EgLab::RE
         Entity();
 
         /**
-         * @brief
-         *
-         * @param time
+         * @brief Updates the entity and its time-dependent state.
+         * @param time Elapsed time since the previous update.
          */
         virtual void update(DeltaTime time);
 
         /**
-         * @brief which camera show this entity
-         *
-         * @param camera
+         * @brief Supplies the camera used to render this entity.
+         * @param camera Camera whose view and projection are used for rendering.
          */
         void loadCamera(const Common::SharedPtr<Camera> &camera);
 
