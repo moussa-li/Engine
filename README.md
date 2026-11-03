@@ -87,10 +87,10 @@ In another project, set `EngineLab_DIR` to the installed `lib/cmake/EngineLab` d
 find_package(EngineLab CONFIG REQUIRED)
 
 add_executable(MyApp main.cpp)
-target_link_libraries(MyApp PRIVATE EngineLab::MeshEngine)
+target_link_libraries(MyApp PRIVATE EngineLab::RenderEngine)
 ```
 
-The primary targets are `EngineLab::Common`, `EngineLab::MeshEngine`, and `EngineLab::RenderEngine`; `EngineLab::Assets` is also exported for `Common`'s resource dependency. Linking `EngineLab::RenderEngine` brings in its OpenGL, GLFW, and GLEW dependencies.
+The primary targets are `EngineLab::Common`, `EngineLab::MeshEngine`, and `EngineLab::RenderEngine`; `EngineLab::Assets` is also exported for `Common`'s resource dependency. Consumers can link `EngineLab::RenderEngine` directly without separately finding or linking GLFW or GLEW.
 
 ## Run the engine platform
 

@@ -98,6 +98,7 @@ install(DIRECTORY RenderEngine/
     FILES_MATCHING
         PATTERN "*.h"
         PATTERN "*.hpp"
+        PATTERN "GLWrapper.hpp" EXCLUDE
 )
 
 set(EngineLab_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/EngineLab")

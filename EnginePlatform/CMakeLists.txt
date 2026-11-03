@@ -49,4 +49,6 @@ target_link_libraries(EnginePlatform PRIVATE
     Common
     RenderEngine
     MeshEngine
+    glfw
+    glew_s
 )

@@ -3,9 +3,12 @@
 include(CMakeFindDependencyMacro)
 
 find_dependency(Threads REQUIRED)
-find_dependency(OpenGL REQUIRED)
-find_dependency(glfw3 3.4 CONFIG REQUIRED)
-find_dependency(GLEW CONFIG REQUIRED)
+
+if(NOT @BUILD_RENDER_SHARED@)
+    find_dependency(OpenGL REQUIRED)
+    include("${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_LIBDIR@/cmake/glfw3/glfw3Targets.cmake")
+    include("${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_LIBDIR@/cmake/glew/glew-config.cmake")
+endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/EngineLabTargets.cmake")
 

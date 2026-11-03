@@ -44,20 +44,19 @@ target_link_libraries(${PROJECT_NAME} PUBLIC Common)
 
 target_link_libraries(${PROJECT_NAME} PUBLIC MeshEngine)
 
-target_link_libraries(${PROJECT_NAME} PUBLIC glfw)
+target_link_libraries(${PROJECT_NAME} PRIVATE glfw)
 
 if(TARGET glew_s)
-    target_link_libraries(${PROJECT_NAME} PUBLIC
+    target_link_libraries(${PROJECT_NAME} PRIVATE
         $<BUILD_INTERFACE:glew_s>
         $<INSTALL_INTERFACE:GLEW::GLEW>
     )
 else()
-    find_package(GLEW CONFIG REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PUBLIC GLEW::GLEW)
+    target_link_libraries(${PROJECT_NAME} PRIVATE GLEW::GLEW)
 endif()
 
 find_package(OpenGL REQUIRED)
-target_link_libraries(${PROJECT_NAME} PUBLIC OpenGL::GL)
+target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL)
 
 if(WIN32 AND BUILD_RENDER_SHARED)
     target_compile_definitions(${PROJECT_NAME} PRIVATE RenderEngine)

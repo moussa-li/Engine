@@ -87,6 +87,8 @@ target_link_libraries(engine_tests PRIVATE
     gtest_main
     Common
     RenderEngine
+    glfw
+    glew_s
 )
 
 target_include_directories(mesh_test PRIVATE
