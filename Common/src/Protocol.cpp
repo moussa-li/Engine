@@ -185,7 +185,7 @@ namespace EgLab::Common
             MessageHeader* header = reinterpret_cast<MessageHeader*>(slotPtr);
 
             SlotState expected = SlotState::READY;
-            if (!header->state.compare_exchange_strong(expected, SlotState::READING,
+            if (!header->state.compare_exchange_strong(expected, SlotState::SLOT_READING,
                                                        std::memory_order_acquire))
             {
                 return false;

@@ -28,7 +28,7 @@ namespace EgLab::Common
     }
 
     template <typename T>
-    inline void swap(T& a, T& b)
+    inline void swapValues(T& a, T& b)
     {
         T temp = Common::move(a);
         a = Common::move(b);

@@ -49,10 +49,10 @@ if(WIN32)
     )
 endif()
 
-target_compile_options(mesh_test PRIVATE -fsanitize=address -fno-omit-frame-pointer -g)
-
-# 链接阶段：同样需要开启 ASan 以链接运行时库
-target_link_options(mesh_test PRIVATE -fsanitize=address)
+if(NOT MSVC)
+    target_compile_options(mesh_test PRIVATE -fsanitize=address -fno-omit-frame-pointer -g)
+    target_link_options(mesh_test PRIVATE -fsanitize=address)
+endif()
 
 if(MSVC)
     set_target_properties(engine_tests PROPERTIES

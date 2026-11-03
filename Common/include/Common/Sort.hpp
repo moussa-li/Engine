@@ -11,14 +11,14 @@ namespace EgLab::Common
     {
         if (d1 > d2)
         {
-            Common::swap<BASIC_TYPE>(d1, d2);
+            Common::swapValues<BASIC_TYPE>(d1, d2);
         }
         if (d2 > d3)
         {
-            Common::swap<BASIC_TYPE>(d2, d3);
+            Common::swapValues<BASIC_TYPE>(d2, d3);
             if (d1 > d2)
             {
-                Common::swap<BASIC_TYPE>(d1, d2);
+                Common::swapValues<BASIC_TYPE>(d1, d2);
             }
         }
     }

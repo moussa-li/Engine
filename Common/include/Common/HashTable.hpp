@@ -210,7 +210,7 @@ namespace EgLab::Common
                     }
                     else
                     {
-                        Common::swap(*it, *newIt);
+                        Common::swapValues(*it, *newIt);
                         ++it;
                     }
                 }
@@ -244,9 +244,10 @@ namespace EgLab::Common
             n |= n >> 4;
             n |= n >> 8;
             n |= n >> 16;
-#if SIZE_MAX > UINT32_MAX
-            n |= n >> 32; // 64位系统
-#endif
+            if constexpr (sizeof(size_t) > sizeof(uint32_t))
+            {
+                n |= static_cast<size_t>(static_cast<uint64_t>(n) >> 32);
+            }
             return n + 1;
         }
     };

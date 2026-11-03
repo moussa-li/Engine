@@ -41,6 +41,23 @@
                 "CMAKE_NINJA_CMCLDEPS_RC": "0"
             }
         },
+	{
+            "name": "win-ninja-release",
+            "displayName": "Ninja using MSVC",
+            "description": "",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "environment": {
+                "PATH": "$env{VCToolsInstallDir}bin/Hostx64/x64;$penv{PATH}"
+            },
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_C_COMPILER": "cl",
+                "CMAKE_CXX_COMPILER": "cl",
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_NINJA_CMCLDEPS_RC": "0"
+            }
+        },
         {
             "name": "使用工具链文件配置预设",
             "displayName": "使用工具链文件配置预设",
@@ -58,6 +75,10 @@
         {
             "name": "win-ninja-debug",
             "configurePreset": "win-ninja-debug"
+        },
+        {
+            "name": "win-ninja-release",
+            "configurePreset": "win-ninja-release"
         },
         {
             "name": "win-clangd-debug",

@@ -21,7 +21,7 @@ namespace EgLab::Common
         EMPTY = 0,   // 空闲
         WRITING = 1, // 正在写入
         READY = 2,   // 写入完成，等待读取
-        READING = 3  // 正在读取
+        SLOT_READING = 3  // 正在读取
     };
 
     struct MessageHeader
