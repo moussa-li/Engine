@@ -13,13 +13,8 @@ if(WIN32)
 add_definitions(-DWNT)
 endif()
 
-file(GLOB_RECURSE  SRC_FILES CONFIGURE_DEPENDS
-    "${PROJECT_SOURCE_DIR}/*.cpp"
-    "${PROJECT_SOURCE_DIR}/*.h"
-)
-
 file(GLOB_RECURSE CPP_FILES CONFIGURE_DEPENDS
-    "${PROJECT_SOURCE_DIR}/*.cpp"
+    "${PROJECT_SOURCE_DIR}/src/*.cpp"
 )
 
 add_library(${PROJECT_NAME} ${LIB_TYPE}
@@ -27,8 +22,12 @@ add_library(${PROJECT_NAME} ${LIB_TYPE}
 )
 
 
-target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_SOURCE_DIR}
+target_include_directories(${PROJECT_NAME}
+    PUBLIC
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include/Common
 )
 
 if(MSVC)

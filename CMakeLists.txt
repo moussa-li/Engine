@@ -59,7 +59,7 @@ add_subdirectory(MeshEngine)
 add_subdirectory(EnginePlatform)
 
 get_filename_component(ENGINEPLATFORM_RUNTIME_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
-install(TARGETS EnginePlatform Common RenderEngine glfw
+install(TARGETS EnginePlatform Common MeshEngine RenderEngine glfw
     RUNTIME_DEPENDENCIES
         DIRECTORIES "${ENGINEPLATFORM_RUNTIME_DIR}"
         PRE_EXCLUDE_REGEXES
@@ -70,9 +70,45 @@ install(TARGETS EnginePlatform Common RenderEngine glfw
             "[Uu]ser32\\.dll" "[Mm]svcp_win\\.dll" "[Mm]svcrt\\.dll"
             "[Nn]tdll\\.dll" "[Ww]in32u\\.dll"
         POST_EXCLUDE_REGEXES ".*/Windows/System32/.*"
-    RUNTIME DESTINATION .
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION bin
+    ARCHIVE DESTINATION lib
 )
-install(FILES "${CMAKE_SOURCE_DIR}/render_settings.ini" DESTINATION .)
+
+install(DIRECTORY Common/include/Common/
+    DESTINATION include/Common
+    FILES_MATCHING
+        PATTERN "*.h"
+        PATTERN "*.hpp"
+)
+
+install(DIRECTORY MeshEngine/include/MeshEngine
+    DESTINATION include
+    FILES_MATCHING
+        PATTERN "*.h"
+        PATTERN "*.hpp"
+)
+
+install(DIRECTORY RenderEngine/
+    DESTINATION include/RenderEngine
+    FILES_MATCHING
+        PATTERN "*.h"
+        PATTERN "*.hpp"
+)
+
+install(DIRECTORY 3rd/glfw-3.4/include/GLFW
+    DESTINATION include
+    FILES_MATCHING
+        PATTERN "*.h"
+)
+
+install(DIRECTORY 3rd/glew/include/GL
+    DESTINATION include
+    FILES_MATCHING
+        PATTERN "*.h"
+)
+
+#install(FILES "${CMAKE_SOURCE_DIR}/render_settings.ini" DESTINATION .)
 
 
 if(BUILD_DOC)

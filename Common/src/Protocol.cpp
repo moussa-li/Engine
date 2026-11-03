@@ -96,8 +96,8 @@ namespace EgLab::Common
             }
         };
 
-        auto writePacket = [&](uint64_t reservedSlot, const void* packetData,
-                               uint32_t packetSize, uint32_t marker) {
+        auto writePacket = [&](uint64_t reservedSlot, const void* packetData, uint32_t packetSize,
+                               uint32_t marker) {
             const uint64_t slotIdx = reservedSlot & RING_BUFFER_MASK;
             uint8_t* dataZone = static_cast<uint8_t*>(_basePtr) + sizeof(MemoryControlBlock);
             uint8_t* slotPtr = dataZone + (slotIdx * (sizeof(MessageHeader) + MAX_PAYLOAD_SIZE));
@@ -153,8 +153,8 @@ namespace EgLab::Common
             std::memcpy(fragmentData, &fragmentHeader, sizeof(fragmentHeader));
             std::memcpy(fragmentData + sizeof(fragmentHeader),
                         static_cast<const uint8_t*>(data) + offset, chunkSize);
-            writePacket(firstSlot + fragmentIndex, fragmentData,
-                        sizeof(fragmentHeader) + chunkSize, fragmentMarker);
+            writePacket(firstSlot + fragmentIndex, fragmentData, sizeof(fragmentHeader) + chunkSize,
+                        fragmentMarker);
             offset += chunkSize;
             ++fragmentIndex;
         }
