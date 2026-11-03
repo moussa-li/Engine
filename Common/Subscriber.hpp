@@ -26,7 +26,10 @@ namespace EgLab::Common
             uint32_t outChannelId = 0;
             uint32_t actualSize = 0;
 
-            if (_queue.pop(outChannelId, &_tempBuffer, sizeof(_tempBuffer), actualSize))
+            if (_tempBuffer.size() < sizeof(T)) _tempBuffer.resize(sizeof(T));
+
+            if (_queue.pop(outChannelId, _tempBuffer.data(),
+                           static_cast<uint32_t>(_tempBuffer.size()), actualSize))
             {
                 // 将底层弹出的 int32_t 转回 EventId 进行比较
                 if (_targetEventId.find(static_cast<int32_t>(outChannelId)) !=
@@ -34,7 +37,7 @@ namespace EgLab::Common
                     actualSize == sizeof(T))
                 {
                     eventId = outChannelId;
-                    std::memcpy(&outData, _tempBuffer, sizeof(T));
+                    std::memcpy(&outData, _tempBuffer.data(), sizeof(T));
                     return true;
                 }
             }
@@ -44,6 +47,6 @@ namespace EgLab::Common
     private:
         MemoryQueue& _queue;
         HashSet<uint32_t> _targetEventId;
-        uint8_t _tempBuffer[MAX_PAYLOAD_SIZE];
+        DynamicArray<uint8_t> _tempBuffer;
     };
 } // namespace EgLab::Common

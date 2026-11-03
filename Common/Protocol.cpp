@@ -7,6 +7,23 @@
 
 namespace EgLab::Common
 {
+    namespace
+    {
+        constexpr uint32_t fragmentMarker = 0x46524147;
+
+        struct FragmentHeader
+        {
+            uint64_t messageId;
+            uint32_t totalSize;
+            uint32_t offset;
+        };
+
+        constexpr uint32_t fragmentDataSize =
+            static_cast<uint32_t>(MAX_PAYLOAD_SIZE - sizeof(FragmentHeader));
+        constexpr uint64_t maxFragmentedMessageSize = fragmentDataSize * RING_BUFFER_SIZE;
+        std::atomic<uint64_t> nextFragmentMessageId{1};
+    } // namespace
+
     constexpr size_t SHM_SIZE = sizeof(MemoryControlBlock) +
                                 (RING_BUFFER_SIZE * (sizeof(MessageHeader) + MAX_PAYLOAD_SIZE));
 
@@ -63,76 +80,207 @@ namespace EgLab::Common
 
     bool MemoryQueue::push(uint32_t channelId, const void* data, uint32_t size)
     {
-        if (size > MAX_PAYLOAD_SIZE) return false;
-        uint64_t currentWrite = _controlBlock->writeIdx.load(std::memory_order_relaxed);
-        uint64_t currentRead = _controlBlock->readIdx.load(std::memory_order_acquire);
-        if ((currentWrite - currentRead) >= RING_BUFFER_SIZE) return false;
+        auto reserveSlots = [this](uint64_t count, uint64_t& firstSlot) {
+            uint64_t currentWrite = _controlBlock->writeIdx.load(std::memory_order_relaxed);
+            while (true)
+            {
+                const uint64_t currentRead = _controlBlock->readIdx.load(std::memory_order_acquire);
+                if (currentWrite - currentRead + count > RING_BUFFER_SIZE) return false;
+                if (_controlBlock->writeIdx.compare_exchange_weak(
+                        currentWrite, currentWrite + count, std::memory_order_acq_rel,
+                        std::memory_order_relaxed))
+                {
+                    firstSlot = currentWrite;
+                    return true;
+                }
+            }
+        };
 
-        uint64_t slotIdx = currentWrite & RING_BUFFER_MASK;
-        uint8_t* dataZone = static_cast<uint8_t*>(_basePtr) + sizeof(MemoryControlBlock);
-        uint8_t* slotPtr = dataZone + (slotIdx * (sizeof(MessageHeader) + MAX_PAYLOAD_SIZE));
+        auto writePacket = [&](uint64_t reservedSlot, const void* packetData,
+                               uint32_t packetSize, uint32_t marker) {
+            const uint64_t slotIdx = reservedSlot & RING_BUFFER_MASK;
+            uint8_t* dataZone = static_cast<uint8_t*>(_basePtr) + sizeof(MemoryControlBlock);
+            uint8_t* slotPtr = dataZone + (slotIdx * (sizeof(MessageHeader) + MAX_PAYLOAD_SIZE));
 
-        MessageHeader* header = reinterpret_cast<MessageHeader*>(slotPtr);
-        SlotState expected = SlotState::EMPTY;
-        while (!header->state.compare_exchange_weak(expected, SlotState::WRITING,
-                                                    std::memory_order_acquire))
+            MessageHeader* header = reinterpret_cast<MessageHeader*>(slotPtr);
+            SlotState expected = SlotState::EMPTY;
+            while (!header->state.compare_exchange_weak(expected, SlotState::WRITING,
+                                                        std::memory_order_acquire))
+            {
+                if (expected != SlotState::EMPTY) return false;
+                expected = SlotState::EMPTY;
+            }
+
+            header->timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                    std::chrono::system_clock::now().time_since_epoch())
+                                    .count();
+            header->channelId = channelId;
+            header->payloadSize = packetSize;
+            header->reserved = marker;
+            if (packetData && packetSize > 0)
+            {
+                std::memcpy(slotPtr + sizeof(MessageHeader), packetData, packetSize);
+            }
+
+            header->state.store(SlotState::READY, std::memory_order_release);
+            return true;
+        };
+
+        if (size <= MAX_PAYLOAD_SIZE)
         {
-            if (expected != SlotState::EMPTY) return false;
-            expected = SlotState::EMPTY;
+            uint64_t firstSlot = 0;
+            if (!reserveSlots(1, firstSlot)) return false;
+            return writePacket(firstSlot, data, size, 0);
         }
+        if (data == nullptr) return false;
 
-        header->timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                                std::chrono::system_clock::now().time_since_epoch())
-                                .count();
-        header->channelId = channelId;
-        header->payloadSize = size;
-        if (data && size > 0) std::memcpy(slotPtr + sizeof(MessageHeader), data, size);
+        const uint64_t fragmentCount =
+            (static_cast<uint64_t>(size) + fragmentDataSize - 1) / fragmentDataSize;
+        if (fragmentCount > RING_BUFFER_SIZE || size > maxFragmentedMessageSize) return false;
 
-        header->state.store(SlotState::READY, std::memory_order_release);
+        uint64_t firstSlot = 0;
+        if (!reserveSlots(fragmentCount, firstSlot)) return false;
 
-        _controlBlock->writeIdx.store(currentWrite + 1, std::memory_order_release);
+        const uint64_t messageId = nextFragmentMessageId.fetch_add(1, std::memory_order_relaxed);
+        uint8_t fragmentData[MAX_PAYLOAD_SIZE];
+        uint32_t offset = 0;
+        uint64_t fragmentIndex = 0;
+        while (offset < size)
+        {
+            const uint32_t chunkSize =
+                (size - offset < fragmentDataSize) ? size - offset : fragmentDataSize;
+            const FragmentHeader fragmentHeader{messageId, size, offset};
+            std::memcpy(fragmentData, &fragmentHeader, sizeof(fragmentHeader));
+            std::memcpy(fragmentData + sizeof(fragmentHeader),
+                        static_cast<const uint8_t*>(data) + offset, chunkSize);
+            writePacket(firstSlot + fragmentIndex, fragmentData,
+                        sizeof(fragmentHeader) + chunkSize, fragmentMarker);
+            offset += chunkSize;
+            ++fragmentIndex;
+        }
         return true;
     }
 
     bool MemoryQueue::pop(uint32_t& channelId, void* outBuffer, uint32_t bufferSize,
                           uint32_t& outActualSize)
     {
-        uint64_t currentWrite = _controlBlock->writeIdx.load(std::memory_order_acquire);
-        uint64_t currentRead = _controlBlock->readIdx.load(std::memory_order_relaxed);
+        outActualSize = 0;
+        auto resetFragments = [this]() {
+            _fragmentBuffer.clear();
+            _fragmentMessageId = 0;
+            _fragmentTotalSize = 0;
+            _fragmentReceived = 0;
+            _fragmentChannelId = 0;
+        };
 
-        // 队列空检查
-        if (currentRead >= currentWrite) return false;
-
-        uint64_t slotIdx = currentRead & RING_BUFFER_MASK;
-        uint8_t* dataZone = static_cast<uint8_t*>(_basePtr) + sizeof(MemoryControlBlock);
-        uint8_t* slotPtr = dataZone + (slotIdx * (sizeof(MessageHeader) + MAX_PAYLOAD_SIZE));
-
-        MessageHeader* header = reinterpret_cast<MessageHeader*>(slotPtr);
-
-        // 1. 尝试将状态从 READY 转换为 READING
-        SlotState expected = SlotState::READY;
-        if (!header->state.compare_exchange_strong(expected, SlotState::READING,
-                                                   std::memory_order_acquire))
+        while (true)
         {
-            return false; // 还没准备好，或者状态不对
+            const uint64_t currentWrite = _controlBlock->writeIdx.load(std::memory_order_acquire);
+            const uint64_t currentRead = _controlBlock->readIdx.load(std::memory_order_relaxed);
+            if (currentRead >= currentWrite) return false;
+
+            const uint64_t slotIdx = currentRead & RING_BUFFER_MASK;
+            uint8_t* dataZone = static_cast<uint8_t*>(_basePtr) + sizeof(MemoryControlBlock);
+            uint8_t* slotPtr = dataZone + (slotIdx * (sizeof(MessageHeader) + MAX_PAYLOAD_SIZE));
+            MessageHeader* header = reinterpret_cast<MessageHeader*>(slotPtr);
+
+            SlotState expected = SlotState::READY;
+            if (!header->state.compare_exchange_strong(expected, SlotState::READING,
+                                                       std::memory_order_acquire))
+            {
+                return false;
+            }
+
+            const uint32_t packetSize = header->payloadSize;
+            const uint32_t marker = header->reserved;
+            const uint8_t* packetData = slotPtr + sizeof(MessageHeader);
+            auto releaseSlot = [&]() {
+                header->reserved = 0;
+                header->state.store(SlotState::EMPTY, std::memory_order_release);
+                _controlBlock->readIdx.store(currentRead + 1, std::memory_order_release);
+            };
+
+            if (marker == fragmentMarker)
+            {
+                if (packetSize < sizeof(FragmentHeader) || packetSize > MAX_PAYLOAD_SIZE)
+                {
+                    resetFragments();
+                    releaseSlot();
+                    continue;
+                }
+
+                FragmentHeader fragmentHeader{};
+                std::memcpy(&fragmentHeader, packetData, sizeof(fragmentHeader));
+                const uint32_t chunkSize = packetSize - sizeof(FragmentHeader);
+                const bool validFragment =
+                    fragmentHeader.totalSize > MAX_PAYLOAD_SIZE &&
+                    fragmentHeader.totalSize <= maxFragmentedMessageSize && chunkSize > 0 &&
+                    fragmentHeader.offset <= fragmentHeader.totalSize &&
+                    chunkSize <= fragmentHeader.totalSize - fragmentHeader.offset;
+                if (!validFragment)
+                {
+                    resetFragments();
+                    releaseSlot();
+                    continue;
+                }
+
+                if (fragmentHeader.offset == 0)
+                {
+                    resetFragments();
+                    _fragmentBuffer.resize(fragmentHeader.totalSize);
+                    _fragmentMessageId = fragmentHeader.messageId;
+                    _fragmentTotalSize = fragmentHeader.totalSize;
+                    _fragmentChannelId = header->channelId;
+                }
+
+                const bool matchesMessage = fragmentHeader.messageId == _fragmentMessageId &&
+                                            fragmentHeader.totalSize == _fragmentTotalSize &&
+                                            fragmentHeader.offset == _fragmentReceived &&
+                                            header->channelId == _fragmentChannelId;
+                if (!matchesMessage)
+                {
+                    resetFragments();
+                    releaseSlot();
+                    continue;
+                }
+
+                std::memcpy(_fragmentBuffer.data() + fragmentHeader.offset,
+                            packetData + sizeof(FragmentHeader), chunkSize);
+                _fragmentReceived += chunkSize;
+                releaseSlot();
+
+                if (_fragmentReceived == _fragmentTotalSize)
+                {
+                    channelId = _fragmentChannelId;
+                    outActualSize = _fragmentTotalSize;
+                    const uint32_t copySize =
+                        outActualSize < bufferSize ? outActualSize : bufferSize;
+                    if (outBuffer && copySize > 0)
+                    {
+                        std::memcpy(outBuffer, _fragmentBuffer.data(), copySize);
+                    }
+                    resetFragments();
+                    return true;
+                }
+                continue;
+            }
+
+            if (packetSize > MAX_PAYLOAD_SIZE)
+            {
+                releaseSlot();
+                continue;
+            }
+
+            channelId = header->channelId;
+            outActualSize = packetSize;
+            const uint32_t copySize = outActualSize < bufferSize ? outActualSize : bufferSize;
+            if (outBuffer && copySize > 0)
+            {
+                std::memcpy(outBuffer, packetData, copySize);
+            }
+            releaseSlot();
+            return true;
         }
-
-        // 2. 读取数据
-        channelId = header->channelId;
-        outActualSize = header->payloadSize;
-
-        if (outBuffer && outActualSize > 0)
-        {
-            if (outActualSize > bufferSize) outActualSize = bufferSize;
-            std::memcpy(outBuffer, slotPtr + sizeof(MessageHeader), outActualSize);
-        }
-
-        // 3. 将状态重置为 EMPTY，供下一轮写入
-        header->state.store(SlotState::EMPTY, std::memory_order_release);
-
-        // 4. 推进读指针
-        _controlBlock->readIdx.store(currentRead + 1, std::memory_order_release);
-        return true;
     }
 
 } // namespace EgLab::Common

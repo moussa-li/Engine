@@ -36,7 +36,6 @@ add_executable(mesh_test
 if(WIN32)
     add_executable(command_cross_process_test
         test_command_cross_process.cpp
-        ${CMAKE_SOURCE_DIR}/EnginePlatform/src/Command/CommandTransport.cpp
     )
 
     target_include_directories(command_cross_process_test PRIVATE

@@ -20,6 +20,35 @@
 #include "Common/StringLineIterator.hpp"
 #include "Common/Subscriber.hpp"
 
+TEST_F(TestCommon, MemoryQueue_LargePayload)
+{
+    struct LargePayload
+    {
+        uint8_t data[EgLab::Common::MAX_PAYLOAD_SIZE * 2 + 257];
+    };
+
+    const auto timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    EgLab::Common::String shmName =
+        "TestMemoryQueueLarge_" + EgLab::Common::String(std::to_string(timestamp).c_str());
+    EgLab::Common::MemoryQueue queue(shmName, true);
+    EgLab::Common::Publisher publisher(queue);
+    EgLab::Common::Subscriber subscriber(queue);
+    subscriber.subscrib(102);
+
+    LargePayload sent{};
+    for (size_t index = 0; index < sizeof(sent.data); ++index)
+    {
+        sent.data[index] = static_cast<uint8_t>((index * 37) & 0xff);
+    }
+    ASSERT_TRUE(publisher.publish(102, sent));
+
+    LargePayload received{};
+    uint32_t eventId = 0;
+    ASSERT_TRUE(subscriber.tryReceive(eventId, received));
+    EXPECT_EQ(eventId, 102u);
+    EXPECT_EQ(std::memcmp(&received, &sent, sizeof(sent)), 0);
+}
+
 TEST_F(TestCommon, BBoxTest)
 {
     using EgLab::Common::BBox;

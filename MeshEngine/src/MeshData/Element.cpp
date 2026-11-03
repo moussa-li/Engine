@@ -238,12 +238,22 @@ namespace EgLab::ME
     {
         Common::DynamicArray<IdType> res;
         IdxType nodeNumber = elemFaceNodeNumber(elemFaceIdx);
-        if (nodeNumber == 3 || nodeNumber == 6)
+        if (nodeNumber == 3)
         {
             res.resize(3);
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 3; ++i)
             {
                 auto node = _elemFaceMap[_elemFaceOffset[elemFaceIdx] + i];
+                res[i] = _elem.getNodes()[node];
+            }
+        }
+        else if (nodeNumber == 6)
+        {
+            static const int tri6TriMap[12] = {0, 3, 1, 0, 1, 4, 0, 4, 2, 0, 2, 5};
+            res.resize(12);
+            for (int i = 0; i < 12; ++i)
+            {
+                auto node = _elemFaceMap[_elemFaceOffset[elemFaceIdx] + tri6TriMap[i]];
                 res[i] = _elem.getNodes()[node];
             }
         }

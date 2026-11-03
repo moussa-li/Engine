@@ -153,7 +153,10 @@ TEST_F(TestMesh, elemFaceGetterSupportsAllElementTypes)
             }
 
             const auto triangles = getter.getNodes(face);
-            EXPECT_EQ(triangles.size(), faceNodeNumber == 4 ? 6u : faceNodeNumber == 8 ? 18u : 3u);
+            EXPECT_EQ(triangles.size(), faceNodeNumber == 3   ? 3u
+                                        : faceNodeNumber == 4 ? 6u
+                                        : faceNodeNumber == 6 ? 12u
+                                                              : 18u);
             const auto lines = getter.getLineNodes(face);
             EXPECT_EQ(lines.size(), faceNodeNumber == 3   ? 6u
                                     : faceNodeNumber == 4 ? 8u

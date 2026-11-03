@@ -77,6 +77,11 @@ namespace EgLab::Common
         size_t _size;
         bool _isOwner;
         MemoryControlBlock* _controlBlock;
+        DynamicArray<uint8_t> _fragmentBuffer;
+        uint64_t _fragmentMessageId{0};
+        uint32_t _fragmentTotalSize{0};
+        uint32_t _fragmentReceived{0};
+        uint32_t _fragmentChannelId{0};
     };
 
 } // namespace EgLab::Common
