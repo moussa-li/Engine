@@ -112,6 +112,7 @@ namespace EgLab::RE
                     {
                         break;
                     }
+                    iterator.nextNode();
                 }
             }
             else if (primitive == registration->linePrimitive)
