@@ -3,6 +3,10 @@
 
 #include <windows.h>
 
+#ifdef READING
+#undef READING
+#endif
+
 #include <stdexcept>
 
 namespace EgLab::Common
@@ -185,7 +189,7 @@ namespace EgLab::Common
             MessageHeader* header = reinterpret_cast<MessageHeader*>(slotPtr);
 
             SlotState expected = SlotState::READY;
-            if (!header->state.compare_exchange_strong(expected, SlotState::SLOT_READING,
+            if (!header->state.compare_exchange_strong(expected, SlotState::READING,
                                                        std::memory_order_acquire))
             {
                 return false;
