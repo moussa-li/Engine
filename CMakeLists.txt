@@ -93,7 +93,7 @@ install(DIRECTORY MeshEngine/include/MeshEngine
         PATTERN "*.hpp"
 )
 
-install(DIRECTORY RenderEngine/
+install(DIRECTORY RenderEngine/include/RenderEngine/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/RenderEngine
     FILES_MATCHING
         PATTERN "*.h"

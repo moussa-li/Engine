@@ -1,0 +1,70 @@
+#include "RenderEngine/Core/IndexBuffer.hpp"
+
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+
+namespace EgLab::RE
+{
+    class IndexBuffer::Impl
+    {
+    public:
+        Impl(const Common::DynamicArray<IdxType>& indeices)
+        {
+            glGenBuffers(1, &_rendererId);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _rendererId);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, indeices.size() * sizeof(IdxType),
+                         indeices.data(), GL_STATIC_DRAW);
+            _count = indeices.size();
+        }
+
+        ~Impl()
+        {
+            if (_rendererId != 0 && glfwGetCurrentContext() != nullptr)
+            {
+                glDeleteBuffers(1, &_rendererId);
+            }
+        }
+
+        void bind() const
+        {
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _rendererId);
+        }
+
+        void unBind() const
+        {
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        }
+
+        IdType _rendererId{0};
+        IdxType _count{0};
+    };
+
+    IndexBuffer::IndexBuffer(const Common::DynamicArray<IdxType>& indeices)
+        : _impl(new Impl(indeices))
+    {
+    }
+
+    IndexBuffer::~IndexBuffer()
+    {
+        if (_impl)
+        {
+            delete _impl;
+            _impl = nullptr;
+        }
+    }
+
+    void IndexBuffer::bind() const
+    {
+        _impl->bind();
+    }
+    void IndexBuffer::unBind() const
+    {
+        _impl->unBind();
+    }
+
+    unsigned int IndexBuffer::getCount() const
+    {
+        return _impl->_count;
+    }
+
+} // namespace EgLab::RE

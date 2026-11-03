@@ -24,8 +24,8 @@ file(GLOB_RECURSE CPP_FILES CONFIGURE_DEPENDS
     "${PROJECT_SOURCE_DIR}/*.cpp"
 )
 
-add_subdirectory(Core)
-add_subdirectory(Objects)
+add_subdirectory(include)
+add_subdirectory(src)
 
 add_library(${PROJECT_NAME} ${LIB_TYPE}
     ${CPP_FILES}
@@ -35,9 +35,8 @@ target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
-    $<INSTALL_INTERFACE:include/RenderEngine>
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC Common)
