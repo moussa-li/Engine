@@ -49,6 +49,32 @@ TEST_F(TestCommon, MemoryQueue_LargePayload)
     EXPECT_EQ(std::memcmp(&received, &sent, sizeof(sent)), 0);
 }
 
+TEST_F(TestCommon, MemoryQueue_DynamicPayload)
+{
+    const auto timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    EgLab::Common::String shmName =
+        "TestMemoryQueueDynamic_" + EgLab::Common::String(std::to_string(timestamp).c_str());
+    EgLab::Common::MemoryQueue queue(shmName, true);
+    EgLab::Common::Subscriber subscriber(queue);
+    subscriber.subscrib(103);
+
+    EgLab::Common::DynamicArray<uint8_t> sent;
+    sent.resize(EgLab::Common::MAX_PAYLOAD_SIZE * 2 + 257);
+    for (size_t index = 0; index < sent.size(); ++index)
+    {
+        sent[index] = static_cast<uint8_t>((index * 37) & 0xff);
+    }
+
+    ASSERT_TRUE(queue.push(103, sent.data(), static_cast<uint32_t>(sent.size())));
+
+    EgLab::Common::DynamicArray<uint8_t> received;
+    uint32_t eventId = 0;
+    ASSERT_TRUE(subscriber.tryReceiveDynamic(eventId, received));
+    EXPECT_EQ(eventId, 103u);
+    ASSERT_EQ(received.size(), sent.size());
+    EXPECT_EQ(std::memcmp(received.data(), sent.data(), sent.size()), 0);
+}
+
 TEST_F(TestCommon, BBoxTest)
 {
     using EgLab::Common::BBox;

@@ -44,6 +44,8 @@ namespace EgLab::Common
             return false;
         }
 
+        bool tryReceiveDynamic(uint32_t& eventId, DynamicArray<uint8_t>& outData);
+
     private:
         MemoryQueue& _queue;
         HashSet<uint32_t> _targetEventId;

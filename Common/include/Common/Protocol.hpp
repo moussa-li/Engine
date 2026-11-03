@@ -69,8 +69,12 @@ namespace EgLab::Common
         bool push(uint32_t channelId, const void* data, uint32_t size);
         bool pop(uint32_t& channelId, void* outBuffer, uint32_t bufferSize,
                  uint32_t& outActualSize);
+        bool pop(uint32_t& channelId, DynamicArray<uint8_t>& outBuffer);
 
     private:
+        bool popImpl(uint32_t& channelId, void* outBuffer, uint32_t bufferSize,
+                     uint32_t& outActualSize, DynamicArray<uint8_t>* dynamicBuffer);
+
         Common::String _name;
         void* _platformHandle;
         void* _basePtr;

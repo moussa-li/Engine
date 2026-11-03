@@ -168,6 +168,20 @@ namespace EgLab::Common
     bool MemoryQueue::pop(uint32_t& channelId, void* outBuffer, uint32_t bufferSize,
                           uint32_t& outActualSize)
     {
+        return popImpl(channelId, outBuffer, bufferSize, outActualSize, nullptr);
+    }
+
+    bool MemoryQueue::pop(uint32_t& channelId, DynamicArray<uint8_t>& outBuffer)
+    {
+        uint32_t actualSize = 0;
+        outBuffer.clear();
+        return popImpl(channelId, nullptr, 0, actualSize, &outBuffer);
+    }
+
+    bool MemoryQueue::popImpl(uint32_t& channelId, void* outBuffer, uint32_t bufferSize,
+                              uint32_t& outActualSize,
+                              DynamicArray<uint8_t>* dynamicBuffer)
+    {
         outActualSize = 0;
         auto resetFragments = [this]() {
             _fragmentBuffer.clear();
@@ -263,6 +277,11 @@ namespace EgLab::Common
                     {
                         std::memcpy(outBuffer, _fragmentBuffer.data(), copySize);
                     }
+                    if (dynamicBuffer)
+                    {
+                        dynamicBuffer->resize(outActualSize);
+                        std::memcpy(dynamicBuffer->data(), _fragmentBuffer.data(), outActualSize);
+                    }
                     resetFragments();
                     return true;
                 }
@@ -281,6 +300,11 @@ namespace EgLab::Common
             if (outBuffer && copySize > 0)
             {
                 std::memcpy(outBuffer, packetData, copySize);
+            }
+            if (dynamicBuffer && packetSize > 0)
+            {
+                dynamicBuffer->resize(packetSize);
+                std::memcpy(dynamicBuffer->data(), packetData, packetSize);
             }
             releaseSlot();
             return true;

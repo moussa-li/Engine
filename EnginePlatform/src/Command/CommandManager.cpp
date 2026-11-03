@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstring>
 #include <functional>
+#include <stdexcept>
 #include <thread>
 
 #ifdef _WIN32
@@ -133,14 +134,6 @@ namespace EgLab::Platform
                 return Common::makeShared<ImportMeshCmd>(param);
             };
 
-            _creator[EventId::UpdateMesh] = [](const PacketPOD& pod) {
-                UpdateMeshParam param{};
-                param.dataSize = pod.dataSize;
-                param.data = new uint8_t[param.dataSize];
-                std::memcpy(param.data, pod.data, param.dataSize);
-                return Common::makeShared<UpdateMeshCmd>(param);
-            };
-
             _packetCreator[EventId::MeshImport] = [](const EventPacket& packet) {
                 PacketPOD pod{};
                 ImportMeshParam param{};
@@ -176,21 +169,6 @@ namespace EgLab::Platform
                 return pod;
             };
 
-            _packetCreator[EventId::UpdateMesh] = [](const EventPacket& packet) {
-                PacketPOD pod{};
-                const auto& raw = packet.getRawBuffer();
-                if (raw.size() > sizeof(pod.data))
-                {
-                    pod.dataSize = static_cast<uint32_t>(sizeof(pod.data));
-                    std::memcpy(pod.data, raw.data(), sizeof(pod.data));
-                }
-                else
-                {
-                    pod.dataSize = static_cast<uint32_t>(raw.size());
-                    std::memcpy(pod.data, raw.data(), raw.size());
-                }
-                return pod;
-            };
         }
 
         void startListen()
@@ -206,18 +184,41 @@ namespace EgLab::Platform
 
             _worker = std::thread([this]() {
                 uint32_t eventId;
-                EventPacket packet;
-                PacketPOD pod;
+                Common::DynamicArray<uint8_t> rawPacket;
                 while (_isRunning)
                 {
-                    if (_subscriber.tryReceive(eventId, pod))
+                    if (_subscriber.tryReceiveDynamic(eventId, rawPacket))
                     {
-                        auto creator = _creator.find((EventId)eventId);
-                        if (creator != _creator.end())
+                        if (rawPacket.size() < sizeof(uint32_t)) continue;
+
+                        uint32_t dataSize = 0;
+                        std::memcpy(&dataSize, rawPacket.data(), sizeof(dataSize));
+                        if (dataSize > rawPacket.size() - sizeof(dataSize)) continue;
+
+                        Common::SharedPtr<ICommand> command;
+                        if (static_cast<EventId>(eventId) == EventId::UpdateMesh)
                         {
-                            auto command = creator.data().second(pod);
-                            _commandBus.dispatch(command);
+                            if (dataSize == 0) continue;
+
+                            UpdateMeshParam param{};
+                            param.dataSize = dataSize;
+                            param.data = new uint8_t[dataSize];
+                            std::memcpy(param.data, rawPacket.data() + sizeof(dataSize), dataSize);
+                            command = Common::makeShared<UpdateMeshCmd>(param);
                         }
+                        else if (dataSize <= sizeof(PacketPOD::data))
+                        {
+                            PacketPOD pod{};
+                            pod.dataSize = dataSize;
+                            std::memcpy(pod.data, rawPacket.data() + sizeof(dataSize), dataSize);
+
+                            auto creator = _creator.find(static_cast<EventId>(eventId));
+                            if (creator != _creator.end())
+                            {
+                                command = creator.data().second(pod);
+                            }
+                        }
+                        if (command) _commandBus.dispatch(command);
                     }
                     else
                     {
@@ -236,6 +237,30 @@ namespace EgLab::Platform
 
     void CommandManager::call(EventId eventId, EventPacket packet)
     {
+        if (eventId == EventId::UpdateMesh)
+        {
+            const auto& raw = packet.getRawBuffer();
+            if (raw.size() > UINT32_MAX - sizeof(uint32_t))
+            {
+                throw std::length_error("UpdateMesh payload exceeds the shared-memory protocol limit.");
+            }
+
+            const uint32_t dataSize = static_cast<uint32_t>(raw.size());
+            Common::DynamicArray<uint8_t> wirePayload;
+            wirePayload.resize(sizeof(dataSize) + raw.size());
+            std::memcpy(wirePayload.data(), &dataSize, sizeof(dataSize));
+            if (!raw.empty())
+            {
+                std::memcpy(wirePayload.data() + sizeof(dataSize), raw.data(), raw.size());
+            }
+            if (!_impl->_memQueue.push(static_cast<uint32_t>(eventId), wirePayload.data(),
+                                       static_cast<uint32_t>(wirePayload.size())))
+            {
+                throw std::runtime_error("Failed to publish UpdateMesh payload.");
+            }
+            return;
+        }
+
         auto creator = _impl->_packetCreator.find(eventId);
         if (creator == _impl->_packetCreator.end())
         {

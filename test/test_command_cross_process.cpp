@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <string>
 #include <thread>
 #include <vector>
@@ -13,7 +14,6 @@
 #include "Command/CommandQueueName.hpp"
 #include "Command/MeshPODWire.hpp"
 #include "Common/Protocol.hpp"
-#include "Common/Publisher.hpp"
 #include "MeshEngine/MeshData/Element.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "MeshEngine/MeshData/MeshPOD.hpp"
@@ -23,12 +23,6 @@
 namespace
 {
     constexpr int maxNodeOfElem = 27;
-
-    struct PacketPOD
-    {
-        uint32_t dataSize{};
-        uint8_t data[EgLab::Common::MAX_PAYLOAD_SIZE - sizeof(uint32_t) * 2]{};
-    };
 
     enum class SimpleElemType : int
     {
@@ -229,21 +223,22 @@ namespace
         wire.elemDataOffset = pod.elemDataOffset;
         wire.totalDataSize = pod.totalDataSize;
 
-        const uint32_t dataSize = static_cast<uint32_t>(sizeof(wire) + pod.totalDataSize);
-        PacketPOD packet{};
-        if (dataSize > sizeof(packet.data))
+        const uint64_t dataSize64 = sizeof(wire) + static_cast<uint64_t>(pod.totalDataSize);
+        if (dataSize64 > std::numeric_limits<uint32_t>::max() - sizeof(uint32_t))
         {
-            throw std::runtime_error("Serialized mesh exceeds the shared-memory packet capacity.");
+            throw std::runtime_error("Serialized mesh exceeds the shared-memory protocol limit.");
         }
 
-        packet.dataSize = dataSize;
-        std::memcpy(packet.data, &wire, sizeof(wire));
-        std::memcpy(packet.data + sizeof(wire), pod.data, pod.totalDataSize);
+        const uint32_t dataSize = static_cast<uint32_t>(dataSize64);
+        EgLab::Common::DynamicArray<uint8_t> packet;
+        packet.resize(sizeof(dataSize) + dataSize);
+        std::memcpy(packet.data(), &dataSize, sizeof(dataSize));
+        std::memcpy(packet.data() + sizeof(dataSize), &wire, sizeof(wire));
+        std::memcpy(packet.data() + sizeof(dataSize) + sizeof(wire), pod.data, pod.totalDataSize);
 
         EgLab::Common::MemoryQueue queue(EgLab::Platform::commandMemoryName(processId), false);
-        EgLab::Common::Publisher publisher(queue);
-        return publisher.publish(static_cast<uint32_t>(EgLab::Platform::EventId::UpdateMesh),
-                                 packet);
+        return queue.push(static_cast<uint32_t>(EgLab::Platform::EventId::UpdateMesh),
+                          packet.data(), static_cast<uint32_t>(packet.size()));
     }
 } // namespace
 
