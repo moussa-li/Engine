@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "Command/CommandManager.hpp"
 #include "Core/IniManager.hpp"
 #include "Core/MainMenuBar.hpp"
 #include "GLFW/glfw3.h"
@@ -10,12 +11,14 @@
 #include "Work/RenderWork.hpp"
 #include "Work/UIWork.hpp"
 
+
 namespace EgLab::Platform
 {
 
     Application::Application()
     {
-        auto &ini = IniManager::instance();
+        auto& ini = IniManager::instance();
+        auto& cmdMgr = CommandManager::instance();
         ini.start();
         const auto width = static_cast<unsigned int>(std::max(1, ini.getInt("window.width", 800)));
         const auto height =

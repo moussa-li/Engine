@@ -141,6 +141,7 @@ namespace EgLab::Platform
 
         void call(EventId, PacketPOD);
         void call(EventId, EventPacket);
+        static bool call(uint32_t processId, EventId eventId, const PacketPOD& packet);
 
     private:
         CommandManager();

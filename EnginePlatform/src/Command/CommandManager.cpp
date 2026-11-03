@@ -5,7 +5,14 @@
 #include <functional>
 #include <thread>
 
+#ifdef _WIN32
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
+
 #include "Command/CommandBus.hpp"
+#include "Command/CommandQueueName.hpp"
 #include "Command/DeleteMeshCmd.hpp"
 #include "Command/ICommand.hpp"
 #include "Command/ImportMeshCmd.hpp"
@@ -29,6 +36,17 @@ struct EgLab::Common::hash<EgLab::Platform::EventId>
 
 namespace EgLab::Platform
 {
+    namespace
+    {
+        uint32_t currentProcessId()
+        {
+#ifdef _WIN32
+            return static_cast<uint32_t>(_getpid());
+#else
+            return static_cast<uint32_t>(getpid());
+#endif
+        }
+    } // namespace
 
     class ShowPanelCommand : public ICommand
     {
@@ -75,7 +93,7 @@ namespace EgLab::Platform
         std::thread _worker;
         std::atomic<bool> _isRunning = false;
 
-        Impl() : _memQueue("Command Memory", true), _subscriber(_memQueue)
+        Impl() : _memQueue(commandMemoryName(currentProcessId()), true), _subscriber(_memQueue)
         {
         }
 

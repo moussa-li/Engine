@@ -33,6 +33,23 @@ add_executable(mesh_test
     test_main.cpp
 )
 
+if(WIN32)
+    add_executable(command_cross_process_test
+        test_command_cross_process.cpp
+        ${CMAKE_SOURCE_DIR}/EnginePlatform/src/Command/CommandTransport.cpp
+    )
+
+    target_include_directories(command_cross_process_test PRIVATE
+        ${CMAKE_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/EnginePlatform/include
+    )
+
+    target_link_libraries(command_cross_process_test PRIVATE
+        Common
+        MeshEngine
+    )
+endif()
+
 target_compile_options(mesh_test PRIVATE -fsanitize=address -fno-omit-frame-pointer -g)
 
 # 链接阶段：同样需要开启 ASan 以链接运行时库

@@ -1,5 +1,6 @@
 #include "test_mesh.h"
 
+#include "Common/DynamicArray.hpp"
 #include "Common/SharedPtr.hpp"
 #include "MeshEngine/Algorithm/ExtractSurface.hpp"
 #include "MeshEngine/IO/GmshImporter.hpp"
@@ -79,6 +80,87 @@ TEST_F(TestMesh, extraceSurface)
 
     EgLab::ME::ExtractSurface extractor(mesh);
     auto idxs = extractor.getSurface();
+}
+
+TEST_F(TestMesh, elemFaceGetterSupportsAllElementTypes)
+{
+    using EgLab::ME::Elem;
+    using EgLab::ME::ElemFaceGetter;
+    using EgLab::ME::ElemType;
+
+    struct ElemFaceTestCase
+    {
+        ElemType type;
+        int faceNumber;
+        int faceNodeNumbers[6];
+        int faceMaps[6][8];
+    };
+    EgLab::Common::DynamicArray<ElemFaceTestCase> cases;
+    cases.pushBack({ElemType::Tri3, 1, {3}, {{0, 1, 2}}});
+    cases.pushBack({ElemType::Tri6, 1, {6}, {{0, 1, 2, 3, 4, 5}}});
+    cases.pushBack({ElemType::Quad4, 1, {4}, {{0, 1, 2, 3}}});
+    cases.pushBack({ElemType::Quad8, 1, {8}, {{0, 1, 2, 3, 4, 5, 6, 7}}});
+    cases.pushBack({ElemType::Tet4, 4, {3, 3, 3, 3}, {{0, 1, 2}, {0, 2, 3}, {0, 3, 1}, {1, 3, 2}}});
+    cases.pushBack(
+        {ElemType::Tet10,
+         4,
+         {6, 6, 6, 6},
+         {{0, 1, 2, 4, 5, 6}, {0, 2, 3, 6, 9, 7}, {0, 3, 1, 7, 8, 4}, {1, 3, 2, 8, 9, 5}}});
+    cases.pushBack({ElemType::Wed6,
+                    5,
+                    {3, 3, 4, 4, 4},
+                    {{0, 2, 1}, {3, 4, 5}, {0, 1, 4, 3}, {1, 2, 5, 4}, {2, 0, 3, 5}}});
+    cases.pushBack({ElemType::Prd5,
+                    5,
+                    {4, 3, 3, 3, 3},
+                    {{0, 1, 2, 3}, {0, 1, 4}, {1, 2, 4}, {2, 3, 4}, {3, 0, 4}}});
+    cases.pushBack(
+        {ElemType::Hex8,
+         6,
+         {4, 4, 4, 4, 4, 4},
+         {{0, 1, 2, 3}, {4, 7, 6, 5}, {0, 1, 5, 4}, {1, 2, 6, 5}, {2, 3, 7, 6}, {3, 0, 4, 7}}});
+    cases.pushBack({ElemType::Hex20,
+                    6,
+                    {8, 8, 8, 8, 8, 8},
+                    {{0, 1, 2, 3, 8, 9, 10, 11},
+                     {4, 7, 6, 5, 15, 14, 13, 12},
+                     {0, 1, 5, 4, 8, 17, 12, 16},
+                     {1, 2, 6, 5, 9, 18, 13, 17},
+                     {2, 3, 7, 6, 10, 19, 14, 18},
+                     {3, 0, 4, 7, 11, 16, 15, 19}}});
+
+    for (size_t caseIndex = 0; caseIndex < cases.size(); ++caseIndex)
+    {
+        const auto &testCase = cases[caseIndex];
+        Elem element;
+        element.setType(testCase.type);
+        for (EgLab::ME::IdxType node = 0; node < element.getNodes().size(); ++node)
+        {
+            element.setNode(node, 100 + node);
+        }
+
+        ElemFaceGetter getter(element);
+        ASSERT_EQ(getter.elemFaceNumber(), testCase.faceNumber);
+        for (EgLab::ME::IdxType face = 0; face < testCase.faceNumber; ++face)
+        {
+            const int faceNodeNumber = testCase.faceNodeNumbers[face];
+            EXPECT_EQ(getter.elemFaceNodeNumber(face), faceNodeNumber);
+
+            for (int node = 0; node < faceNodeNumber; ++node)
+            {
+                const auto nodeId = getter.elemFace(face, node);
+                EXPECT_EQ(nodeId, 100u + testCase.faceMaps[face][node]);
+            }
+
+            const auto triangles = getter.getNodes(face);
+            EXPECT_EQ(triangles.size(), faceNodeNumber == 4 ? 6u : faceNodeNumber == 8 ? 18u : 3u);
+            const auto lines = getter.getLineNodes(face);
+            EXPECT_EQ(lines.size(), faceNodeNumber == 3   ? 6u
+                                    : faceNodeNumber == 4 ? 8u
+                                    : faceNodeNumber == 6 ? 12u
+                                                          : 16u);
+        }
+    }
 }
 
 TEST_F(TestMesh, importgmsh)
