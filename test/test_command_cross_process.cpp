@@ -222,6 +222,8 @@ namespace
         wire.elemTypesOffset = pod.elemTypesOffset;
         wire.elemDataOffset = pod.elemDataOffset;
         wire.totalDataSize = pod.totalDataSize;
+        const char meshName[] = "CrossProcessMesh";
+        std::memcpy(wire.meshName, meshName, sizeof(meshName));
 
         const uint64_t dataSize64 = sizeof(wire) + static_cast<uint64_t>(pod.totalDataSize);
         if (dataSize64 > std::numeric_limits<uint32_t>::max() - sizeof(uint32_t))

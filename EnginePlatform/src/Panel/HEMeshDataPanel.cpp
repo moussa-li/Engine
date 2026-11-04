@@ -33,25 +33,58 @@ namespace EgLab::Platform
         }
     }
 
+    void HEMeshDataPanel::renderDataNode(DataNode& node)
+    {
+        const auto children = node.getChildren();
+        if (children.empty())
+        {
+            if (auto* meshData = dynamic_cast<MeshData*>(&node))
+            {
+                renderMeshNode(*meshData);
+            }
+            else
+            {
+                ImGui::TreeNodeEx(&node,
+                                  ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen,
+                                  "%s", node.getName().c_str());
+            }
+            return;
+        }
+
+        if (ImGui::TreeNodeEx(&node,
+                              ImGuiTreeNodeFlags_OpenOnArrow |
+                                  ImGuiTreeNodeFlags_OpenOnDoubleClick,
+                              "%s", node.getName().c_str()))
+        {
+            for (const auto& child : children)
+            {
+                if (auto* dataNode = dynamic_cast<DataNode*>(child.get()))
+                {
+                    renderDataNode(*dataNode);
+                }
+            }
+            ImGui::TreePop();
+        }
+    }
+
     void HEMeshDataPanel::renderNode(DataTree& node)
     {
         const auto dataNodes = node.getDataNodes();
-        const ImGuiTreeNodeFlags flags =
+        ImGuiTreeNodeFlags flags =
             ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+        if (dataNodes.empty())
+        {
+            flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+        }
         if (ImGui::TreeNodeEx(&node, flags, "%s", node.getName().c_str()))
         {
+            if (dataNodes.empty())
+            {
+                return;
+            }
             for (const auto& dataNode : dataNodes)
             {
-                if (auto* meshData = dynamic_cast<MeshData*>(dataNode.get()))
-                {
-                    renderMeshNode(*meshData);
-                }
-                else
-                {
-                    ImGui::TreeNodeEx(dataNode.get(),
-                                      ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen,
-                                      "%s", dataNode->getName().c_str());
-                }
+                renderDataNode(*dataNode);
             }
             ImGui::TreePop();
         }

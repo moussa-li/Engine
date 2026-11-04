@@ -6,6 +6,8 @@ namespace EgLab::Platform
 {
     struct MeshPODWireHeader
     {
+        static constexpr uint32_t MeshNameCapacity = 128;
+
         uint32_t nodeNumber{0};
         uint32_t elemNumber{0};
         uint32_t nodeIdsOffset{0};
@@ -14,5 +16,6 @@ namespace EgLab::Platform
         uint32_t elemTypesOffset{0};
         uint32_t elemDataOffset{0};
         uint32_t totalDataSize{0};
+        char meshName[MeshNameCapacity]{};
     };
 } // namespace EgLab::Platform

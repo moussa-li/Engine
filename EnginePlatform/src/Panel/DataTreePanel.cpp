@@ -121,46 +121,62 @@ namespace EgLab::Platform
         return false;
     }
 
-    bool DataTreePanel::renderCommonNode(DataTree& node, bool isSelected)
+    void DataTreePanel::renderDataNode(DataNode& node)
     {
-        const auto nodes = node.getDataNodes();
-        ImGuiTreeNodeFlags flags =
-            ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
-        if (isSelected)
+        const auto children = node.getChildren();
+        auto* meshData = dynamic_cast<MeshData*>(&node);
+        if (children.empty())
         {
-            flags |= ImGuiTreeNodeFlags_Selected;
-        }
-        if (nodes.empty())
-        {
-            flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-        }
-        const bool isOpen = ImGui::TreeNodeEx(&node, flags, "%s", node.getName().c_str());
-        return isOpen;
-    }
-
-    bool DataTreePanel::renderNode(DataTree& node)
-    {
-        const bool isOpen = renderCommonNode(node);
-        if (!isOpen)
-        {
-            return false;
-        }
-
-        for (const auto& dataNode : node.getDataNodes())
-        {
-            if (auto* meshData = dynamic_cast<MeshData*>(dataNode.get()))
+            if (meshData != nullptr)
             {
                 renderMeshNode(*meshData);
             }
             else
             {
-                ImGui::TreeNodeEx(dataNode.get(),
+                ImGui::TreeNodeEx(&node,
                                   ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen,
-                                  "%s", dataNode->getName().c_str());
+                                  "%s", node.getName().c_str());
             }
+            return;
+        }
+
+        const bool isOpen = ImGui::TreeNodeEx(
+            &node, ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick, "%s",
+            node.getName().c_str());
+        if (isOpen)
+        {
+            for (const auto& child : children)
+            {
+                if (auto* dataNode = dynamic_cast<DataNode*>(child.get()))
+                {
+                    renderDataNode(*dataNode);
+                }
+            }
+            ImGui::TreePop();
+        }
+    }
+
+    bool DataTreePanel::renderNode(DataTree& node)
+    {
+        const auto nodes = node.getDataNodes();
+        ImGuiTreeNodeFlags flags =
+            ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+        if (nodes.empty())
+        {
+            flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+        }
+        const bool isOpen = ImGui::TreeNodeEx(&node, flags, "%s", node.getName().c_str());
+        if (!isOpen || nodes.empty())
+        {
+            return isOpen;
+        }
+
+        for (const auto& dataNode : nodes)
+        {
+            renderDataNode(*dataNode);
         }
         ImGui::TreePop();
-        return isOpen;
+        return true;
     }
 
     DataTreePanel::DataTreePanel()

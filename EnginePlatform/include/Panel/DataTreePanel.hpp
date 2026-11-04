@@ -32,9 +32,9 @@ namespace EgLab::Platform
     private:
         bool renderNode(DataTree& node);
 
-        bool renderMeshNode(MeshData& meshData);
+        void renderDataNode(DataNode& node);
 
-        bool renderCommonNode(DataTree& node, bool isSelected = false);
+        bool renderMeshNode(MeshData& meshData);
 
     private:
         Common::DynamicArray<Common::SharedPtr<ME::Mesh>> _selectedMeshes;

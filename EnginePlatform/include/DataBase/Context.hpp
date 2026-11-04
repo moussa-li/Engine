@@ -33,7 +33,9 @@ namespace EgLab::Platform
 
         Common::Return addDataNode(const Common::SharedPtr<DataNode>& node);
         Common::SharedPtr<DataNode> getDataNode(DataNodeId id) const;
+        Common::SharedPtr<DataNode> getDataNode(const Common::String& name) const;
         Common::SharedPtr<DataNode> removeDataNode(DataNodeId id);
+        Common::Return updateDataNode(DataNodeId id, const Common::SharedPtr<DataNode>& node);
 
     protected:
         friend class Common::Singleton<Context>;

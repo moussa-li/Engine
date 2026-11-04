@@ -1,4 +1,7 @@
 #pragma once
+
+#include <mutex>
+
 #include "Common/SharedPtr.hpp"
 #include "Common/Vector.hpp"
 #include "DataBase/DataNode.hpp"
@@ -12,12 +15,13 @@ namespace EgLab::Platform
         MeshData(DataNodeId id, const Common::String& name,
                  const Common::SharedPtr<ME::Mesh>& mesh);
 
-        Common::SharedPtr<ME::Mesh>& getMesh();
-        const Common::SharedPtr<ME::Mesh>& getMesh() const;
+        Common::SharedPtr<ME::Mesh> getMesh() const;
+        void setMesh(const Common::SharedPtr<ME::Mesh>& mesh);
         const Common::Vector4f& getColor() const;
         void setColor(const Common::Vector4f& color);
 
     private:
+        mutable std::mutex _meshMutex;
         Common::SharedPtr<ME::Mesh> _mesh;
         Common::Vector4f _color{0.8f, 0.8f, 0.8f, 1.0f};
     };
