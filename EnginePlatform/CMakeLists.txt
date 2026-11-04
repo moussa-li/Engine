@@ -52,3 +52,7 @@ target_link_libraries(EnginePlatform PRIVATE
     glfw
     glew_s
 )
+
+if(WIN32)
+    target_link_libraries(EnginePlatform PRIVATE advapi32)
+endif()

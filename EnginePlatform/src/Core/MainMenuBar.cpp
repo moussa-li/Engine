@@ -2,6 +2,10 @@
 
 #include <filesystem>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #include "Command/CommandManager.hpp"
 #include "DataBase/Context.hpp"
 #include "ImGuiFileDialog.h"
@@ -17,6 +21,41 @@ namespace EgLab
         return Common::String(root.generic_string().c_str());
     }
 } // namespace EgLab
+
+#ifdef _WIN32
+namespace
+{
+    LSTATUS writeCurrentProcessIdToRegistry()
+    {
+        HKEY key = nullptr;
+        const LSTATUS openStatus = RegCreateKeyExW(
+            HKEY_CURRENT_USER,
+            L"Software\\EngineLab",
+            0,
+            nullptr,
+            REG_OPTION_NON_VOLATILE,
+            KEY_SET_VALUE,
+            nullptr,
+            &key,
+            nullptr);
+        if (openStatus != ERROR_SUCCESS)
+        {
+            return openStatus;
+        }
+
+        const DWORD processId = GetCurrentProcessId();
+        const LSTATUS writeStatus = RegSetValueExW(
+            key,
+            L"CURRENT_ENGINELAB_PROCESSID",
+            0,
+            REG_DWORD,
+            reinterpret_cast<const BYTE*>(&processId),
+            sizeof(processId));
+        const LSTATUS closeStatus = RegCloseKey(key);
+        return writeStatus == ERROR_SUCCESS ? closeStatus : writeStatus;
+    }
+} // namespace
+#endif
 
 namespace EgLab::Platform
 {
@@ -35,6 +74,11 @@ namespace EgLab::Platform
         {
             requestShowPanel("MeshImport");
         }
+
+#ifdef _WIN32
+        static bool registryWriteAttempted = false;
+        static LSTATUS registryWriteStatus = ERROR_SUCCESS;
+#endif
 
         if (ImGui::BeginMainMenuBar())
         {
@@ -88,6 +132,32 @@ namespace EgLab::Platform
                 }
                 ImGui::EndMenu();
             }
+
+#ifdef _WIN32
+            ImGui::SameLine();
+            if (ImGui::Button("Write PID to Registry"))
+            {
+                registryWriteStatus = writeCurrentProcessIdToRegistry();
+                registryWriteAttempted = true;
+            }
+            if (registryWriteAttempted)
+            {
+                ImGui::SameLine();
+                if (registryWriteStatus == ERROR_SUCCESS)
+                {
+                    ImGui::TextColored(
+                        ImVec4(0.3f, 0.8f, 0.3f, 1.0f),
+                        "PID saved to HKCU\\Software\\EngineLab");
+                }
+                else
+                {
+                    ImGui::TextColored(
+                        ImVec4(1.0f, 0.3f, 0.3f, 1.0f),
+                        "Registry write failed (error %ld)",
+                        static_cast<long>(registryWriteStatus));
+                }
+            }
+#endif
 
             ImGui::EndMainMenuBar();
         }
