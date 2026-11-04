@@ -41,10 +41,11 @@ namespace EgLab::ME
 
     Common::Return Mesh::addNode(Node &&n)
     {
-        if (_impl->_nodeIdToIdx.find(n.getId()) != _impl->_nodeIdToIdx.end())
+        auto it = _impl->_nodeIdToIdx.find(n.getId());
+        if (it != _impl->_nodeIdToIdx.end())
         {
-            LOG(ERROR) << "mesh::node already added!";
-            return Common::Return::BadInput;
+            Common::swapValues(_impl->_nodes[it.data().second], n);
+            return Common::Return::Succeed;
         }
         _impl->_nodeIdToIdx[n.getId()] = _impl->_nodes.size();
         _impl->_nodes.pushBack(Common::move(n));
@@ -70,10 +71,11 @@ namespace EgLab::ME
 
     Common::Return Mesh::addElem(Elem &&e)
     {
-        if (_impl->_elemIdToIdx.find(e.getId()) != _impl->_elemIdToIdx.end())
+        auto it = _impl->_elemIdToIdx.find(e.getId());
+        if (it != _impl->_elemIdToIdx.end())
         {
-            LOG(ERROR) << "mesh::elem already added!";
-            return Common::Return::BadInput;
+            Common::swapValues(_impl->_elems[it.data().second], e);
+            return Common::Return::Succeed;
         }
         _impl->_elemIdToIdx[e.getId()] = _impl->_elems.size();
         _impl->_elems.pushBack(Common::move(e));
