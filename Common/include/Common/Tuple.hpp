@@ -15,7 +15,7 @@ namespace EgLab::Common
         TupleElement() = default;
 
         template <typename U>
-        TupleElement(U&& v) : value(forward<U>(v))
+        TupleElement(U&& v) : value(Common::forward<U>(v))
         {
         }
     };
@@ -38,7 +38,8 @@ namespace EgLab::Common
 
         template <typename U, typename... Us>
         TupleImpl(U&& v, Us&&... vs)
-            : TupleElement<Index, T>(forward<U>(v)), TupleImpl<Index + 1, Ts...>(forward<Us>(vs)...)
+            : TupleElement<Index, T>(Common::forward<U>(v)),
+              TupleImpl<Index + 1, Ts...>(Common::forward<Us>(vs)...)
         {
         }
     };
@@ -52,7 +53,7 @@ namespace EgLab::Common
         Tuple() = default;
 
         template <typename... Us>
-        Tuple(Us&&... vs) : base_type(forward<Us>(vs)...)
+        Tuple(Us&&... vs) : base_type(Common::forward<Us>(vs)...)
         {
         }
     };

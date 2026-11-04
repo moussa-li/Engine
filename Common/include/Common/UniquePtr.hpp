@@ -62,7 +62,7 @@ namespace EgLab::Common
     template <class T, class... Args>
     UniquePtr<T> makeUnique(Args &&...args)
     {
-        return UniquePtr<T>(new T(forward<Args>(args)...));
+        return UniquePtr<T>(new T(Common::forward<Args>(args)...));
     }
 
     template <class Derived, class Base>

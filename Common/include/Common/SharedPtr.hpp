@@ -128,7 +128,7 @@ namespace EgLab::Common
                   typename = enableIf_t<!IsSharedPtr<decay_t<U>>::value &&
                                         !isSame<decay_t<U>, std::nullptr_t>::value>>
         explicit SharedPtr(U &&firstArg, Args &&...args)
-            : PtrBase<T>(static_cast<T *>(new TRef(forward<U>(firstArg), forward<Args>(args)...))),
+            : PtrBase<T>(static_cast<T *>(new TRef(Common::forward<U>(firstArg), Common::forward<Args>(args)...))),
               _ref(static_cast<TRef *>(this->_ptr))
         {
             _ref->addRef();
@@ -229,7 +229,7 @@ namespace EgLab::Common
         {
         public:
             template <typename... Args>
-            TRef(Args &&...args) : T(forward<Args>(args)...)
+            TRef(Args &&...args) : T(Common::forward<Args>(args)...)
             {
             }
 
@@ -266,7 +266,7 @@ namespace EgLab::Common
     template <class T, class... Args>
     SharedPtr<T> makeShared(Args &&...args)
     {
-        return SharedPtr<T>((T *)new typename SharedPtr<T>::TRef(forward<Args>(args)...));
+        return SharedPtr<T>((T *)new typename SharedPtr<T>::TRef(Common::forward<Args>(args)...));
     }
 
     template <class Derived, typename Base>
