@@ -35,4 +35,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads Assets)
 
 if(WIN32 AND BUILD_COMMON_SHARED)
     target_compile_definitions(${PROJECT_NAME} PRIVATE EgLabCommon)
+elseif(WIN32)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC COMMON_STATIC)
 endif()

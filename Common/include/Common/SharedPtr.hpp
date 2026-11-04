@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 /**
  * @file SharedPtr.hpp
  * @author Moussa-Li
@@ -45,7 +46,7 @@ namespace EgLab::Common
     public:
         inline size_t getRef()
         {
-            return ref;
+            return ref.load(std::memory_order_relaxed);
         }
 
     protected:
@@ -54,14 +55,14 @@ namespace EgLab::Common
     private:
         inline void addRef()
         {
-            ref++;
+            ref.fetch_add(1, std::memory_order_relaxed);
         }
-        inline void subRef()
+        inline size_t subRef()
         {
-            ref--;
+            return ref.fetch_sub(1, std::memory_order_acq_rel);
         }
 
-        size_t ref{0}; // for shared ptr
+        std::atomic<size_t> ref{0};
         template <typename T>
         friend class SharedPtr;
     };
@@ -216,8 +217,7 @@ namespace EgLab::Common
         {
             if (_ref)
             {
-                _ref->subRef();
-                if (_ref->getRef() == 0)
+                if (_ref->subRef() == 1)
                 {
                     delete _ref;
                 }

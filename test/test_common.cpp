@@ -1,5 +1,6 @@
 #include "test_common.h"
 
+#include <atomic>
 #include <thread>
 
 #include "Common/BBox.hpp"
@@ -580,6 +581,51 @@ TEST_F(TestCommon, sharedPtrPreservesControlBlockAcrossBaseConversion)
     EXPECT_EQ(destroyed, 0);
     casted = nullptr;
     EXPECT_EQ(destroyed, 1);
+}
+
+TEST_F(TestCommon, sharedPtrSupportsConcurrentCopiesAndDestruction)
+{
+    class Tracked
+    {
+    public:
+        explicit Tracked(std::atomic<int>& destroyed) : _destroyed(destroyed)
+        {
+        }
+
+        ~Tracked()
+        {
+            ++_destroyed;
+        }
+
+    private:
+        std::atomic<int>& _destroyed;
+    };
+
+    std::atomic<int> destroyed{0};
+    auto shared = EgLab::Common::makeShared<Tracked>(destroyed);
+    std::vector<std::thread> threads;
+    for (int threadIndex = 0; threadIndex < 8; ++threadIndex)
+    {
+        threads.emplace_back([shared]() {
+            for (int copyIndex = 0; copyIndex < 20000; ++copyIndex)
+            {
+                const auto copy = shared;
+                if (copy.get() == nullptr)
+                {
+                    std::terminate();
+                }
+            }
+        });
+    }
+
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+
+    EXPECT_EQ(destroyed.load(), 0);
+    shared = nullptr;
+    EXPECT_EQ(destroyed.load(), 1);
 }
 
 TEST_F(TestCommon, uniquePtr)
