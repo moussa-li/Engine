@@ -3,6 +3,8 @@
 
 #include <windows.h>
 
+#include <chrono>
+
 #ifdef READING
 #undef READING
 #endif
@@ -179,8 +181,7 @@ namespace EgLab::Common
     }
 
     bool MemoryQueue::popImpl(uint32_t& channelId, void* outBuffer, uint32_t bufferSize,
-                              uint32_t& outActualSize,
-                              DynamicArray<uint8_t>* dynamicBuffer)
+                              uint32_t& outActualSize, DynamicArray<uint8_t>* dynamicBuffer)
     {
         outActualSize = 0;
         auto resetFragments = [this]() {

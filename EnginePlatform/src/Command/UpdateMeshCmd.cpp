@@ -113,4 +113,5 @@ namespace EgLab::Platform
         LOG(INFO) << "UpdateMeshCmd::exec() updated mesh data and queued it for rendering";
         return Common::Return::Succeed;
     }
+
 } // namespace EgLab::Platform

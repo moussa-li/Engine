@@ -2,6 +2,7 @@
 
 #include "Common/DynamicArray.hpp"
 #include "Common/SharedPtr.hpp"
+#include "MeshEngine/Algorithm/ExtractSilhouette.hpp"
 #include "MeshEngine/Algorithm/ExtractSurface.hpp"
 #include "MeshEngine/IO/GmshImporter.hpp"
 #include "MeshEngine/IO/GrdImporter.hpp"
@@ -80,6 +81,39 @@ TEST_F(TestMesh, extraceSurface)
 
     EgLab::ME::ExtractSurface extractor(mesh);
     auto idxs = extractor.getSurface();
+}
+
+TEST_F(TestMesh, extractSilhouetteEdgesFromOpenTriangle)
+{
+    auto mesh = EgLab::Common::makeShared<EgLab::ME::Mesh>();
+    const EgLab::ME::CoordType coordinates[] = {{0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}};
+    for (EgLab::ME::IdType index = 0; index < 3; ++index)
+    {
+        EgLab::ME::Node node;
+        node.setId(index + 1);
+        auto coordinate = coordinates[index];
+        node.setXYZ(coordinate);
+        mesh->addNode(EgLab::Common::move(node));
+    }
+
+    EgLab::ME::Elem element;
+    element.setId(1);
+    element.setType(EgLab::ME::ElemType::Tri3);
+    element.setNode(0, 1);
+    element.setNode(1, 2);
+    element.setNode(2, 3);
+    mesh->addElem(EgLab::Common::move(element));
+
+    EgLab::ME::ExtractSilhouette extractor(mesh);
+    const auto edges = extractor.getSilhouetteEdges(EgLab::ME::CoordType(0.0, 0.0, 1.0));
+
+    ASSERT_EQ(edges.size(), 3u);
+    EXPECT_EQ(edges[0].first, 1u);
+    EXPECT_EQ(edges[0].second, 2u);
+    EXPECT_EQ(edges[1].first, 1u);
+    EXPECT_EQ(edges[1].second, 3u);
+    EXPECT_EQ(edges[2].first, 2u);
+    EXPECT_EQ(edges[2].second, 3u);
 }
 
 TEST_F(TestMesh, elemFaceGetterSupportsAllElementTypes)

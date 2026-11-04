@@ -1,18 +1,20 @@
 #pragma once
 
 #include <atomic>
+#include <condition_variable>
 #include <cstdint>
 #include <deque>
+#include <exception>
 #include <memory>
 #include <mutex>
 #include <thread>
 #include <type_traits>
-#include <vector>
 
 #include "Command/CommandBus.hpp"
 #include "Command/CommandIds.hpp"
 #include "Command/CommandParam.hpp"
 #include "Common/DynamicArray.hpp"
+#include "Common/HashMap.hpp"
 #include "Common/Publisher.hpp"
 #include "Common/SharedPtr.hpp"
 #include "Common/Singleton.hpp"
@@ -42,6 +44,7 @@ namespace EgLab::RE
 namespace EgLab::Platform
 {
     using PickInfoSubscriptionId = uint64_t;
+    using RenderUpdateTicket = uint64_t;
 
     enum class PickedMeshKind : uint32_t
     {
@@ -76,6 +79,21 @@ namespace EgLab::Platform
         Common::SharedPtr<ME::Mesh> sourceMesh;
         Common::SharedPtr<ME::Mesh> mesh;
         Common::SharedPtr<RE::MeshToTriFace> translator;
+        bool dirty{false};
+    };
+
+    struct RenderUpdateTicketHash
+    {
+        size_t operator()(RenderUpdateTicket ticket) const
+        {
+            return static_cast<size_t>(ticket ^ (ticket >> 32));
+        }
+
+        template <typename Value>
+        size_t operator()(const Common::Pair<RenderUpdateTicket, Value>& entry) const
+        {
+            return operator()(entry.first);
+        }
     };
 
     class RenderWork : public EgLab::Common::Singleton<RenderWork>
@@ -87,6 +105,7 @@ namespace EgLab::Platform
         void start();
         void stop();
         void releaseResources();
+        Common::Return commitPendingRenderUpdates();
         void bindWindow(const Common::SharedPtr<EgLab::RE::Window>& window);
         void bindRenderer(const Common::SharedPtr<EgLab::RE::Renderer>& renderer);
         void bindScene(const Common::SharedPtr<EgLab::RE::Scene>& scene);
@@ -99,8 +118,8 @@ namespace EgLab::Platform
 
         // RenderWork is a dedicated render event listener.
         void subscribe(EventId eventId);
-        void onUpdateMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
-        void onUpdateMesh(const UpdateMeshParam& params);
+        RenderUpdateTicket onUpdateMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
+        RenderUpdateTicket onUpdateMesh(const UpdateMeshParam& params);
         void setHighlightedMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
         void setHighlightedMeshes(
             const Common::DynamicArray<Common::SharedPtr<EgLab::ME::Mesh>>& meshes);
@@ -114,8 +133,6 @@ namespace EgLab::Platform
     private:
         enum class RenderEventType
         {
-            MeshUpdate,
-            RenderPacket,
             MeshColor,
             MeshRemoval,
             Highlight,
@@ -126,26 +143,28 @@ namespace EgLab::Platform
 
         struct RenderEvent
         {
-            RenderEventType type{RenderEventType::MeshUpdate};
-            std::vector<uint8_t> payload;
+            RenderEventType type{RenderEventType::FitView};
             Common::SharedPtr<ME::Mesh> mesh;
             Common::DynamicArray<Common::SharedPtr<ME::Mesh>> meshes;
             Common::SharedPtr<ME::HEMesh> heMesh;
             uint32_t heMeshVertexIndex{UINT32_MAX};
             uint32_t heMeshHalfEdgeIndex{UINT32_MAX};
             Common::Vector4f color;
-            RenderPacket packet;
         };
 
         void queueRenderEvent(RenderEvent event);
         void enqueueRenderEvent(RenderEvent event);
-        void queueMeshUpdate(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
-        void queueMeshUpdate(const UpdateMeshParam& params,
-                             const Common::SharedPtr<EgLab::ME::Mesh>& sourceMesh = nullptr);
+        RenderUpdateTicket queueMeshUpdate(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
+        RenderUpdateTicket queueMeshUpdate(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
+                                           Common::DynamicArray<uint8_t> payload);
+        RenderUpdateTicket queueMeshUpdate(const UpdateMeshParam& params);
+        Common::Return commitRenderUpdate(RenderUpdateTicket ticket);
+        void drainRenderUpdates();
         void drainRenderEvents();
         bool isMeshRemoved(const ME::Mesh* mesh);
-        void materializeMesh(const UpdateMeshParam& params,
-                             const Common::SharedPtr<EgLab::ME::Mesh>& sourceMesh);
+        RenderPacket prepareRenderPacket(const Common::SharedPtr<ME::Mesh>& mesh,
+                                         const Common::DynamicArray<uint8_t>& payload);
+        Common::Return uploadRenderPacket(const RenderPacket& packet);
         void updateMeshHighlight();
         void updateViewDependentHighlights();
         void updateHEMeshHighlight(const RenderEvent& event);
@@ -166,6 +185,15 @@ namespace EgLab::Platform
             std::unique_ptr<Common::Subscriber> subscriber;
         };
 
+        struct RenderPreparation
+        {
+            std::mutex mutex;
+            std::condition_variable condition;
+            RenderPacket packet;
+            std::exception_ptr error;
+            bool ready{false};
+        };
+
         std::thread _thread;
         std::atomic<bool> _running{false};
         Common::SharedPtr<EgLab::RE::Window> _window;
@@ -175,13 +203,23 @@ namespace EgLab::Platform
         Common::SharedPtr<EgLab::RE::MeshSelector> _meshSelector;
 
         std::mutex _pickInfoSubscriptionsMutex;
-        std::vector<std::unique_ptr<PickInfoSubscription>> _pickInfoSubscriptions;
+        Common::DynamicArray<std::unique_ptr<PickInfoSubscription>> _pickInfoSubscriptions;
         PickInfoSubscriptionId _nextPickInfoSubscriptionId{1};
         PickedMeshInfo _lastPublishedPickInfo;
         bool _hasPublishedPickInfo{false};
 
         std::mutex _renderEventMutex;
         std::deque<RenderEvent> _renderEventQueue;
+
+        std::mutex _renderUpdateMutex;
+        std::deque<Common::SharedPtr<ICommand>> _renderUpdateQueue;
+
+        std::mutex _renderPreparationMutex;
+        Common::HashMap<RenderUpdateTicket, Common::SharedPtr<RenderPreparation>,
+                        RenderUpdateTicketHash>
+            _renderPreparations;
+        Common::DynamicArray<RenderUpdateTicket> _pendingRenderUpdateTickets;
+        std::atomic<RenderUpdateTicket> _nextRenderUpdateTicket{1};
 
         Common::DynamicArray<MeshColor> _meshColors;
         Common::DynamicArray<RenderPacket> _activeMeshPackets;
@@ -205,7 +243,7 @@ namespace EgLab::Platform
         EgLab::RE::DeltaTime lastFrame;
         EgLab::RE::DeltaTime deltaTime;
 
-        CommandBus _renderUpdateBus{1};
+        CommandBus _renderEventBus{1};
 
         friend class EgLab::Common::Singleton<RenderWork>;
         friend class RenderUpdate;

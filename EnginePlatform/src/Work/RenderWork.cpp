@@ -1,16 +1,14 @@
 #include "Work/RenderWork.hpp"
 
-#include <algorithm>
-#include <chrono>
 #include <cstring>
 #include <map>
 #include <sstream>
-#include <utility>
+#include <stdexcept>
 
 #include "Command/MeshPODWire.hpp"
 #include "Common/Log.hpp"
 #include "Common/Performance.hpp"
-#include "MeshEngine/Algorithm/ExtractSurface.hpp"
+#include "MeshEngine/Algorithm/ExtractSilhouette.hpp"
 #include "MeshEngine/MeshData/HEMesh.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "MeshEngine/MeshData/MeshPOD.hpp"
@@ -29,176 +27,36 @@
 
 namespace EgLab::Platform
 {
-    namespace
+    Common::Return commitPendingRenderUpdates()
     {
-        struct SilhouetteEdgeFacing
-        {
-            uint32_t frontFaces{0};
-            uint32_t backFaces{0};
-        };
-
-        Common::DynamicArray<RE::IdxType> getSilhouetteEdgeIndices(
-            const Common::SharedPtr<ME::Mesh>& mesh, const RE::CoordType& cameraPosition,
-            Common::DynamicArray<RE::CoordType>& nodeCoordinates)
-        {
-            Common::DynamicArray<RE::IdxType> indices;
-            if (!mesh || mesh->getNodeNumber() == 0 || mesh->getElemNumber() == 0)
-            {
-                return indices;
-            }
-
-            ME::MeshIterator meshIterator(*mesh);
-
-            for (; meshIterator.hasMoreNode(); meshIterator.nextNode())
-            {
-                auto& node = meshIterator.currentNode();
-                nodeCoordinates.pushBack(RE::CoordType(node.x(), node.y(), node.z()));
-            }
-            std::map<std::pair<ME::IdType, ME::IdType>, SilhouetteEdgeFacing> edgeFacing;
-            ME::ExtractSurface surfaceExtractor(mesh);
-            const auto surfaceFaces = surfaceExtractor.getSurface();
-            for (const auto& surfaceFace : surfaceFaces)
-            {
-                auto& element = mesh->getElemById(surfaceFace.first);
-                ME::ElemFaceGetter faceGetter(element);
-                const int faceNodeCount = faceGetter.elemFaceNodeNumber(surfaceFace.second);
-                if (faceNodeCount < 3)
-                {
-                    continue;
-                }
-
-                Common::DynamicArray<ME::IdType> faceNodeIds;
-                Common::DynamicArray<RE::CoordType> facePoints;
-                RE::CoordType faceCenter(0.0f, 0.0f, 0.0f);
-                bool validFace = true;
-                for (int node = 0; node < faceNodeCount; ++node)
-                {
-                    const ME::IdType nodeId = faceGetter.elemFace(surfaceFace.second, node);
-                    const ME::IdxType nodeIndex = mesh->getNodeIdx(nodeId);
-                    if (nodeIndex >= nodeCoordinates.size())
-                    {
-                        validFace = false;
-                        break;
-                    }
-                    faceNodeIds.pushBack(nodeId);
-                    facePoints.pushBack(nodeCoordinates[nodeIndex]);
-                    faceCenter = faceCenter + nodeCoordinates[nodeIndex];
-                }
-                if (!validFace || facePoints.size() < 3)
-                {
-                    continue;
-                }
-                faceCenter = faceCenter * (1.0f / static_cast<float>(facePoints.size()));
-
-                RE::CoordType normal =
-                    (facePoints[1] - facePoints[0]).cross(facePoints[2] - facePoints[0]);
-                if (normal.length2() < 1e-12f)
-                {
-                    continue;
-                }
-                normal.normalize();
-
-                RE::CoordType elementCenter(0.0f, 0.0f, 0.0f);
-                const auto& elementNodeIds = element.getNodes();
-                uint32_t validElementNodeCount = 0;
-                for (ME::IdType nodeId : elementNodeIds)
-                {
-                    const ME::IdxType nodeIndex = mesh->getNodeIdx(nodeId);
-                    if (nodeIndex < nodeCoordinates.size())
-                    {
-                        elementCenter = elementCenter + nodeCoordinates[nodeIndex];
-                        ++validElementNodeCount;
-                    }
-                }
-                if (validElementNodeCount > 0)
-                {
-                    elementCenter =
-                        elementCenter * (1.0f / static_cast<float>(validElementNodeCount));
-                    if (normal.dot(faceCenter - elementCenter) < 0.0f)
-                    {
-                        normal = normal * -1.0f;
-                    }
-                }
-
-                const bool frontFacing = normal.dot(cameraPosition - faceCenter) >= -1e-6f;
-                for (size_t edge = 0; edge < faceNodeIds.size(); ++edge)
-                {
-                    ME::IdType firstNode = faceNodeIds[edge];
-                    ME::IdType secondNode = faceNodeIds[(edge + 1) % faceNodeIds.size()];
-                    if (secondNode < firstNode)
-                    {
-                        std::swap(firstNode, secondNode);
-                    }
-                    auto& facing = edgeFacing[{firstNode, secondNode}];
-                    if (frontFacing)
-                    {
-                        ++facing.frontFaces;
-                    }
-                    else
-                    {
-                        ++facing.backFaces;
-                    }
-                }
-            }
-
-            for (const auto& edge : edgeFacing)
-            {
-                const auto& facing = edge.second;
-                const bool silhouette =
-                    facing.frontFaces > 0 &&
-                    (facing.backFaces > 0 || facing.frontFaces + facing.backFaces == 1);
-                if (!silhouette)
-                {
-                    continue;
-                }
-                const ME::IdxType firstIndex = mesh->getNodeIdx(edge.first.first);
-                const ME::IdxType secondIndex = mesh->getNodeIdx(edge.first.second);
-                if (firstIndex < nodeCoordinates.size() && secondIndex < nodeCoordinates.size())
-                {
-                    indices.pushBack(static_cast<RE::IdxType>(firstIndex));
-                    indices.pushBack(static_cast<RE::IdxType>(secondIndex));
-                }
-            }
-            return indices;
-        }
-    } // namespace
+        return RenderWork::instance().commitPendingRenderUpdates();
+    }
 
     class RenderUpdate : public ICommand
     {
     public:
-        RenderUpdate(RenderWork* worker, Common::SharedPtr<ME::Mesh> mesh,
-                     Common::SharedPtr<ME::Mesh> sourceMesh)
-            : _mesh(mesh), _sourceMesh(sourceMesh), _worker(worker)
+        RenderUpdate(RenderWork* worker, RenderPacket packet)
+            : _packet(Common::move(packet)), _worker(worker)
         {
         }
 
-        Common::Return exec()
+        Common::Return exec() override
         {
-            if (!_worker->_running.load())
+            if (!_packet.dirty)
             {
                 return Common::Return::Succeed;
             }
 
-            Common::Performance perf;
-            EgLab::RE::MeshPrimitiveCreator creator(_mesh);
-            perf.start();
-            auto nodePrimitive = creator.getPrimitive<EgLab::RE::RenderNode>();
-            auto linePrimitive = creator.getPrimitive<EgLab::RE::RenderLine>();
-            auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();
-
-            RenderWork::RenderEvent event{};
-            event.type = RenderWork::RenderEventType::RenderPacket;
-            event.packet = {nodePrimitive, linePrimitive, facePrimitive,
-                            _sourceMesh,   _mesh,         creator.getTranslator()};
-            _worker->enqueueRenderEvent(Common::move(event));
-            perf.stop();
-
-            return Common::Return::Succeed;
+            const Common::Return result = _worker->uploadRenderPacket(_packet);
+            if (result == Common::Return::Succeed)
+            {
+                _packet.dirty = false;
+            }
+            return result;
         }
 
     private:
-        Common::SharedPtr<ME::Mesh> _mesh;
-        Common::SharedPtr<ME::Mesh> _sourceMesh;
+        RenderPacket _packet;
         RenderWork* _worker;
     };
 
@@ -210,14 +68,52 @@ namespace EgLab::Platform
         {
         }
 
+        RenderEventCommand(RenderWork* worker, Common::SharedPtr<ME::Mesh> mesh,
+                           Common::DynamicArray<uint8_t> payload,
+                           Common::SharedPtr<RenderWork::RenderPreparation> completion)
+            : _worker(worker),
+              _mesh(Common::move(mesh)),
+              _payload(Common::move(payload)),
+              _completion(Common::move(completion))
+        {
+        }
+
         Common::Return exec() override
         {
-            _worker->enqueueRenderEvent(Common::move(_event));
-            return Common::Return::Succeed;
+            if (!_completion)
+            {
+                _worker->enqueueRenderEvent(Common::move(_event));
+                return Common::Return::Succeed;
+            }
+
+            try
+            {
+                RenderPacket packet = _worker->prepareRenderPacket(_mesh, _payload);
+                {
+                    std::lock_guard<std::mutex> lock(_completion->mutex);
+                    _completion->packet = Common::move(packet);
+                    _completion->ready = true;
+                }
+                _completion->condition.notify_all();
+                return Common::Return::Succeed;
+            }
+            catch (...)
+            {
+                {
+                    std::lock_guard<std::mutex> lock(_completion->mutex);
+                    _completion->error = std::current_exception();
+                    _completion->ready = true;
+                }
+                _completion->condition.notify_all();
+                return Common::Return::Failed;
+            }
         }
 
     private:
         RenderWork* _worker;
+        Common::SharedPtr<ME::Mesh> _mesh;
+        Common::DynamicArray<uint8_t> _payload;
+        Common::SharedPtr<RenderWork::RenderPreparation> _completion;
         RenderWork::RenderEvent _event;
     };
 
@@ -260,6 +156,7 @@ namespace EgLab::Platform
                 lastFrame = currentFrame;
 
                 _window->activeContext();
+                drainRenderUpdates();
                 drainRenderEvents();
                 if (!_running.load())
                 {
@@ -325,7 +222,7 @@ namespace EgLab::Platform
         {
             _thread.join();
         }
-        _renderUpdateBus.stop(true);
+        _renderEventBus.stop(true);
     }
 
     void RenderWork::releaseResources()
@@ -351,6 +248,14 @@ namespace EgLab::Platform
         {
             std::lock_guard<std::mutex> lock(_renderEventMutex);
             _renderEventQueue.clear();
+        }
+        {
+            std::lock_guard<std::mutex> lock(_renderUpdateMutex);
+            _renderUpdateQueue.clear();
+        }
+        {
+            std::lock_guard<std::mutex> lock(_renderPreparationMutex);
+            _renderPreparations.clear();
         }
 
         _scene = nullptr;
@@ -386,19 +291,23 @@ namespace EgLab::Platform
             subscription->publisher->publish(static_cast<uint32_t>(EventId::MeshPickInfo),
                                              _lastPublishedPickInfo);
         }
-        _pickInfoSubscriptions.push_back(Common::move(subscription));
+        _pickInfoSubscriptions.pushBack(Common::move(subscription));
         return subscriptionId;
     }
 
     void RenderWork::unsubscribePickInfo(PickInfoSubscriptionId subscriptionId)
     {
         std::lock_guard<std::mutex> lock(_pickInfoSubscriptionsMutex);
-        _pickInfoSubscriptions.erase(
-            std::remove_if(_pickInfoSubscriptions.begin(), _pickInfoSubscriptions.end(),
-                           [subscriptionId](const auto& subscription) {
-                               return subscription->id == subscriptionId;
-                           }),
-            _pickInfoSubscriptions.end());
+        Common::DynamicArray<std::unique_ptr<PickInfoSubscription>> remaining;
+        for (auto& subscription : _pickInfoSubscriptions)
+        {
+            if (subscription->id != subscriptionId)
+            {
+                remaining.pushBack(Common::move(subscription));
+            }
+        }
+        _pickInfoSubscriptions.clear();
+        _pickInfoSubscriptions = Common::move(remaining);
     }
 
     bool RenderWork::tryReceivePickInfo(PickInfoSubscriptionId subscriptionId, PickedMeshInfo& info)
@@ -455,63 +364,140 @@ namespace EgLab::Platform
         }
     }
 
-    void RenderWork::queueMeshUpdate(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
+    RenderUpdateTicket RenderWork::queueMeshUpdate(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
     {
-        if (mesh == nullptr)
-        {
-            LOG(WARNING) << "RenderWork::queueMeshUpdate() skipped null mesh";
-            return;
-        }
-
-        const auto pod = EgLab::ME::MeshToPOD::serialize(mesh);
-        if (pod.totalDataSize == 0 || pod.data == nullptr)
-        {
-            LOG(ERROR) << "RenderWork::queueMeshUpdate() failed to serialize mesh";
-            return;
-        }
-
-        MeshPODWireHeader wire{};
-        wire.nodeNumber = pod.nodeNumber;
-        wire.elemNumber = pod.elemNumber;
-        wire.nodeIdsOffset = pod.nodeIdsOffset;
-        wire.nodeDataOffset = pod.nodeDataOffset;
-        wire.elemIdsOffset = pod.elemIdsOffset;
-        wire.elemTypesOffset = pod.elemTypesOffset;
-        wire.elemDataOffset = pod.elemDataOffset;
-        wire.totalDataSize = pod.totalDataSize;
-
-        const uint32_t wireSize = static_cast<uint32_t>(sizeof(MeshPODWireHeader));
-        RenderEvent event{};
-        event.type = RenderEventType::MeshUpdate;
-        event.mesh = mesh;
-        event.payload.resize(wireSize + pod.totalDataSize);
-        std::memcpy(event.payload.data(), &wire, wireSize);
-        std::memcpy(event.payload.data() + wireSize, pod.data, pod.totalDataSize);
-        queueRenderEvent(Common::move(event));
+        return queueMeshUpdate(mesh, Common::DynamicArray<uint8_t>());
     }
 
-    void RenderWork::queueMeshUpdate(const UpdateMeshParam& params,
-                                     const Common::SharedPtr<ME::Mesh>& sourceMesh)
+    RenderUpdateTicket RenderWork::queueMeshUpdate(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
+                                                   Common::DynamicArray<uint8_t> payload)
     {
-        if (params.dataSize == 0 || params.data == nullptr) return;
+        const RenderUpdateTicket ticket =
+            _nextRenderUpdateTicket.fetch_add(1, std::memory_order_relaxed);
+        auto completion = Common::makeShared<RenderPreparation>();
+        {
+            std::lock_guard<std::mutex> lock(_renderPreparationMutex);
+            _renderPreparations[ticket] = completion;
+            _pendingRenderUpdateTickets.pushBack(ticket);
+        }
 
-        RenderEvent event{};
-        event.type = RenderEventType::MeshUpdate;
-        event.mesh = sourceMesh;
-        event.payload.assign(params.data, params.data + params.dataSize);
-        queueRenderEvent(Common::move(event));
+        auto command = Common::SharedPtr<ICommand>(
+            Common::makeShared<RenderEventCommand>(this, mesh, Common::move(payload), completion));
+        if (_renderEventBus.dispatch(command) != Common::Return::Succeed)
+        {
+            {
+                std::lock_guard<std::mutex> lock(completion->mutex);
+                completion->error =
+                    std::make_exception_ptr(std::runtime_error("Render event queue is stopped"));
+                completion->ready = true;
+            }
+            completion->condition.notify_all();
+        }
+        return ticket;
+    }
+
+    RenderUpdateTicket RenderWork::queueMeshUpdate(const UpdateMeshParam& params)
+    {
+        if (params.data == nullptr || params.dataSize == 0)
+        {
+            return 0;
+        }
+
+        Common::DynamicArray<uint8_t> payload;
+        payload.pushBack(params.data, params.dataSize);
+        return queueMeshUpdate(nullptr, Common::move(payload));
+    }
+
+    Common::Return RenderWork::commitRenderUpdate(RenderUpdateTicket ticket)
+    {
+        Common::SharedPtr<RenderPreparation> preparation;
+        {
+            std::lock_guard<std::mutex> lock(_renderPreparationMutex);
+            const auto iter = _renderPreparations.find(ticket);
+            if (iter == _renderPreparations.end())
+            {
+                return Common::Return::Failed;
+            }
+            preparation = iter.data().second;
+            _renderPreparations.erase(ticket);
+        }
+
+        try
+        {
+            std::unique_lock<std::mutex> preparationLock(preparation->mutex);
+            preparation->condition.wait(preparationLock,
+                                        [&preparation] { return preparation->ready; });
+            if (preparation->error)
+            {
+                std::rethrow_exception(preparation->error);
+            }
+            RenderPacket packet = Common::move(preparation->packet);
+            preparationLock.unlock();
+            packet.dirty = true;
+            auto update = Common::SharedPtr<ICommand>(
+                Common::makeShared<RenderUpdate>(this, Common::move(packet)));
+            std::lock_guard<std::mutex> lock(_renderUpdateMutex);
+            _renderUpdateQueue.push_back(Common::move(update));
+            return Common::Return::Succeed;
+        }
+        catch (const std::exception& exception)
+        {
+            LOG(ERROR) << "RenderWork::commitRenderUpdate() failed: " << exception.what();
+            return Common::Return::Failed;
+        }
+    }
+
+    Common::Return RenderWork::commitPendingRenderUpdates()
+    {
+        Common::DynamicArray<RenderUpdateTicket> tickets;
+        {
+            std::lock_guard<std::mutex> lock(_renderPreparationMutex);
+            tickets = Common::move(_pendingRenderUpdateTickets);
+        }
+
+        Common::Return result = Common::Return::Succeed;
+        for (const RenderUpdateTicket ticket : tickets)
+        {
+            if (commitRenderUpdate(ticket) != Common::Return::Succeed)
+            {
+                result = Common::Return::Failed;
+            }
+        }
+        return result;
     }
 
     void RenderWork::queueRenderEvent(RenderEvent event)
     {
-        auto command = Common::SharedPtr<RenderEventCommand>(this, Common::move(event));
-        _renderUpdateBus.dispatch(command);
+        auto command = Common::SharedPtr<ICommand>(
+            Common::makeShared<RenderEventCommand>(this, Common::move(event)));
+        if (_renderEventBus.dispatch(command) != Common::Return::Succeed)
+        {
+            LOG(WARNING)
+                << "RenderWork::queueRenderEvent() dropped event because its queue is stopped";
+        }
     }
 
     void RenderWork::enqueueRenderEvent(RenderEvent event)
     {
         std::lock_guard<std::mutex> lock(_renderEventMutex);
         _renderEventQueue.push_back(Common::move(event));
+    }
+
+    void RenderWork::drainRenderUpdates()
+    {
+        std::deque<Common::SharedPtr<ICommand>> updates;
+        {
+            std::lock_guard<std::mutex> lock(_renderUpdateMutex);
+            updates.swap(_renderUpdateQueue);
+        }
+
+        for (const auto& update : updates)
+        {
+            if (update)
+            {
+                update->exec();
+            }
+        }
     }
 
     void RenderWork::drainRenderEvents()
@@ -531,74 +517,12 @@ namespace EgLab::Platform
 
             switch (event.type)
             {
-            case RenderEventType::MeshUpdate:
-            {
-                if (event.mesh && isMeshRemoved(event.mesh.get()))
-                {
-                    break;
-                }
-                UpdateMeshParam params{};
-                params.dataSize = static_cast<uint32_t>(event.payload.size());
-                params.data = event.payload.data();
-                materializeMesh(params, event.mesh);
-                break;
-            }
             case RenderEventType::FitView:
                 if (_camera && _scene)
                 {
                     _camera->fitView(_scene->getBounds(), 2);
                 }
                 break;
-            case RenderEventType::RenderPacket:
-            {
-                RenderPacket& packet = event.packet;
-                if (packet.sourceMesh && isMeshRemoved(packet.sourceMesh.get()))
-                {
-                    break;
-                }
-                if (packet.sourceMesh)
-                {
-                    Common::Vector4f color(0.8f, 0.8f, 0.8f, 1.0f);
-                    for (const auto& meshColor : _meshColors)
-                    {
-                        if (meshColor.mesh == packet.sourceMesh)
-                        {
-                            color = meshColor.color;
-                            break;
-                        }
-                    }
-                    auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(packet.renderFace);
-                    if (face)
-                    {
-                        face->setColor(color);
-                    }
-                }
-                packet.renderNode->setup();
-                packet.renderLine->setup();
-                packet.renderFace->setup();
-
-                if (_meshSelector && packet.mesh && packet.translator)
-                {
-                    _meshSelector->registerMesh(packet.mesh, packet.translator, packet.renderNode,
-                                                packet.renderLine, packet.renderFace);
-                }
-
-                Common::SharedPtr<RE::Shader> nodeShader;
-                Common::SharedPtr<RE::Shader> lineShader;
-                Common::SharedPtr<RE::Shader> faceShader;
-                RE::ShaderLib::instance().getNodeShader(nodeShader);
-                RE::ShaderLib::instance().getLineShader(lineShader);
-                RE::ShaderLib::instance().getFaceShader(faceShader);
-                _scene->addPrimitive(nodeShader, packet.renderNode);
-                _scene->addPrimitive(lineShader, packet.renderLine);
-                _scene->addPrimitive(faceShader, packet.renderFace);
-                if (packet.sourceMesh)
-                {
-                    _activeMeshPackets.pushBack(packet);
-                }
-                _camera->fitView(_scene->getBounds(), 2);
-                break;
-            }
             case RenderEventType::MeshColor:
             {
                 if (!event.mesh || isMeshRemoved(event.mesh.get()))
@@ -715,61 +639,125 @@ namespace EgLab::Platform
         }
     }
 
-    void RenderWork::materializeMesh(const UpdateMeshParam& params,
-                                     const Common::SharedPtr<ME::Mesh>& sourceMesh)
+    RenderPacket RenderWork::prepareRenderPacket(const Common::SharedPtr<ME::Mesh>& mesh,
+                                                 const Common::DynamicArray<uint8_t>& payload)
     {
-        if (params.dataSize <= sizeof(MeshPODWireHeader) || params.data == nullptr)
+        Common::SharedPtr<ME::Mesh> renderMesh = mesh;
+        if (!payload.empty())
         {
-            LOG(WARNING) << "RenderWork::onUpdateMesh() skipped empty or invalid wire payload";
-            return;
-        }
-
-        MeshPODWireHeader wire{};
-        std::memcpy(&wire, params.data, sizeof(MeshPODWireHeader));
-
-        if (wire.totalDataSize == 0 ||
-            wire.totalDataSize > params.dataSize - sizeof(MeshPODWireHeader))
-        {
-            LOG(WARNING) << "RenderWork::onUpdateMesh() skipped malformed nested mesh packet";
-            return;
-        }
-
-        const uint32_t payloadSize = wire.totalDataSize;
-        const uint32_t offsets[] = {
-            wire.nodeIdsOffset,   wire.nodeDataOffset, wire.elemIdsOffset,
-            wire.elemTypesOffset, wire.elemDataOffset,
-        };
-        for (uint32_t offset : offsets)
-        {
-            if (offset > payloadSize)
+            if (payload.size() <= sizeof(MeshPODWireHeader))
             {
-                LOG(WARNING) << "RenderWork::onUpdateMesh() skipped invalid mesh offset";
-                return;
+                throw std::runtime_error("Mesh update payload is empty or truncated");
+            }
+
+            MeshPODWireHeader wire{};
+            std::memcpy(&wire, payload.data(), sizeof(wire));
+
+            if (wire.totalDataSize == 0 ||
+                wire.totalDataSize > payload.size() - sizeof(MeshPODWireHeader))
+            {
+                throw std::runtime_error("Mesh update payload has an invalid data size");
+            }
+
+            const uint32_t offsets[] = {
+                wire.nodeIdsOffset,   wire.nodeDataOffset, wire.elemIdsOffset,
+                wire.elemTypesOffset, wire.elemDataOffset,
+            };
+            for (uint32_t offset : offsets)
+            {
+                if (offset > wire.totalDataSize)
+                {
+                    throw std::runtime_error("Mesh update payload has an invalid offset");
+                }
+            }
+
+            EgLab::ME::MeshPOD pod{};
+            pod.nodeNumber = wire.nodeNumber;
+            pod.elemNumber = wire.elemNumber;
+            pod.nodeIdsOffset = wire.nodeIdsOffset;
+            pod.nodeDataOffset = wire.nodeDataOffset;
+            pod.elemIdsOffset = wire.elemIdsOffset;
+            pod.elemTypesOffset = wire.elemTypesOffset;
+            pod.elemDataOffset = wire.elemDataOffset;
+            pod.totalDataSize = wire.totalDataSize;
+
+            pod.data = new uint8_t[pod.totalDataSize];
+            std::memcpy(pod.data, payload.data() + sizeof(MeshPODWireHeader), pod.totalDataSize);
+
+            renderMesh = EgLab::ME::MeshToPOD::deserialize(pod);
+            if (!renderMesh)
+            {
+                throw std::runtime_error("Failed to materialize mesh update payload");
             }
         }
 
-        EgLab::ME::MeshPOD pod{};
-        pod.nodeNumber = wire.nodeNumber;
-        pod.elemNumber = wire.elemNumber;
-        pod.nodeIdsOffset = wire.nodeIdsOffset;
-        pod.nodeDataOffset = wire.nodeDataOffset;
-        pod.elemIdsOffset = wire.elemIdsOffset;
-        pod.elemTypesOffset = wire.elemTypesOffset;
-        pod.elemDataOffset = wire.elemDataOffset;
-        pod.totalDataSize = wire.totalDataSize;
-
-        pod.data = new uint8_t[pod.totalDataSize];
-        std::memcpy(pod.data, params.data + sizeof(MeshPODWireHeader), pod.totalDataSize);
-
-        auto mesh = EgLab::ME::MeshToPOD::deserialize(pod);
-        if (!mesh)
+        if (!renderMesh)
         {
-            LOG(ERROR) << "RenderWork::onUpdateMesh() failed to materialize mesh";
-            return;
+            throw std::runtime_error("Cannot prepare a render packet for a null mesh");
         }
 
-        auto updater = Common::SharedPtr<RenderUpdate>(this, mesh, sourceMesh);
-        _renderUpdateBus.dispatch(updater);
+        EgLab::RE::MeshPrimitiveCreator creator(renderMesh);
+        auto nodePrimitive = creator.getPrimitive<EgLab::RE::RenderNode>();
+        auto linePrimitive = creator.getPrimitive<EgLab::RE::RenderLine>();
+        auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();
+        return {nodePrimitive, linePrimitive, facePrimitive,
+                mesh,          renderMesh,    creator.getTranslator()};
+    }
+
+    Common::Return RenderWork::uploadRenderPacket(const RenderPacket& packet)
+    {
+        if (!_running.load() || !_scene || !_camera)
+        {
+            return Common::Return::Failed;
+        }
+        if (packet.sourceMesh && isMeshRemoved(packet.sourceMesh.get()))
+        {
+            return Common::Return::Succeed;
+        }
+
+        if (packet.sourceMesh)
+        {
+            Common::Vector4f color(0.8f, 0.8f, 0.8f, 1.0f);
+            for (const auto& meshColor : _meshColors)
+            {
+                if (meshColor.mesh == packet.sourceMesh)
+                {
+                    color = meshColor.color;
+                    break;
+                }
+            }
+            auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(packet.renderFace);
+            if (face)
+            {
+                face->setColor(color);
+            }
+        }
+
+        packet.renderNode->setup();
+        packet.renderLine->setup();
+        packet.renderFace->setup();
+
+        if (_meshSelector && packet.mesh && packet.translator)
+        {
+            _meshSelector->registerMesh(packet.mesh, packet.translator, packet.renderNode,
+                                        packet.renderLine, packet.renderFace);
+        }
+
+        Common::SharedPtr<RE::Shader> nodeShader;
+        Common::SharedPtr<RE::Shader> lineShader;
+        Common::SharedPtr<RE::Shader> faceShader;
+        RE::ShaderLib::instance().getNodeShader(nodeShader);
+        RE::ShaderLib::instance().getLineShader(lineShader);
+        RE::ShaderLib::instance().getFaceShader(faceShader);
+        _scene->addPrimitive(nodeShader, packet.renderNode);
+        _scene->addPrimitive(lineShader, packet.renderLine);
+        _scene->addPrimitive(faceShader, packet.renderFace);
+        if (packet.sourceMesh)
+        {
+            _activeMeshPackets.pushBack(packet);
+        }
+        _camera->fitView(_scene->getBounds(), 2);
+        return Common::Return::Succeed;
     }
 
     void RenderWork::fitView()
@@ -779,14 +767,14 @@ namespace EgLab::Platform
         queueRenderEvent(Common::move(event));
     }
 
-    void RenderWork::onUpdateMesh(const UpdateMeshParam& params)
+    RenderUpdateTicket RenderWork::onUpdateMesh(const UpdateMeshParam& params)
     {
-        queueMeshUpdate(params);
+        return queueMeshUpdate(params);
     }
 
-    void RenderWork::onUpdateMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
+    RenderUpdateTicket RenderWork::onUpdateMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
     {
-        queueMeshUpdate(mesh);
+        return queueMeshUpdate(mesh);
     }
 
     void RenderWork::setHighlightedMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
@@ -967,22 +955,50 @@ namespace EgLab::Platform
 
         for (const auto& mesh : _activeHighlightedMeshes)
         {
-            // Common::DynamicArray<RE::CoordType> nodeCoordinates;
-            // auto indices = getSilhouetteEdgeIndices(mesh, cameraPosition, nodeCoordinates);
-            // if (indices.empty())
-            // {
-            //     continue;
-            // }
+            ME::ExtractSilhouette extractor(mesh);
+            const auto edges = extractor.getSilhouetteEdges(
+                ME::CoordType(cameraPosition.x(), cameraPosition.y(), cameraPosition.z()));
+            if (edges.empty())
+            {
+                continue;
+            }
 
-            // auto linePrimitive = Common::makeShared<RE::RenderLine>();
-            // linePrimitive->setNodes(Common::move(nodeCoordinates));
-            // linePrimitive->setIndices(Common::move(indices));
-            // linePrimitive->setColor(Common::Vector4f(1.0f, 0.75f, 0.1f, 1.0f));
-            // linePrimitive->setup();
-            // if (_scene->addPrimitive(_highlightShader, linePrimitive) == Common::Return::Succeed)
-            // {
-            //     _highlightContourPrimitives.pushBack(linePrimitive);
-            // }
+            Common::DynamicArray<RE::CoordType> nodeCoordinates;
+            std::map<ME::IdType, RE::IdxType> nodeIndices;
+            ME::MeshIterator meshIterator(*mesh);
+            for (; meshIterator.hasMoreNode(); meshIterator.nextNode())
+            {
+                auto& node = meshIterator.currentNode();
+                nodeIndices[node.getId()] = static_cast<RE::IdxType>(nodeCoordinates.size());
+                nodeCoordinates.pushBack(RE::CoordType(node.x(), node.y(), node.z()));
+            }
+
+            Common::DynamicArray<RE::IdxType> indices;
+            for (const auto& edge : edges)
+            {
+                const auto firstIndex = nodeIndices.find(edge.first);
+                const auto secondIndex = nodeIndices.find(edge.second);
+                if (firstIndex == nodeIndices.end() || secondIndex == nodeIndices.end())
+                {
+                    continue;
+                }
+                indices.pushBack(firstIndex->second);
+                indices.pushBack(secondIndex->second);
+            }
+            if (indices.empty())
+            {
+                continue;
+            }
+
+            auto linePrimitive = Common::makeShared<RE::RenderLine>();
+            linePrimitive->setNodes(Common::move(nodeCoordinates));
+            linePrimitive->setIndices(Common::move(indices));
+            linePrimitive->setColor(Common::Vector4f(1.0f, 0.75f, 0.1f, 1.0f));
+            linePrimitive->setup();
+            if (_scene->addPrimitive(_highlightShader, linePrimitive) == Common::Return::Succeed)
+            {
+                _highlightContourPrimitives.pushBack(linePrimitive);
+            }
         }
     }
 

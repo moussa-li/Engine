@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Command/CommandParam.hpp"
+#include "Common/DynamicArray.hpp"
 #include "Common/Exception.hpp"
 #include "Common/Log.hpp"
 #include "Common/Performance.hpp"
@@ -9,6 +10,8 @@
 
 namespace EgLab::Platform
 {
+    Common::Return commitPendingRenderUpdates();
+
     class ICommand
     {
     public:
@@ -60,7 +63,11 @@ namespace EgLab::Platform
             {
                 beginTransaction();
                 Common::Return ret = execImpl();
-                endTransaction();
+                const Common::Return endResult = endTransaction();
+                if (ret == Common::Return::Succeed && endResult != Common::Return::Succeed)
+                {
+                    ret = endResult;
+                }
                 _performance.stop();
                 LOG(INFO) << "Finished executing command: " << getCmdName()
                           << ", end_ms=" << _performance.getEndTimestampMs()
@@ -88,7 +95,7 @@ namespace EgLab::Platform
 
         virtual Common::Return endTransaction()
         {
-            return Common::Return::Succeed;
+            return commitPendingRenderUpdates();
         }
 
     protected:
