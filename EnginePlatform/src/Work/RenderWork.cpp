@@ -492,6 +492,11 @@ namespace EgLab::Platform
                 break;
             case RenderEventType::MeshUpdate:
             case RenderEventType::FitView:
+                if (_camera && _scene)
+                {
+                    _camera->fitView(_scene->getBounds(), 2);
+                }
+                break;
             case RenderEventType::HEMeshHighlight:
                 break;
             }
@@ -500,8 +505,8 @@ namespace EgLab::Platform
         {
             std::lock_guard<std::mutex> lock(_renderEventMutex);
             _renderEventQueue.push_back(Common::move(event));
-            _renderEventsPending.store(true, std::memory_order_release);
-            _renderEventBus.setPushAllowed(false);
+            // _renderEventsPending.store(true, std::memory_order_release);
+            // _renderEventBus.setPushAllowed(false);
         }
     }
 
@@ -511,10 +516,6 @@ namespace EgLab::Platform
         switch (event.type)
         {
         case RenderEventType::FitView:
-            if (_camera && _scene)
-            {
-                _camera->fitView(_scene->getBounds(), 2);
-            }
             break;
         case RenderEventType::MeshUpdate:
             return uploadRenderPacket(event.packet);
