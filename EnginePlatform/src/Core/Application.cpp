@@ -11,7 +11,6 @@
 #include "Work/RenderWork.hpp"
 #include "Work/UIWork.hpp"
 
-
 namespace EgLab::Platform
 {
 
@@ -54,6 +53,10 @@ namespace EgLab::Platform
         background[2] = ini.getFloat("appearance.background.b", background[2]);
         background[3] = ini.getFloat("appearance.background.a", background[3]);
         renderer->setBackGroundColor(background);
+        ini.setFloat("appearance.background.r", background[0]);
+        ini.setFloat("appearance.background.g", background[1]);
+        ini.setFloat("appearance.background.b", background[2]);
+        ini.setFloat("appearance.background.a", background[3]);
 
         auto light = renderer->getLightSettings();
         light.ambient[0] = ini.getFloat("light.ambient.r", light.ambient[0]);

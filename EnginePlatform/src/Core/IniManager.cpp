@@ -45,7 +45,7 @@ namespace EgLab::Platform
         }
     } // namespace
 
-    IniManager::IniManager() : _filePath("EgPlatfrom.ini")
+    IniManager::IniManager() : _filePath("EgPlatform.ini")
     {
     }
 
@@ -208,6 +208,14 @@ namespace EgLab::Platform
     void IniManager::loadFromDisk()
     {
         std::ifstream input(_filePath);
+        bool migratedLegacyFile = false;
+        if (!input)
+        {
+            input.clear();
+            input.open("EgPlatfrom.ini");
+            migratedLegacyFile = static_cast<bool>(input);
+        }
+
         std::string line;
         while (std::getline(input, line))
         {
@@ -229,6 +237,12 @@ namespace EgLab::Platform
             {
                 _values[Common::String(key.c_str())] = Common::String(value.c_str());
             }
+        }
+
+        if (migratedLegacyFile)
+        {
+            _dirty = true;
+            ++_revision;
         }
     }
 

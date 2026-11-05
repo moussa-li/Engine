@@ -3,8 +3,13 @@
 #include <GL/glew.h>
 
 #include <chrono>
+#include <cstdio>
+#include <fstream>
+#include <iterator>
+#include <string>
 
 #include "Common/Log.hpp"
+#include "Core/IniManager.hpp"
 #include "Core/MainMenuBar.hpp"
 #include "DataBase/Context.hpp"
 #include "GLFW/glfw3.h"
@@ -16,6 +21,70 @@
 
 namespace EgLab::Platform
 {
+    namespace
+    {
+        std::string encodeSettings(const std::string& settings)
+        {
+            constexpr char digits[] = "0123456789abcdef";
+            std::string encoded;
+            encoded.reserve(settings.size() * 2);
+            for (const unsigned char byte : settings)
+            {
+                encoded.push_back(digits[byte >> 4]);
+                encoded.push_back(digits[byte & 0x0f]);
+            }
+            return encoded;
+        }
+
+        std::string decodeSettings(const std::string& encoded)
+        {
+            if (encoded.size() % 2 != 0)
+            {
+                return {};
+            }
+
+            const auto nibble = [](char value) -> int {
+                if (value >= '0' && value <= '9')
+                {
+                    return value - '0';
+                }
+                if (value >= 'a' && value <= 'f')
+                {
+                    return value - 'a' + 10;
+                }
+                if (value >= 'A' && value <= 'F')
+                {
+                    return value - 'A' + 10;
+                }
+                return -1;
+            };
+
+            std::string decoded;
+            decoded.reserve(encoded.size() / 2);
+            for (size_t index = 0; index < encoded.size(); index += 2)
+            {
+                const int high = nibble(encoded[index]);
+                const int low = nibble(encoded[index + 1]);
+                if (high < 0 || low < 0)
+                {
+                    return {};
+                }
+                decoded.push_back(static_cast<char>((high << 4) | low));
+            }
+            return decoded;
+        }
+
+        void saveImGuiSettings()
+        {
+            size_t settingsSize = 0;
+            const char* settings = ImGui::SaveIniSettingsToMemory(&settingsSize);
+            IniManager::instance().setValue(
+                "ui.imguiSettingsHex",
+                Common::String(encodeSettings(std::string(settings, settingsSize)).c_str()));
+            ImGui::GetIO().WantSaveIniSettings = false;
+        }
+    } // namespace
+
     UIWork::UIWork()
     {
     }
@@ -113,6 +182,33 @@ namespace EgLab::Platform
         style.ItemInnerSpacing = ImVec2(6, 6);
 
         ImGuiIO& io = ImGui::GetIO();
+        io.IniFilename = nullptr;
+
+        auto& ini = IniManager::instance();
+        const auto storedSettings = ini.getValue("ui.imguiSettingsHex");
+        if (storedSettings != "")
+        {
+            const std::string decoded = decodeSettings(storedSettings.c_str());
+            if (!decoded.empty())
+            {
+                ImGui::LoadIniSettingsFromMemory(decoded.data(), decoded.size());
+            }
+        }
+        else
+        {
+            std::ifstream legacyFile("imgui.ini", std::ios::binary);
+            if (legacyFile)
+            {
+                const std::string legacySettings((std::istreambuf_iterator<char>(legacyFile)),
+                                                 std::istreambuf_iterator<char>());
+                ImGui::LoadIniSettingsFromMemory(legacySettings.data(), legacySettings.size());
+                saveImGuiSettings();
+                if (ini.flush())
+                {
+                    std::remove("imgui.ini");
+                }
+            }
+        }
 
         ImFont* mainFont = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/msyh.ttc", 16.0f, nullptr,
                                                         io.Fonts->GetGlyphRangesChineseFull());
@@ -135,6 +231,10 @@ namespace EgLab::Platform
         renderRibbonToolbar();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        if (ImGui::GetIO().WantSaveIniSettings)
+        {
+            saveImGuiSettings();
+        }
     }
 
     void UIWork::shutdownImGui()
