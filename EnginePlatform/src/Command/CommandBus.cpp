@@ -15,6 +15,9 @@ namespace EgLab::Platform
 
         std::mutex _mutex;
         std::condition_variable _cv;
+        std::condition_variable _idleCv;
+        size_t _pendingCount{0};
+        bool _pushAllowed{true};
         bool _stop = false;
         bool _discardPending = false;
     };
@@ -39,7 +42,26 @@ namespace EgLab::Platform
                         command = Common::move(_impl->_commandQueue.front());
                         _impl->_commandQueue.pop();
                     }
-                    if (command) command->exec();
+                    if (command)
+                    {
+                        try
+                        {
+                            command->exec();
+                        }
+                        catch (...)
+                        {
+                        }
+
+                        bool idle = false;
+                        {
+                            std::lock_guard<std::mutex> lock(_impl->_mutex);
+                            idle = --_impl->_pendingCount == 0;
+                        }
+                        if (idle)
+                        {
+                            _impl->_idleCv.notify_all();
+                        }
+                    }
                 }
             }));
         }
@@ -59,10 +81,16 @@ namespace EgLab::Platform
             _impl->_discardPending = _impl->_discardPending || discardPending;
             if (_impl->_discardPending)
             {
+                while (!_impl->_commandQueue.empty())
+                {
+                    _impl->_commandQueue.pop();
+                    --_impl->_pendingCount;
+                }
                 _impl->_commandQueue.swap(discardedCommands);
             }
         }
         _impl->_cv.notify_all();
+        _impl->_idleCv.notify_all();
         for (std::thread& worker : _impl->_workers)
         {
             if (worker.joinable()) worker.join();
@@ -71,16 +99,44 @@ namespace EgLab::Platform
 
     Common::Return CommandBus::dispatch(Common::SharedPtr<ICommand> command)
     {
+        return dispatch(Common::move(command), false);
+    }
+
+    Common::Return CommandBus::dispatch(Common::SharedPtr<ICommand> command,
+                                        bool waitForPushAllowed)
+    {
         {
-            std::lock_guard<std::mutex> lock(_impl->_mutex);
+            std::unique_lock<std::mutex> lock(_impl->_mutex);
+            if (waitForPushAllowed)
+            {
+                _impl->_idleCv.wait(lock, [this] {
+                    return _impl->_stop || (_impl->_pushAllowed && _impl->_pendingCount == 0);
+                });
+            }
             if (_impl->_stop)
             {
                 return Common::Return::Failed;
             }
             _impl->_commandQueue.push(Common::move(command));
+            ++_impl->_pendingCount;
         }
         _impl->_cv.notify_one();
         return Common::Return::Succeed;
+    }
+
+    void CommandBus::setPushAllowed(bool allowed)
+    {
+        {
+            std::lock_guard<std::mutex> lock(_impl->_mutex);
+            _impl->_pushAllowed = allowed;
+        }
+        _impl->_idleCv.notify_all();
+    }
+
+    void CommandBus::waitIdle()
+    {
+        std::unique_lock<std::mutex> lock(_impl->_mutex);
+        _impl->_idleCv.wait(lock, [this] { return _impl->_pendingCount == 0; });
     }
 
 } // namespace EgLab::Platform

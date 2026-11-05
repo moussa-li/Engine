@@ -20,6 +20,9 @@ namespace EgLab::Platform
         void stop(bool discardPending = false);
 
         Common::Return dispatch(Common::SharedPtr<ICommand> command);
+        Common::Return dispatch(Common::SharedPtr<ICommand> command, bool waitForPushAllowed);
+        void setPushAllowed(bool allowed);
+        void waitIdle();
 
     private:
         class Impl;

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <atomic>
-#include <condition_variable>
 #include <cstdint>
 #include <deque>
 #include <memory>
@@ -138,8 +137,6 @@ namespace EgLab::Platform
 
         void queueRenderEvent(RenderEvent event);
         void drainRenderEvents();
-        bool beginRenderEventCommand();
-        void endRenderEventCommand();
         void processRenderEvent(RenderEvent event);
         Common::Return applyRenderUpdate(const RenderEvent& event);
         bool isMeshRemoved(const ME::Mesh* mesh);
@@ -166,7 +163,6 @@ namespace EgLab::Platform
 
         std::thread _thread;
         std::atomic<bool> _running{false};
-        std::atomic<bool> _stopping{false};
         Common::SharedPtr<EgLab::RE::Window> _window;
         Common::SharedPtr<EgLab::RE::Renderer> _renderer;
         Common::SharedPtr<EgLab::RE::Scene> _scene;
@@ -180,11 +176,8 @@ namespace EgLab::Platform
         bool _hasPublishedPickInfo{false};
 
         std::mutex _renderEventMutex;
-        std::condition_variable _renderEventCondition;
         std::deque<RenderEvent> _renderEventQueue;
         std::atomic<bool> _renderEventsPending{false};
-        std::atomic<uint32_t> _renderCommitRequests{0};
-        size_t _activeRenderEventCommands{0};
         std::mutex _renderStateMutex;
 
         Common::DynamicArray<MeshColor> _meshColors;

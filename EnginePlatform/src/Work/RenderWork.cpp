@@ -42,11 +42,6 @@ namespace EgLab::Platform
 
         Common::Return exec() override
         {
-            if (!_worker->beginRenderEventCommand())
-            {
-                return Common::Return::Failed;
-            }
-
             try
             {
                 _worker->processRenderEvent(Common::move(_event));
@@ -54,16 +49,13 @@ namespace EgLab::Platform
             catch (const std::exception& exception)
             {
                 LOG(ERROR) << "RenderEventCommand::exec() failed: " << exception.what();
-                _worker->endRenderEventCommand();
                 return Common::Return::Failed;
             }
             catch (...)
             {
                 LOG(ERROR) << "RenderEventCommand::exec() failed with an unknown exception";
-                _worker->endRenderEventCommand();
                 return Common::Return::Failed;
             }
-            _worker->endRenderEventCommand();
             return Common::Return::Succeed;
         }
 
@@ -98,9 +90,7 @@ namespace EgLab::Platform
             _window->start();
         }
 
-        _stopping = false;
         _running = true;
-        _renderEventCondition.notify_all();
         _thread = std::thread([this]() {
             UIWork::instance().start();
 
@@ -172,9 +162,8 @@ namespace EgLab::Platform
 
     void RenderWork::stop()
     {
-        _stopping = true;
         _running = false;
-        _renderEventCondition.notify_all();
+        _renderEventBus.setPushAllowed(true);
         if (_thread.joinable())
         {
             _thread.join();
@@ -207,7 +196,7 @@ namespace EgLab::Platform
             _renderEventQueue.clear();
             _renderEventsPending.store(false, std::memory_order_release);
         }
-        _renderEventCondition.notify_all();
+        _renderEventBus.setPushAllowed(true);
 
         _scene = nullptr;
         _renderer = nullptr;
@@ -217,16 +206,13 @@ namespace EgLab::Platform
 
     Common::Return RenderWork::commitPendingRenderUpdates()
     {
-        _renderCommitRequests.fetch_add(1, std::memory_order_acq_rel);
-        std::unique_lock<std::mutex> lock(_renderEventMutex);
-        _renderEventCondition.wait(lock, [this] { return _activeRenderEventCommands == 0; });
+        _renderEventBus.waitIdle();
+        std::lock_guard<std::mutex> lock(_renderEventMutex);
         if (!_renderEventQueue.empty())
         {
             _renderEventsPending.store(true, std::memory_order_release);
+            _renderEventBus.setPushAllowed(false);
         }
-        _renderCommitRequests.fetch_sub(1, std::memory_order_acq_rel);
-        lock.unlock();
-        _renderEventCondition.notify_all();
         return Common::Return::Succeed;
     }
 
@@ -334,7 +320,7 @@ namespace EgLab::Platform
     {
         auto command = Common::SharedPtr<ICommand>(
             Common::makeShared<RenderEventCommand>(this, Common::move(event)));
-        if (_renderEventBus.dispatch(command) != Common::Return::Succeed)
+        if (_renderEventBus.dispatch(command, true) != Common::Return::Succeed)
         {
             LOG(WARNING)
                 << "RenderWork::queueRenderEvent() dropped event because its queue is stopped";
@@ -352,8 +338,8 @@ namespace EgLab::Platform
             }
             events.swap(_renderEventQueue);
             _renderEventsPending.store(false, std::memory_order_release);
+            _renderEventBus.setPushAllowed(true);
         }
-        _renderEventCondition.notify_all();
 
         for (const auto& event : events)
         {
@@ -363,41 +349,6 @@ namespace EgLab::Platform
             }
             applyRenderUpdate(event);
         }
-    }
-
-    bool RenderWork::beginRenderEventCommand()
-    {
-        std::unique_lock<std::mutex> lock(_renderEventMutex);
-        _renderEventCondition.wait(lock, [this] {
-            return _stopping.load() ||
-                   (_running.load() && _renderCommitRequests.load(std::memory_order_acquire) == 0);
-        });
-        if (_stopping.load())
-        {
-            return false;
-        }
-
-        ++_activeRenderEventCommands;
-        _renderEventCondition.wait(lock, [this] {
-            return _stopping.load() || !_renderEventsPending.load(std::memory_order_acquire);
-        });
-        if (_stopping.load())
-        {
-            --_activeRenderEventCommands;
-            lock.unlock();
-            _renderEventCondition.notify_all();
-            return false;
-        }
-        return true;
-    }
-
-    void RenderWork::endRenderEventCommand()
-    {
-        {
-            std::lock_guard<std::mutex> lock(_renderEventMutex);
-            --_activeRenderEventCommands;
-        }
-        _renderEventCondition.notify_all();
     }
 
     void RenderWork::processRenderEvent(RenderEvent event)
@@ -550,6 +501,7 @@ namespace EgLab::Platform
             std::lock_guard<std::mutex> lock(_renderEventMutex);
             _renderEventQueue.push_back(Common::move(event));
             _renderEventsPending.store(true, std::memory_order_release);
+            _renderEventBus.setPushAllowed(false);
         }
     }
 
