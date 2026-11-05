@@ -239,6 +239,10 @@ namespace EgLab::Platform
 
     void UIWork::shutdownImGui()
     {
+        if (ImGui::GetIO().WantSaveIniSettings)
+        {
+            saveImGuiSettings();
+        }
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
