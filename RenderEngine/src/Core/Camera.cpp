@@ -4,7 +4,6 @@
 
 #include <algorithm>
 
-
 namespace EgLab::RE
 {
     /**
@@ -56,6 +55,7 @@ namespace EgLab::RE
 
     void Camera::setFront(const CoordType &front)
     {
+        _cameraTransitionActive = false;
         _front = front;
         //_front.normalize();
     }
@@ -111,12 +111,56 @@ namespace EgLab::RE
         const float halfHeight =
             std::max(verticalExtent, horizontalExtent / std::max(aspect, 0.01f));
 
-        _target = center;
-        _zoom = std::max(0.1f, halfHeight * safeMargin);
-        _position = center - front * std::max(1.0f, std::max(depthExtent + 1.0f, radius * 2.0f));
-        _front = front;
-        _right = right;
-        _up = up;
+        const CoordType position =
+            center - front * std::max(1.0f, std::max(depthExtent + 1.0f, radius * 2.0f));
+        setCamera(position, center, std::max(0.1f, halfHeight * safeMargin));
+    }
+
+    void Camera::setCamera(const CoordType &position, const CoordType &target, float zoom,
+                           float duration)
+    {
+        _cameraTransitionActive = false;
+        if (duration <= 0.0f)
+        {
+            _position = position;
+            _target = target;
+            _zoom = zoom;
+            return;
+        }
+
+        _cameraTransitionStartPosition = _position;
+        _cameraTransitionStartTarget = _target;
+        _cameraTransitionStartZoom = _zoom;
+        _cameraTransitionEndPosition = position;
+        _cameraTransitionEndTarget = target;
+        _cameraTransitionEndZoom = zoom;
+        _cameraTransitionDuration = duration;
+        _cameraTransitionElapsed = 0.0f;
+        _cameraTransitionActive = true;
+    }
+
+    void Camera::updateCameraTransition(float deltaTime)
+    {
+        if (!_cameraTransitionActive)
+        {
+            return;
+        }
+
+        _cameraTransitionElapsed = std::min(_cameraTransitionDuration,
+                                            _cameraTransitionElapsed + std::max(0.0f, deltaTime));
+        const float progress = _cameraTransitionElapsed / _cameraTransitionDuration;
+        const float easedProgress = progress * progress * (3.0f - 2.0f * progress);
+        _position = _cameraTransitionStartPosition +
+                    (_cameraTransitionEndPosition - _cameraTransitionStartPosition) * easedProgress;
+        _target = _cameraTransitionStartTarget +
+                  (_cameraTransitionEndTarget - _cameraTransitionStartTarget) * easedProgress;
+        _zoom = _cameraTransitionStartZoom +
+                (_cameraTransitionEndZoom - _cameraTransitionStartZoom) * easedProgress;
+
+        if (_cameraTransitionElapsed >= _cameraTransitionDuration)
+        {
+            _cameraTransitionActive = false;
+        }
     }
 
     Common::Matrix4f Camera::perspective() const

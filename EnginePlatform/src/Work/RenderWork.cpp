@@ -756,7 +756,7 @@ namespace EgLab::Platform
         {
             _activeMeshPackets.pushBack(packet);
         }
-        _camera->fitView(_scene->getBounds(), 2);
+        //_camera->fitView(_scene->getBounds(), 2);
         return Common::Return::Succeed;
     }
 

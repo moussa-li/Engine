@@ -123,9 +123,6 @@ install(FILES
     DESTINATION "${EngineLab_INSTALL_CMAKEDIR}"
 )
 
-#install(FILES "${CMAKE_SOURCE_DIR}/render_settings.ini" DESTINATION .)
-
-
 if(BUILD_DOC)
     find_package(Doxygen REQUIRED)
     if(DOXYGEN_FOUND)

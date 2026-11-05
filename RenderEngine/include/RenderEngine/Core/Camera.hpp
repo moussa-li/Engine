@@ -57,6 +57,18 @@ namespace EgLab::RE
          */
         void fitView(const Common::BBox<Scalar, 3> &bounds, float margin = 1.1f);
 
+        /** @brief Smoothly transitions the camera position, target, and zoom.
+         * @param position Target camera position.
+         * @param target Target orbit point.
+         * @param zoom Target orthographic half-height.
+         * @param duration Transition duration in seconds; non-positive values apply immediately.
+         */
+        void setCamera(const CoordType &position, const CoordType &target, float zoom,
+                       float duration = 0.45f);
+
+        /// @brief Advances an active camera transition.
+        void updateCameraTransition(float deltaTime);
+
         /// @brief Builds the view matrix from the current camera pose.
         Common::Matrix4f view() const;
 
@@ -144,12 +156,14 @@ namespace EgLab::RE
         /** @brief Sets the camera position. @param pos New camera position. */
         void setPosition(const CoordType &pos)
         {
+            _cameraTransitionActive = false;
             _position = pos;
         }
 
         /** @brief Sets the camera target point. @param target New target point. */
         void setTarget(const CoordType &target)
         {
+            _cameraTransitionActive = false;
             _target = target;
         }
 
@@ -159,12 +173,14 @@ namespace EgLab::RE
         /** @brief Sets the camera right direction. @param right New right direction. */
         void setRigth(const CoordType &right)
         {
+            _cameraTransitionActive = false;
             _right = right;
         }
 
         /** @brief Sets the camera up direction. @param up New up direction. */
         void setUp(const CoordType &up)
         {
+            _cameraTransitionActive = false;
             _up = up;
         }
 
@@ -183,6 +199,7 @@ namespace EgLab::RE
         /** @brief Sets the zoom value. @param zoom New zoom value. */
         void setZoom(float zoom)
         {
+            _cameraTransitionActive = false;
             _zoom = zoom;
         }
         /** @brief Sets the movement sensitivity multiplier. @param sensitivity New multiplier. */
@@ -237,6 +254,16 @@ namespace EgLab::RE
 
         unsigned int _width;
         unsigned int _height;
+
+        CoordType _cameraTransitionStartPosition;
+        CoordType _cameraTransitionStartTarget;
+        CoordType _cameraTransitionEndPosition;
+        CoordType _cameraTransitionEndTarget;
+        float _cameraTransitionStartZoom{ZOOM};
+        float _cameraTransitionEndZoom{ZOOM};
+        float _cameraTransitionDuration{0.45f};
+        float _cameraTransitionElapsed{0.0f};
+        bool _cameraTransitionActive{false};
     };
 
 } // namespace EgLab::RE

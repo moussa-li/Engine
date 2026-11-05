@@ -16,8 +16,12 @@ namespace EgLab::RE
         return degress * static_cast<float>(0.01745329251994329576923690768489);
     }
 
-    void OrbitCameraController::update(DeltaTime)
+    void OrbitCameraController::update(DeltaTime deltaTime)
     {
+        if (_camera)
+        {
+            _camera->updateCameraTransition(deltaTime);
+        }
     }
 
     OrbitCameraController::~OrbitCameraController()
