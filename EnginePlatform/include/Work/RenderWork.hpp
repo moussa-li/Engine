@@ -153,14 +153,15 @@ namespace EgLab::Platform
         };
 
         void queueRenderEvent(RenderEvent event);
-        void enqueueRenderEvent(RenderEvent event);
+        void queueRenderUpdate(RenderEvent event);
         RenderUpdateTicket queueMeshUpdate(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
         RenderUpdateTicket queueMeshUpdate(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
                                            Common::DynamicArray<uint8_t> payload);
         RenderUpdateTicket queueMeshUpdate(const UpdateMeshParam& params);
         Common::Return commitRenderUpdate(RenderUpdateTicket ticket);
         void drainRenderUpdates();
-        void drainRenderEvents();
+        void processRenderEvent(const RenderEvent& event);
+        Common::Return applyRenderUpdate(const RenderEvent& event);
         bool isMeshRemoved(const ME::Mesh* mesh);
         RenderPacket prepareRenderPacket(const Common::SharedPtr<ME::Mesh>& mesh,
                                          const Common::DynamicArray<uint8_t>& payload);
@@ -208,11 +209,9 @@ namespace EgLab::Platform
         PickedMeshInfo _lastPublishedPickInfo;
         bool _hasPublishedPickInfo{false};
 
-        std::mutex _renderEventMutex;
-        std::deque<RenderEvent> _renderEventQueue;
-
         std::mutex _renderUpdateMutex;
         std::deque<Common::SharedPtr<ICommand>> _renderUpdateQueue;
+        std::mutex _renderStateMutex;
 
         std::mutex _renderPreparationMutex;
         Common::HashMap<RenderUpdateTicket, Common::SharedPtr<RenderPreparation>,

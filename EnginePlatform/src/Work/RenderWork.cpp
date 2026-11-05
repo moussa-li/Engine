@@ -40,13 +40,33 @@ namespace EgLab::Platform
         {
         }
 
+        RenderUpdate(RenderWork* worker, RenderWork::RenderEvent event)
+            : _worker(worker), _event(Common::move(event)), _hasEvent(true)
+        {
+        }
+
         Common::Return exec() override
         {
+            if (_hasEvent)
+            {
+                if (!_dirty)
+                {
+                    return Common::Return::Succeed;
+                }
+                const Common::Return result = _worker->applyRenderUpdate(_event);
+                if (result == Common::Return::Succeed)
+                {
+                    _dirty = false;
+                }
+                return result;
+            }
+
             if (!_packet.dirty)
             {
                 return Common::Return::Succeed;
             }
 
+            std::lock_guard<std::mutex> stateLock(_worker->_renderStateMutex);
             const Common::Return result = _worker->uploadRenderPacket(_packet);
             if (result == Common::Return::Succeed)
             {
@@ -58,6 +78,9 @@ namespace EgLab::Platform
     private:
         RenderPacket _packet;
         RenderWork* _worker;
+        RenderWork::RenderEvent _event;
+        bool _hasEvent{false};
+        bool _dirty{true};
     };
 
     class RenderEventCommand : public ICommand
@@ -82,7 +105,7 @@ namespace EgLab::Platform
         {
             if (!_completion)
             {
-                _worker->enqueueRenderEvent(Common::move(_event));
+                _worker->processRenderEvent(_event);
                 return Common::Return::Succeed;
             }
 
@@ -157,13 +180,11 @@ namespace EgLab::Platform
 
                 _window->activeContext();
                 drainRenderUpdates();
-                drainRenderEvents();
                 if (!_running.load())
                 {
                     _window->deactiveContext();
                     break;
                 }
-                updateMeshHighlight();
                 // updateViewDependentHighlights();
                 _scene->update(deltaTime);
                 _renderer->update(deltaTime);
@@ -245,10 +266,6 @@ namespace EgLab::Platform
         _highlightShader = nullptr;
         _heMeshHighlightShader = nullptr;
 
-        {
-            std::lock_guard<std::mutex> lock(_renderEventMutex);
-            _renderEventQueue.clear();
-        }
         {
             std::lock_guard<std::mutex> lock(_renderUpdateMutex);
             _renderUpdateQueue.clear();
@@ -477,10 +494,12 @@ namespace EgLab::Platform
         }
     }
 
-    void RenderWork::enqueueRenderEvent(RenderEvent event)
+    void RenderWork::queueRenderUpdate(RenderEvent event)
     {
-        std::lock_guard<std::mutex> lock(_renderEventMutex);
-        _renderEventQueue.push_back(Common::move(event));
+        auto update = Common::SharedPtr<ICommand>(
+            Common::makeShared<RenderUpdate>(this, Common::move(event)));
+        std::lock_guard<std::mutex> lock(_renderUpdateMutex);
+        _renderUpdateQueue.push_back(Common::move(update));
     }
 
     void RenderWork::drainRenderUpdates()
@@ -500,121 +519,66 @@ namespace EgLab::Platform
         }
     }
 
-    void RenderWork::drainRenderEvents()
+    void RenderWork::processRenderEvent(const RenderEvent& event)
     {
-        std::deque<RenderEvent> events;
         {
-            std::lock_guard<std::mutex> lock(_renderEventMutex);
-            events.swap(_renderEventQueue);
-        }
-
-        for (auto& event : events)
-        {
-            if (!_running.load())
-            {
-                break;
-            }
-
+            std::lock_guard<std::mutex> stateLock(_renderStateMutex);
             switch (event.type)
             {
-            case RenderEventType::FitView:
-                if (_camera && _scene)
-                {
-                    _camera->fitView(_scene->getBounds(), 2);
-                }
-                break;
             case RenderEventType::MeshColor:
-            {
                 if (!event.mesh || isMeshRemoved(event.mesh.get()))
                 {
-                    break;
+                    return;
                 }
-                bool found = false;
-                for (auto& meshColor : _meshColors)
                 {
-                    if (meshColor.mesh == event.mesh)
+                    bool found = false;
+                    for (auto& meshColor : _meshColors)
                     {
-                        meshColor.color = event.color;
-                        found = true;
-                        break;
+                        if (meshColor.mesh == event.mesh)
+                        {
+                            meshColor.color = event.color;
+                            found = true;
+                            break;
+                        }
                     }
-                }
-                if (!found)
-                {
-                    _meshColors.pushBack(MeshColor{event.mesh, event.color});
-                }
-                for (auto& packet : _activeMeshPackets)
-                {
-                    if (packet.sourceMesh != event.mesh)
+                    if (!found)
                     {
-                        continue;
-                    }
-                    auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(packet.renderFace);
-                    if (face)
-                    {
-                        face->setColor(event.color);
+                        _meshColors.pushBack(MeshColor{event.mesh, event.color});
                     }
                 }
                 break;
-            }
             case RenderEventType::MeshRemoval:
-            {
                 if (!event.mesh || isMeshRemoved(event.mesh.get()))
                 {
-                    break;
+                    return;
                 }
                 _removedMeshes.pushBack(event.mesh.get());
+                {
+                    Common::DynamicArray<MeshColor> remainingColors;
+                    for (const auto& meshColor : _meshColors)
+                    {
+                        if (meshColor.mesh != event.mesh)
+                        {
+                            remainingColors.pushBack(meshColor);
+                        }
+                    }
+                    _meshColors = Common::move(remainingColors);
 
-                Common::SharedPtr<RE::Shader> nodeShader;
-                Common::SharedPtr<RE::Shader> lineShader;
-                Common::SharedPtr<RE::Shader> faceShader;
-                RE::ShaderLib::instance().getNodeShader(nodeShader);
-                RE::ShaderLib::instance().getLineShader(lineShader);
-                RE::ShaderLib::instance().getFaceShader(faceShader);
-                Common::DynamicArray<RenderPacket> remainingPackets;
-                for (auto packet : _activeMeshPackets)
-                {
-                    if (packet.sourceMesh != event.mesh)
+                    Common::DynamicArray<Common::SharedPtr<ME::Mesh>> remainingMeshes;
+                    for (const auto& mesh : _requestedHighlightedMeshes)
                     {
-                        remainingPackets.pushBack(packet);
-                        continue;
+                        if (mesh != event.mesh)
+                        {
+                            remainingMeshes.pushBack(mesh);
+                        }
                     }
-                    if (_meshSelector && packet.mesh)
-                    {
-                        _meshSelector->unregisterMesh(packet.mesh.get());
-                    }
-                    _scene->removePrimitive(nodeShader, packet.renderNode);
-                    _scene->removePrimitive(lineShader, packet.renderLine);
-                    _scene->removePrimitive(faceShader, packet.renderFace);
+                    _requestedHighlightedMeshes = Common::move(remainingMeshes);
                 }
-                _activeMeshPackets = Common::move(remainingPackets);
-
-                Common::DynamicArray<MeshColor> remainingColors;
-                for (auto meshColor : _meshColors)
-                {
-                    if (meshColor.mesh != event.mesh)
-                    {
-                        remainingColors.pushBack(meshColor);
-                    }
-                }
-                _meshColors = Common::move(remainingColors);
-                Common::DynamicArray<Common::SharedPtr<ME::Mesh>> remainingMeshes;
-                for (size_t index = 0; index < _requestedHighlightedMeshes.size(); ++index)
-                {
-                    if (_requestedHighlightedMeshes[index] != event.mesh)
-                    {
-                        auto mesh = _requestedHighlightedMeshes[index];
-                        remainingMeshes.pushBack(mesh);
-                    }
-                }
-                _requestedHighlightedMeshes = Common::move(remainingMeshes);
                 break;
-            }
             case RenderEventType::Highlight:
                 _requestedHighlightedMeshes.clear();
-                for (size_t index = 0; index < event.meshes.size(); ++index)
+                for (const auto& mesh : event.meshes)
                 {
-                    auto mesh = event.meshes[index];
                     if (mesh && !isMeshRemoved(mesh.get()))
                     {
                         _requestedHighlightedMeshes.pushBack(mesh);
@@ -623,20 +587,97 @@ namespace EgLab::Platform
                 break;
             case RenderEventType::HighlightColor:
                 _highlightColor = event.color;
-                for (const auto& primitive : _highlightPrimitives)
-                {
-                    auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(primitive);
-                    if (face)
-                    {
-                        face->setColor(_highlightColor);
-                    }
-                }
                 break;
+            case RenderEventType::FitView:
             case RenderEventType::HEMeshHighlight:
-                updateHEMeshHighlight(event);
                 break;
             }
         }
+        queueRenderUpdate(event);
+    }
+
+    Common::Return RenderWork::applyRenderUpdate(const RenderEvent& event)
+    {
+        std::lock_guard<std::mutex> stateLock(_renderStateMutex);
+        switch (event.type)
+        {
+        case RenderEventType::FitView:
+            if (_camera && _scene)
+            {
+                _camera->fitView(_scene->getBounds(), 2);
+            }
+            break;
+        case RenderEventType::MeshColor:
+        {
+            if (!event.mesh)
+            {
+                break;
+            }
+            for (auto& packet : _activeMeshPackets)
+            {
+                if (packet.sourceMesh != event.mesh)
+                {
+                    continue;
+                }
+                auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(packet.renderFace);
+                if (face)
+                {
+                    face->setColor(event.color);
+                }
+            }
+            break;
+        }
+        case RenderEventType::MeshRemoval:
+        {
+            if (!event.mesh)
+            {
+                break;
+            }
+
+            Common::SharedPtr<RE::Shader> nodeShader;
+            Common::SharedPtr<RE::Shader> lineShader;
+            Common::SharedPtr<RE::Shader> faceShader;
+            RE::ShaderLib::instance().getNodeShader(nodeShader);
+            RE::ShaderLib::instance().getLineShader(lineShader);
+            RE::ShaderLib::instance().getFaceShader(faceShader);
+            Common::DynamicArray<RenderPacket> remainingPackets;
+            for (auto packet : _activeMeshPackets)
+            {
+                if (packet.sourceMesh != event.mesh)
+                {
+                    remainingPackets.pushBack(packet);
+                    continue;
+                }
+                if (_meshSelector && packet.mesh)
+                {
+                    _meshSelector->unregisterMesh(packet.mesh.get());
+                }
+                _scene->removePrimitive(nodeShader, packet.renderNode);
+                _scene->removePrimitive(lineShader, packet.renderLine);
+                _scene->removePrimitive(faceShader, packet.renderFace);
+            }
+            _activeMeshPackets = Common::move(remainingPackets);
+            updateMeshHighlight();
+            break;
+        }
+        case RenderEventType::Highlight:
+            updateMeshHighlight();
+            break;
+        case RenderEventType::HighlightColor:
+            for (const auto& primitive : _highlightPrimitives)
+            {
+                auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(primitive);
+                if (face)
+                {
+                    face->setColor(_highlightColor);
+                }
+            }
+            break;
+        case RenderEventType::HEMeshHighlight:
+            updateHEMeshHighlight(event);
+            break;
+        }
+        return Common::Return::Succeed;
     }
 
     RenderPacket RenderWork::prepareRenderPacket(const Common::SharedPtr<ME::Mesh>& mesh,
