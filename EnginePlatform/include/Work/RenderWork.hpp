@@ -95,6 +95,7 @@ namespace EgLab::Platform
         bool tryReceivePickInfo(PickInfoSubscriptionId subscriptionId, PickedMeshInfo& info);
 
         void fitView();
+        void fitView(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
 
         // RenderWork is a dedicated render event listener.
         void subscribe(EventId eventId);

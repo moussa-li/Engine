@@ -99,6 +99,11 @@ namespace EgLab::Platform
                 }
             }
 
+            if (ImGui::MenuItem("Fit View"))
+            {
+                RenderWork::instance().fitView(mesh);
+            }
+
             ImGui::PushID(&meshData);
             const auto& color = meshData.getColor();
             float editableColor[] = {color[0], color[1], color[2], color[3]};

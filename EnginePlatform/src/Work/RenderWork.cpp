@@ -491,10 +491,47 @@ namespace EgLab::Platform
                 _highlightColor = event.color;
                 break;
             case RenderEventType::MeshUpdate:
+                // if (_camera && _scene)
+                // {
+                //     _camera->fitView(_scene->getBounds(), 2);
+                // }
+                break;
             case RenderEventType::FitView:
-                if (_camera && _scene)
+                if (_camera)
                 {
-                    _camera->fitView(_scene->getBounds(), 2);
+                    if (event.mesh)
+                    {
+                        Common::BBox<RE::Scalar, 3> bounds;
+                        for (const auto& packet : _activeMeshPackets)
+                        {
+                            if (packet.sourceMesh != event.mesh)
+                            {
+                                continue;
+                            }
+                            if (packet.renderNode)
+                            {
+                                bounds.merge(packet.renderNode->getBounds());
+                            }
+                            if (packet.renderLine)
+                            {
+                                bounds.merge(packet.renderLine->getBounds());
+                            }
+                            if (packet.renderFace)
+                            {
+                                bounds.merge(packet.renderFace->getBounds());
+                            }
+                            break;
+                        }
+                        if (!bounds.isEmpty())
+                        {
+                            _camera->fitView(bounds, 2);
+                            break;
+                        }
+                    }
+                    else if (_scene)
+                    {
+                        _camera->fitView(_scene->getBounds(), 2);
+                    }
                 }
                 break;
             case RenderEventType::HEMeshHighlight:
@@ -652,6 +689,14 @@ namespace EgLab::Platform
     {
         RenderEvent event{};
         event.type = RenderEventType::FitView;
+        queueRenderEvent(Common::move(event));
+    }
+
+    void RenderWork::fitView(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
+    {
+        RenderEvent event{};
+        event.type = RenderEventType::FitView;
+        event.mesh = mesh;
         queueRenderEvent(Common::move(event));
     }
 

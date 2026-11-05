@@ -59,10 +59,12 @@ namespace EgLab::Platform
 
         auto& context = Context::instance();
         auto& factory = DataNodeFactory::instance();
+
+        Common::SharedPtr<MeshData> mesh3dNode = nullptr;
         if (mesh3d)
         {
-            auto node = factory.create<MeshData>(meshName, mesh3d);
-            if (context.addDataNode(node) != Common::Return::Succeed)
+            mesh3dNode = factory.create<MeshData>(meshName, mesh3d);
+            if (context.addDataNode(mesh3dNode) != Common::Return::Succeed)
             {
                 return Common::Return::Failed;
             }
@@ -73,7 +75,10 @@ namespace EgLab::Platform
             const Common::String surfaceName =
                 mesh3d ? Common::String("2D Surface: ") + meshName : meshName;
             auto node = factory.create<MeshData>(surfaceName, mesh2d);
-            if (context.addDataNode(node) != Common::Return::Succeed)
+            const Common::Return result =
+                mesh3dNode ? context.getDataTree().addNode(node, mesh3dNode->getId())
+                           : context.addDataNode(node);
+            if (result != Common::Return::Succeed)
             {
                 return Common::Return::Failed;
             }
