@@ -171,6 +171,39 @@ TEST_F(TestRender, node_touch_uses_screen_space)
     EXPECT_EQ(node.touch(context), static_cast<EgLab::RE::IdxType>(-1));
 }
 
+TEST_F(TestRender, set_camera_transitions_smoothly)
+{
+    auto camera = EgLab::Common::makeShared<EgLab::RE::Camera>(
+        800, 600, EgLab::RE::CoordType(0.0f, 0.0f, 10.0f));
+    EgLab::RE::OrbitCameraController controller;
+    controller.setCamera(camera);
+
+    const float startZ = camera->getPosition().z();
+    const float endZ = 2.0f * std::sqrt(3.0f);
+    camera->setCamera(EgLab::RE::CoordType(0.0f, 0.0f, endZ),
+                      EgLab::RE::CoordType(0.0f, 0.0f, 0.0f), 2.0f);
+    EXPECT_FLOAT_EQ(camera->getPosition().z(), startZ);
+
+    controller.update(0.225f);
+    const float middleZ = camera->getPosition().z();
+    EXPECT_LT(middleZ, startZ);
+    EXPECT_GT(middleZ, 3.0f);
+
+    controller.update(0.225f);
+    EXPECT_NEAR(camera->getPosition().z(), endZ, 0.001f);
+}
+
+TEST_F(TestRender, fit_view_uses_camera_transition)
+{
+    EgLab::RE::Camera camera(800, 600, EgLab::RE::CoordType(0.0f, 0.0f, 10.0f));
+    EgLab::Common::BBox<EgLab::RE::Scalar, 3> bounds;
+    bounds.addPoint(EgLab::RE::CoordType(-1.0f, -1.0f, -1.0f));
+    bounds.addPoint(EgLab::RE::CoordType(1.0f, 1.0f, 1.0f));
+
+    camera.fitView(bounds, 2.0f);
+    EXPECT_FLOAT_EQ(camera.getPosition().z(), 10.0f);
+}
+
 TEST_F(TestRender, node_touch_prefers_frontmost_node)
 {
     EgLab::RE::RenderNode backNode;

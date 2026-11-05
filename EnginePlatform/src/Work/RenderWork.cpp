@@ -32,57 +32,6 @@ namespace EgLab::Platform
         return RenderWork::instance().commitPendingRenderUpdates();
     }
 
-    class RenderUpdate : public ICommand
-    {
-    public:
-        RenderUpdate(RenderWork* worker, RenderPacket packet)
-            : _packet(Common::move(packet)), _worker(worker)
-        {
-        }
-
-        RenderUpdate(RenderWork* worker, RenderWork::RenderEvent event)
-            : _worker(worker), _event(Common::move(event)), _hasEvent(true)
-        {
-        }
-
-        Common::Return exec() override
-        {
-            if (_hasEvent)
-            {
-                if (!_dirty)
-                {
-                    return Common::Return::Succeed;
-                }
-                const Common::Return result = _worker->applyRenderUpdate(_event);
-                if (result == Common::Return::Succeed)
-                {
-                    _dirty = false;
-                }
-                return result;
-            }
-
-            if (!_packet.dirty)
-            {
-                return Common::Return::Succeed;
-            }
-
-            std::lock_guard<std::mutex> stateLock(_worker->_renderStateMutex);
-            const Common::Return result = _worker->uploadRenderPacket(_packet);
-            if (result == Common::Return::Succeed)
-            {
-                _packet.dirty = false;
-            }
-            return result;
-        }
-
-    private:
-        RenderPacket _packet;
-        RenderWork* _worker;
-        RenderWork::RenderEvent _event;
-        bool _hasEvent{false};
-        bool _dirty{true};
-    };
-
     class RenderEventCommand : public ICommand
     {
     public:
@@ -91,52 +40,27 @@ namespace EgLab::Platform
         {
         }
 
-        RenderEventCommand(RenderWork* worker, Common::SharedPtr<ME::Mesh> mesh,
-                           Common::DynamicArray<uint8_t> payload,
-                           Common::SharedPtr<RenderWork::RenderPreparation> completion)
-            : _worker(worker),
-              _mesh(Common::move(mesh)),
-              _payload(Common::move(payload)),
-              _completion(Common::move(completion))
-        {
-        }
-
         Common::Return exec() override
         {
-            if (!_completion)
-            {
-                _worker->processRenderEvent(_event);
-                return Common::Return::Succeed;
-            }
-
             try
             {
-                RenderPacket packet = _worker->prepareRenderPacket(_mesh, _payload);
-                {
-                    std::lock_guard<std::mutex> lock(_completion->mutex);
-                    _completion->packet = Common::move(packet);
-                    _completion->ready = true;
-                }
-                _completion->condition.notify_all();
+                _worker->processRenderEvent(Common::move(_event));
                 return Common::Return::Succeed;
+            }
+            catch (const std::exception& exception)
+            {
+                LOG(ERROR) << "RenderEventCommand::exec() failed: " << exception.what();
+                return Common::Return::Failed;
             }
             catch (...)
             {
-                {
-                    std::lock_guard<std::mutex> lock(_completion->mutex);
-                    _completion->error = std::current_exception();
-                    _completion->ready = true;
-                }
-                _completion->condition.notify_all();
+                LOG(ERROR) << "RenderEventCommand::exec() failed with an unknown exception";
                 return Common::Return::Failed;
             }
         }
 
     private:
         RenderWork* _worker;
-        Common::SharedPtr<ME::Mesh> _mesh;
-        Common::DynamicArray<uint8_t> _payload;
-        Common::SharedPtr<RenderWork::RenderPreparation> _completion;
         RenderWork::RenderEvent _event;
     };
 
@@ -179,7 +103,7 @@ namespace EgLab::Platform
                 lastFrame = currentFrame;
 
                 _window->activeContext();
-                drainRenderUpdates();
+                drainRenderEvents();
                 if (!_running.load())
                 {
                     _window->deactiveContext();
@@ -267,18 +191,25 @@ namespace EgLab::Platform
         _heMeshHighlightShader = nullptr;
 
         {
-            std::lock_guard<std::mutex> lock(_renderUpdateMutex);
-            _renderUpdateQueue.clear();
-        }
-        {
-            std::lock_guard<std::mutex> lock(_renderPreparationMutex);
-            _renderPreparations.clear();
+            std::lock_guard<std::mutex> lock(_renderEventMutex);
+            _renderEventQueue.clear();
+            _renderEventsPending.store(false, std::memory_order_release);
         }
 
         _scene = nullptr;
         _renderer = nullptr;
         _camera = nullptr;
         _window = nullptr;
+    }
+
+    Common::Return RenderWork::commitPendingRenderUpdates()
+    {
+        std::lock_guard<std::mutex> lock(_renderEventMutex);
+        if (!_renderEventQueue.empty())
+        {
+            _renderEventsPending.store(true, std::memory_order_release);
+        }
+        return Common::Return::Succeed;
     }
 
     void RenderWork::subscribe(EventId eventId)
@@ -381,108 +312,6 @@ namespace EgLab::Platform
         }
     }
 
-    RenderUpdateTicket RenderWork::queueMeshUpdate(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
-    {
-        return queueMeshUpdate(mesh, Common::DynamicArray<uint8_t>());
-    }
-
-    RenderUpdateTicket RenderWork::queueMeshUpdate(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
-                                                   Common::DynamicArray<uint8_t> payload)
-    {
-        const RenderUpdateTicket ticket =
-            _nextRenderUpdateTicket.fetch_add(1, std::memory_order_relaxed);
-        auto completion = Common::makeShared<RenderPreparation>();
-        {
-            std::lock_guard<std::mutex> lock(_renderPreparationMutex);
-            _renderPreparations[ticket] = completion;
-            _pendingRenderUpdateTickets.pushBack(ticket);
-        }
-
-        auto command = Common::SharedPtr<ICommand>(
-            Common::makeShared<RenderEventCommand>(this, mesh, Common::move(payload), completion));
-        if (_renderEventBus.dispatch(command) != Common::Return::Succeed)
-        {
-            {
-                std::lock_guard<std::mutex> lock(completion->mutex);
-                completion->error =
-                    std::make_exception_ptr(std::runtime_error("Render event queue is stopped"));
-                completion->ready = true;
-            }
-            completion->condition.notify_all();
-        }
-        return ticket;
-    }
-
-    RenderUpdateTicket RenderWork::queueMeshUpdate(const UpdateMeshParam& params)
-    {
-        if (params.data == nullptr || params.dataSize == 0)
-        {
-            return 0;
-        }
-
-        Common::DynamicArray<uint8_t> payload;
-        payload.pushBack(params.data, params.dataSize);
-        return queueMeshUpdate(nullptr, Common::move(payload));
-    }
-
-    Common::Return RenderWork::commitRenderUpdate(RenderUpdateTicket ticket)
-    {
-        Common::SharedPtr<RenderPreparation> preparation;
-        {
-            std::lock_guard<std::mutex> lock(_renderPreparationMutex);
-            const auto iter = _renderPreparations.find(ticket);
-            if (iter == _renderPreparations.end())
-            {
-                return Common::Return::Failed;
-            }
-            preparation = iter.data().second;
-            _renderPreparations.erase(ticket);
-        }
-
-        try
-        {
-            std::unique_lock<std::mutex> preparationLock(preparation->mutex);
-            preparation->condition.wait(preparationLock,
-                                        [&preparation] { return preparation->ready; });
-            if (preparation->error)
-            {
-                std::rethrow_exception(preparation->error);
-            }
-            RenderPacket packet = Common::move(preparation->packet);
-            preparationLock.unlock();
-            packet.dirty = true;
-            auto update = Common::SharedPtr<ICommand>(
-                Common::makeShared<RenderUpdate>(this, Common::move(packet)));
-            std::lock_guard<std::mutex> lock(_renderUpdateMutex);
-            _renderUpdateQueue.push_back(Common::move(update));
-            return Common::Return::Succeed;
-        }
-        catch (const std::exception& exception)
-        {
-            LOG(ERROR) << "RenderWork::commitRenderUpdate() failed: " << exception.what();
-            return Common::Return::Failed;
-        }
-    }
-
-    Common::Return RenderWork::commitPendingRenderUpdates()
-    {
-        Common::DynamicArray<RenderUpdateTicket> tickets;
-        {
-            std::lock_guard<std::mutex> lock(_renderPreparationMutex);
-            tickets = Common::move(_pendingRenderUpdateTickets);
-        }
-
-        Common::Return result = Common::Return::Succeed;
-        for (const RenderUpdateTicket ticket : tickets)
-        {
-            if (commitRenderUpdate(ticket) != Common::Return::Succeed)
-            {
-                result = Common::Return::Failed;
-            }
-        }
-        return result;
-    }
-
     void RenderWork::queueRenderEvent(RenderEvent event)
     {
         auto command = Common::SharedPtr<ICommand>(
@@ -494,33 +323,101 @@ namespace EgLab::Platform
         }
     }
 
-    void RenderWork::queueRenderUpdate(RenderEvent event)
+    void RenderWork::drainRenderEvents()
     {
-        auto update = Common::SharedPtr<ICommand>(
-            Common::makeShared<RenderUpdate>(this, Common::move(event)));
-        std::lock_guard<std::mutex> lock(_renderUpdateMutex);
-        _renderUpdateQueue.push_back(Common::move(update));
-    }
-
-    void RenderWork::drainRenderUpdates()
-    {
-        std::deque<Common::SharedPtr<ICommand>> updates;
+        if (!_renderEventsPending.exchange(false, std::memory_order_acq_rel))
         {
-            std::lock_guard<std::mutex> lock(_renderUpdateMutex);
-            updates.swap(_renderUpdateQueue);
+            return;
         }
 
-        for (const auto& update : updates)
+        std::deque<RenderEvent> events;
         {
-            if (update)
+            std::lock_guard<std::mutex> lock(_renderEventMutex);
+            events.swap(_renderEventQueue);
+        }
+
+        for (const auto& event : events)
+        {
+            if (!_running.load())
             {
-                update->exec();
+                break;
             }
+            applyRenderUpdate(event);
         }
     }
 
-    void RenderWork::processRenderEvent(const RenderEvent& event)
+    void RenderWork::processRenderEvent(RenderEvent event)
     {
+        if (event.type == RenderEventType::MeshUpdate)
+        {
+            Common::SharedPtr<ME::Mesh> renderMesh = event.mesh;
+            if (!event.payload.empty())
+            {
+                if (event.payload.size() <= sizeof(MeshPODWireHeader))
+                {
+                    LOG(ERROR) << "RenderWork::processRenderEvent() received truncated mesh data";
+                    return;
+                }
+
+                MeshPODWireHeader wire{};
+                std::memcpy(&wire, event.payload.data(), sizeof(wire));
+                if (wire.totalDataSize == 0 ||
+                    wire.totalDataSize > event.payload.size() - sizeof(MeshPODWireHeader))
+                {
+                    LOG(ERROR)
+                        << "RenderWork::processRenderEvent() received invalid mesh data size";
+                    return;
+                }
+
+                const uint32_t offsets[] = {
+                    wire.nodeIdsOffset,   wire.nodeDataOffset, wire.elemIdsOffset,
+                    wire.elemTypesOffset, wire.elemDataOffset,
+                };
+                for (uint32_t offset : offsets)
+                {
+                    if (offset > wire.totalDataSize)
+                    {
+                        LOG(ERROR)
+                            << "RenderWork::processRenderEvent() received invalid mesh offset";
+                        return;
+                    }
+                }
+
+                ME::MeshPOD pod{};
+                pod.nodeNumber = wire.nodeNumber;
+                pod.elemNumber = wire.elemNumber;
+                pod.nodeIdsOffset = wire.nodeIdsOffset;
+                pod.nodeDataOffset = wire.nodeDataOffset;
+                pod.elemIdsOffset = wire.elemIdsOffset;
+                pod.elemTypesOffset = wire.elemTypesOffset;
+                pod.elemDataOffset = wire.elemDataOffset;
+                pod.totalDataSize = wire.totalDataSize;
+                pod.data = new uint8_t[pod.totalDataSize];
+                std::memcpy(pod.data, event.payload.data() + sizeof(MeshPODWireHeader),
+                            pod.totalDataSize);
+
+                renderMesh = ME::MeshToPOD::deserialize(pod);
+                if (!renderMesh)
+                {
+                    LOG(ERROR) << "RenderWork::processRenderEvent() failed to deserialize mesh";
+                    return;
+                }
+            }
+            if (!renderMesh)
+            {
+                LOG(ERROR) << "RenderWork::processRenderEvent() cannot update a null mesh";
+                return;
+            }
+
+            RE::MeshPrimitiveCreator creator(renderMesh);
+            event.packet = {creator.getPrimitive<RE::RenderNode>(),
+                            creator.getPrimitive<RE::RenderLine>(),
+                            creator.getPrimitive<RE::RenderFace>(),
+                            event.mesh,
+                            renderMesh,
+                            creator.getTranslator()};
+        }
+
         {
             std::lock_guard<std::mutex> stateLock(_renderStateMutex);
             switch (event.type)
@@ -588,12 +485,18 @@ namespace EgLab::Platform
             case RenderEventType::HighlightColor:
                 _highlightColor = event.color;
                 break;
+            case RenderEventType::MeshUpdate:
             case RenderEventType::FitView:
             case RenderEventType::HEMeshHighlight:
                 break;
             }
         }
-        queueRenderUpdate(event);
+
+        {
+            std::lock_guard<std::mutex> lock(_renderEventMutex);
+            _renderEventQueue.push_back(Common::move(event));
+            _renderEventsPending.store(true, std::memory_order_release);
+        }
     }
 
     Common::Return RenderWork::applyRenderUpdate(const RenderEvent& event)
@@ -607,6 +510,8 @@ namespace EgLab::Platform
                 _camera->fitView(_scene->getBounds(), 2);
             }
             break;
+        case RenderEventType::MeshUpdate:
+            return uploadRenderPacket(event.packet);
         case RenderEventType::MeshColor:
         {
             if (!event.mesh)
@@ -680,71 +585,6 @@ namespace EgLab::Platform
         return Common::Return::Succeed;
     }
 
-    RenderPacket RenderWork::prepareRenderPacket(const Common::SharedPtr<ME::Mesh>& mesh,
-                                                 const Common::DynamicArray<uint8_t>& payload)
-    {
-        Common::SharedPtr<ME::Mesh> renderMesh = mesh;
-        if (!payload.empty())
-        {
-            if (payload.size() <= sizeof(MeshPODWireHeader))
-            {
-                throw std::runtime_error("Mesh update payload is empty or truncated");
-            }
-
-            MeshPODWireHeader wire{};
-            std::memcpy(&wire, payload.data(), sizeof(wire));
-
-            if (wire.totalDataSize == 0 ||
-                wire.totalDataSize > payload.size() - sizeof(MeshPODWireHeader))
-            {
-                throw std::runtime_error("Mesh update payload has an invalid data size");
-            }
-
-            const uint32_t offsets[] = {
-                wire.nodeIdsOffset,   wire.nodeDataOffset, wire.elemIdsOffset,
-                wire.elemTypesOffset, wire.elemDataOffset,
-            };
-            for (uint32_t offset : offsets)
-            {
-                if (offset > wire.totalDataSize)
-                {
-                    throw std::runtime_error("Mesh update payload has an invalid offset");
-                }
-            }
-
-            EgLab::ME::MeshPOD pod{};
-            pod.nodeNumber = wire.nodeNumber;
-            pod.elemNumber = wire.elemNumber;
-            pod.nodeIdsOffset = wire.nodeIdsOffset;
-            pod.nodeDataOffset = wire.nodeDataOffset;
-            pod.elemIdsOffset = wire.elemIdsOffset;
-            pod.elemTypesOffset = wire.elemTypesOffset;
-            pod.elemDataOffset = wire.elemDataOffset;
-            pod.totalDataSize = wire.totalDataSize;
-
-            pod.data = new uint8_t[pod.totalDataSize];
-            std::memcpy(pod.data, payload.data() + sizeof(MeshPODWireHeader), pod.totalDataSize);
-
-            renderMesh = EgLab::ME::MeshToPOD::deserialize(pod);
-            if (!renderMesh)
-            {
-                throw std::runtime_error("Failed to materialize mesh update payload");
-            }
-        }
-
-        if (!renderMesh)
-        {
-            throw std::runtime_error("Cannot prepare a render packet for a null mesh");
-        }
-
-        EgLab::RE::MeshPrimitiveCreator creator(renderMesh);
-        auto nodePrimitive = creator.getPrimitive<EgLab::RE::RenderNode>();
-        auto linePrimitive = creator.getPrimitive<EgLab::RE::RenderLine>();
-        auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();
-        return {nodePrimitive, linePrimitive, facePrimitive,
-                mesh,          renderMesh,    creator.getTranslator()};
-    }
-
     Common::Return RenderWork::uploadRenderPacket(const RenderPacket& packet)
     {
         if (!_running.load() || !_scene || !_camera)
@@ -808,14 +648,30 @@ namespace EgLab::Platform
         queueRenderEvent(Common::move(event));
     }
 
-    RenderUpdateTicket RenderWork::onUpdateMesh(const UpdateMeshParam& params)
+    void RenderWork::onUpdateMesh(const UpdateMeshParam& params)
     {
-        return queueMeshUpdate(params);
+        if (params.data == nullptr || params.dataSize == 0)
+        {
+            return;
+        }
+
+        RenderEvent event{};
+        event.type = RenderEventType::MeshUpdate;
+        event.payload.pushBack(params.data, params.dataSize);
+        queueRenderEvent(Common::move(event));
     }
 
-    RenderUpdateTicket RenderWork::onUpdateMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
+    void RenderWork::onUpdateMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
     {
-        return queueMeshUpdate(mesh);
+        if (!mesh)
+        {
+            return;
+        }
+
+        RenderEvent event{};
+        event.type = RenderEventType::MeshUpdate;
+        event.mesh = mesh;
+        queueRenderEvent(Common::move(event));
     }
 
     void RenderWork::setHighlightedMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)

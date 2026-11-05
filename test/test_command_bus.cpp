@@ -5,7 +5,6 @@
 #include "Command/CommandBus.hpp"
 #include "Command/ICommand.hpp"
 
-
 namespace EgLab::Platform
 {
     namespace
