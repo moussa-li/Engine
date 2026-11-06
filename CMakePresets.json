@@ -29,7 +29,7 @@
         },
         {
             "name": "win-ninja-debug",
-            "displayName": "Ninja using MSVC",
+            "displayName": "Ninja using MSVC Debug",
             "description": "",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build/${presetName}",
@@ -43,7 +43,7 @@
         },
 	{
             "name": "win-ninja-release",
-            "displayName": "Ninja using MSVC",
+            "displayName": "Ninja using MSVC Release",
             "description": "",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build/${presetName}",

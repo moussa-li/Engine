@@ -292,7 +292,7 @@
             "type": "lldb",
             "request": "launch",
             "name": "runPlatform",
-            "program": "${workspaceFolder}/build/clang-debug/bin/EnginePlatform.exe",
+            "program": "${workspaceFolder}/build/win-ninja-release/bin/EnginePlatform.exe",
             "args": [],
             "cwd": "${workspaceFolder}",
             "console": "externalTerminal",
