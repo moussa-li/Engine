@@ -2,13 +2,9 @@
 
 #include <filesystem>
 
-#include "Common/HashMap.hpp"
-
-#ifdef _WIN32
-#include <windows.h>
-#endif
-
 #include "Command/CommandManager.hpp"
+#include "Common/HashMap.hpp"
+#include "Core/PidRegistry.hpp"
 #include "DataBase/Context.hpp"
 #include "ImGuiFileDialog.h"
 
@@ -27,41 +23,66 @@ namespace EgLab
 #ifdef _WIN32
 namespace
 {
-    LSTATUS writeCurrentProcessIdToRegistry()
+    // 注册表 PID 状态展示：当前进程就是注册表中记录的那个进程时进行高亮。
+    void renderProcessIdStatus()
     {
-        HKEY key = nullptr;
-        const LSTATUS openStatus =
-            RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\EngineLab", 0, nullptr,
-                            REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, nullptr, &key, nullptr);
-        if (openStatus != ERROR_SUCCESS)
+        EgLab::Platform::PidRegistry& registry = EgLab::Platform::PidRegistry::instance();
+        const bool highlighted = registry.isCurrentProcessRegistered();
+
+        if (highlighted)
         {
-            return openStatus;
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.52f, 0.26f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.62f, 0.32f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.42f, 0.21f, 1.0f));
         }
 
-        const DWORD processId = GetCurrentProcessId();
-        const LSTATUS writeStatus =
-            RegSetValueExW(key, L"CURRENT_ENGINELAB_PROCESSID", 0, REG_DWORD,
-                           reinterpret_cast<const BYTE*>(&processId), sizeof(processId));
-        const LSTATUS closeStatus = RegCloseKey(key);
-        return writeStatus == ERROR_SUCCESS ? closeStatus : writeStatus;
+        if (ImGui::Button("Write PID to Registry"))
+        {
+            registry.writeCurrentProcessId();
+        }
+
+        if (highlighted)
+        {
+            ImGui::PopStyleColor(3);
+        }
+
+        ImGui::SameLine();
+
+        const ImVec4 textColor =
+            highlighted ? ImVec4(0.35f, 0.9f, 0.45f, 1.0f) : ImVec4(0.72f, 0.72f, 0.72f, 1.0f);
+        const unsigned long registeredPid = registry.registeredProcessId();
+        const unsigned long currentPid = registry.currentProcessId();
+
+        if (registeredPid == EgLab::Platform::PidRegistry::emptyProcessId)
+        {
+            ImGui::TextColored(textColor, "Registry PID: <none>  (this: %lu)", currentPid);
+        }
+        else if (highlighted)
+        {
+            ImGui::TextColored(textColor, "Registry PID: %lu  (this process)", registeredPid);
+        }
+        else
+        {
+            ImGui::TextColored(textColor, "Registry PID: %lu  (this: %lu)", registeredPid,
+                               currentPid);
+        }
     }
 } // namespace
 #endif
 
 namespace
 {
-    // Per-menu animation state, keyed by ImGui control ID.
+    // 每个菜单的动画状态，以 ImGui 控件 ID 作为键。
     struct MenuAnimation
     {
-        bool wasOpen = false;        // Whether the menu was open on the previous frame
-        bool closing = false;        // Whether the close animation is playing
-        float progress = 1.0f;       // 0 (animation start) .. 1 (animation done)
-        float duration = 0.5f;       // Opening animation duration in seconds
-        float closeDuration = 0.15f; // Closing animation duration in seconds
-        float slideDistance =
-            -32.0f; // Vertical offset from the final position; negative slides in from above
-        float hoverOutTimer = 0.0f; // Time since the mouse left both the menu item and its popup
-        float closeDelay = 0.15f;   // Grace period before closing on mouse leave
+        bool wasOpen = false;         // 上一帧菜单是否处于展开状态
+        bool closing = false;         // 是否正在播放关闭动画
+        float progress = 1.0f;        // 0（动画开始）.. 1（动画结束）
+        float duration = 0.5f;        // 展开动画时长（秒）
+        float closeDuration = 0.15f;  // 关闭动画时长（秒）
+        float slideDistance = -32.0f; // 相对最终位置的纵向偏移，负值表示从上方滑入
+        float hoverOutTimer = 0.0f;   // 鼠标离开菜单项及其弹出框后经过的时间
+        float closeDelay = 0.15f;     // 鼠标离开后延迟关闭的宽限时间
     };
 
     MenuAnimation& getMenuAnimation(ImGuiID id)
@@ -70,14 +91,14 @@ namespace
         return states[id];
     }
 
-    // ImGui::BeginMenu wrapper with a slide-down animation.
+    // 带滑入动画的 ImGui::BeginMenu 包装。
     bool animatedBeginMenu(const char* label, bool enabled = true)
     {
         const ImGuiID id = ImGui::GetID(label);
         MenuAnimation& anim = getMenuAnimation(id);
 
-        // Suppress the mouse click while submitting the menu item so that clicking an
-        // already-open menu does not close it. Hovering is used to open/switch menus.
+        // 提交菜单项期间临时屏蔽鼠标左键点击，避免点击已展开的菜单时把它关掉；
+        // 菜单的展开与切换统一由悬停驱动。
         ImGuiIO& io = ImGui::GetIO();
         const bool savedMouseClicked = io.MouseClicked[0];
         io.MouseClicked[0] = false;
@@ -86,13 +107,13 @@ namespace
 
         io.MouseClicked[0] = savedMouseClicked;
 
-        // Open the menu automatically on hover, without a click.
+        // 无需点击，鼠标悬停即自动展开菜单。
         if (!open && enabled && ImGui::IsItemHovered())
         {
             ImGui::OpenPopup(id);
         }
 
-        // Restart the animation when the menu opens for the first time.
+        // 菜单首次展开时重新开始动画。
         if (open && !anim.wasOpen)
         {
             anim.progress = 0.0f;
@@ -108,7 +129,7 @@ namespace
 
             if (!anim.closing)
             {
-                // Start the close animation once the mouse leaves both the menu item and the popup.
+                // 鼠标同时离开菜单项与弹出框后，开始播放关闭动画。
                 if (!hovered)
                 {
                     anim.hoverOutTimer += io.DeltaTime;
@@ -124,12 +145,12 @@ namespace
             }
             else if (hovered)
             {
-                // Cancel closing and reopen if the mouse comes back.
+                // 鼠标重新回到菜单上时取消关闭并重新展开。
                 anim.closing = false;
                 anim.hoverOutTimer = 0.0f;
             }
 
-            // Advance the animation progress: forward while opening, backward while closing.
+            // 推进动画进度：展开时向前，关闭时向后。
             if (anim.closing)
             {
                 anim.progress -= io.DeltaTime / anim.closeDuration;
@@ -148,7 +169,7 @@ namespace
                 }
             }
 
-            // Ease-out and slide the menu in from above to its final position.
+            // 缓出并从上方滑入到最终位置。
             const float eased = 1.0f - (1.0f - anim.progress) * (1.0f - anim.progress);
             const float offsetY = (1.0f - eased) * anim.slideDistance;
             if (offsetY != 0.0f)
@@ -159,7 +180,7 @@ namespace
         }
         else
         {
-            // Reset after closing so the animation replays on the next open.
+            // 关闭后复位，使下次展开时动画可以重播。
             anim.progress = 1.0f;
             anim.closing = false;
             anim.hoverOutTimer = 0.0f;
@@ -186,11 +207,6 @@ namespace EgLab::Platform
         {
             requestShowPanel("MeshImport");
         }
-
-#ifdef _WIN32
-        static bool registryWriteAttempted = false;
-        static LSTATUS registryWriteStatus = ERROR_SUCCESS;
-#endif
 
         if (ImGui::BeginMainMenuBar())
         {
@@ -247,26 +263,7 @@ namespace EgLab::Platform
 
 #ifdef _WIN32
             ImGui::SameLine();
-            if (ImGui::Button("Write PID to Registry"))
-            {
-                registryWriteStatus = writeCurrentProcessIdToRegistry();
-                registryWriteAttempted = true;
-            }
-            if (registryWriteAttempted)
-            {
-                ImGui::SameLine();
-                if (registryWriteStatus == ERROR_SUCCESS)
-                {
-                    ImGui::TextColored(ImVec4(0.3f, 0.8f, 0.3f, 1.0f),
-                                       "PID saved to HKCU\\Software\\EngineLab");
-                }
-                else
-                {
-                    ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f),
-                                       "Registry write failed (error %ld)",
-                                       static_cast<long>(registryWriteStatus));
-                }
-            }
+            renderProcessIdStatus();
 #endif
 
             ImGui::EndMainMenuBar();

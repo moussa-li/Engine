@@ -5,6 +5,7 @@
 #include "Command/CommandManager.hpp"
 #include "Core/IniManager.hpp"
 #include "Core/MainMenuBar.hpp"
+#include "Core/PidRegistry.hpp"
 #include "GLFW/glfw3.h"
 #include "RenderEngine/Core/OrbitCameraController.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"
@@ -86,10 +87,16 @@ namespace EgLab::Platform
         RenderWork::instance().setHighlightColor(Common::Vector4f(
             ini.getFloat("mesh.highlight.r", 1.0f), ini.getFloat("mesh.highlight.g", 0.75f),
             ini.getFloat("mesh.highlight.b", 0.7f), ini.getFloat("mesh.highlight.a", 0.3f)));
+
+        // 周期性读取注册表中的活动进程 PID，供主菜单实时高亮当前进程。
+        const int pidIntervalMs = ini.getInt("registry.pidIntervalMs", 300);
+        PidRegistry::instance().startMonitoring(
+            pidIntervalMs > 0 ? static_cast<unsigned int>(pidIntervalMs) : 300u);
     }
 
     Application::~Application()
     {
+        PidRegistry::instance().stopMonitoring();
         RenderWork::instance().stop();
         UIWork::instance().stop();
         if (window)
