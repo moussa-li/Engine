@@ -16,6 +16,17 @@ namespace EgLab::Platform
 
         virtual void abortShow() override;
 
-        virtual void render() override;
+    protected:
+        const char* getWindowTitle() const override
+        {
+            return "Mesh Import";
+        }
+
+        bool usesWindowFrame() const override
+        {
+            return false;
+        }
+
+        void renderImpl() override;
     };
 } // namespace EgLab::Platform

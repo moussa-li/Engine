@@ -17,7 +17,15 @@ namespace EgLab::Platform
             return "BackGroundSetting";
         }
 
-        virtual void render() override;
+    protected:
+        const char* getWindowTitle() const override
+        {
+            return "BackGround Settings";
+        }
+
+        void configureWindow() const override;
+
+        void renderImpl() override;
     };
 
 } // namespace EgLab::Platform

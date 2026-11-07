@@ -27,7 +27,15 @@ namespace EgLab::Platform
 
         virtual ~DataTreePanel();
 
-        void render() override;
+    protected:
+        const char* getWindowTitle() const override
+        {
+            return "Data Tree";
+        }
+
+        void configureWindow() const override;
+
+        void renderImpl() override;
 
     private:
         bool renderNode(DataTree& node);

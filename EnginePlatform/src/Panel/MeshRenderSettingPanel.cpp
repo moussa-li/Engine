@@ -30,11 +30,13 @@ namespace EgLab::Platform
         }
     }
 
-    void MeshRenderSettingPanel::render()
+    void MeshRenderSettingPanel::configureWindow() const
     {
         ImGui::SetNextWindowSize(ImVec2(320, 320), ImGuiCond_FirstUseEver);
-        ImGui::Begin("Mesh Render Settings", &_show);
+    }
 
+    void MeshRenderSettingPanel::renderImpl()
+    {
         auto renderer = Context::instance().getApplication().renderer;
         if (renderer)
         {
@@ -100,9 +102,10 @@ namespace EgLab::Platform
                 IniManager::instance().setBool("mesh.showElementFaceInfo", _showElementFaceInfo);
             }
         }
+    }
 
-        ImGui::End();
-
+    void MeshRenderSettingPanel::afterRenderFrame()
+    {
         const bool showNodeInfo = _showNodeInfo && _pickedInfo.kind == PickedMeshKind::Node;
         const bool showElementInfo =
             _showElementInfo && (_pickedInfo.kind == PickedMeshKind::ElementEdge ||

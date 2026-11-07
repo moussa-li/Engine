@@ -41,7 +41,7 @@
                 "CMAKE_NINJA_CMCLDEPS_RC": "0"
             }
         },
-	{
+        {
             "name": "win-ninja-release",
             "displayName": "Ninja using MSVC Release",
             "description": "",
@@ -55,6 +55,25 @@
                 "CMAKE_C_COMPILER": "cl",
                 "CMAKE_CXX_COMPILER": "cl",
                 "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_NINJA_CMCLDEPS_RC": "0"
+            }
+        },
+        {
+            "name": "win-ninja-relwithdebinfo",
+            "displayName": "Ninja using MSVC RelWithDebInfo",
+            "description": "",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "environment": {
+                "PATH": "$env{VCToolsInstallDir}bin/Hostx64/x64;$penv{PATH}"
+            },
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_C_COMPILER": "cl",
+                "CMAKE_CXX_COMPILER": "cl",
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "CMAKE_C_FLAGS_RELWITHDEBINFO": "/MD /Zi /Od /DNDEBUG",
+                "CMAKE_CXX_FLAGS_RELWITHDEBINFO": "/MD /Zi /Od /DNDEBUG",
                 "CMAKE_NINJA_CMCLDEPS_RC": "0"
             }
         },

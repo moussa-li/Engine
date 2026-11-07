@@ -15,6 +15,14 @@ namespace EgLab::Platform
             return "CameraSetting";
         }
 
-        virtual void render() override;
+    protected:
+        const char* getWindowTitle() const override
+        {
+            return "Camera Setting";
+        }
+
+        void configureWindow() const override;
+
+        void renderImpl() override;
     };
 } // namespace EgLab::Platform

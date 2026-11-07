@@ -16,7 +16,15 @@ namespace EgLab::Platform
             return "MeshRenderSettings";
         }
 
-        void render() override;
+    protected:
+        const char* getWindowTitle() const override
+        {
+            return "Mesh Render Settings";
+        }
+
+        void configureWindow() const override;
+        void renderImpl() override;
+        void afterRenderFrame() override;
 
     private:
         bool _showNodeInfo{false};

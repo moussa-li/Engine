@@ -52,8 +52,7 @@ namespace EgLab::Platform
         }
 
         if (ImGui::TreeNodeEx(&node,
-                              ImGuiTreeNodeFlags_OpenOnArrow |
-                                  ImGuiTreeNodeFlags_OpenOnDoubleClick,
+                              ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick,
                               "%s", node.getName().c_str()))
         {
             for (const auto& child : children)
@@ -90,13 +89,13 @@ namespace EgLab::Platform
         }
     }
 
-    void HEMeshDataPanel::render()
+    void HEMeshDataPanel::configureWindow() const
     {
         ImGui::SetNextWindowSize(ImVec2(320, 480), ImGuiCond_FirstUseEver);
-        if (ImGui::Begin("Half-Edge Mesh Data", &_show))
-        {
-            renderNode(Context::instance().getDataTree());
-        }
-        ImGui::End();
+    }
+
+    void HEMeshDataPanel::renderImpl()
+    {
+        renderNode(Context::instance().getDataTree());
     }
 } // namespace EgLab::Platform

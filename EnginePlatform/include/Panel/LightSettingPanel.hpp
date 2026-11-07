@@ -12,6 +12,14 @@ namespace EgLab::Platform
             return "LightSetting";
         }
 
-        void render() override;
+    protected:
+        const char* getWindowTitle() const override
+        {
+            return "Light Settings";
+        }
+
+        void configureWindow() const override;
+
+        void renderImpl() override;
     };
 } // namespace EgLab::Platform

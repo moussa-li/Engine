@@ -53,11 +53,15 @@ namespace
     // Per-menu animation state, keyed by ImGui control ID.
     struct MenuAnimation
     {
-        bool wasOpen = false;   // Whether the menu was open on the previous frame
-        float progress = 1.0f;  // 0 (animation start) .. 1 (animation done)
-        float duration = 0.18f; // Animation duration in seconds
+        bool wasOpen = false;        // Whether the menu was open on the previous frame
+        bool closing = false;        // Whether the close animation is playing
+        float progress = 1.0f;       // 0 (animation start) .. 1 (animation done)
+        float duration = 0.5f;       // Opening animation duration in seconds
+        float closeDuration = 0.15f; // Closing animation duration in seconds
         float slideDistance =
             -32.0f; // Vertical offset from the final position; negative slides in from above
+        float hoverOutTimer = 0.0f; // Time since the mouse left both the menu item and its popup
+        float closeDelay = 0.15f;   // Grace period before closing on mouse leave
     };
 
     MenuAnimation& getMenuAnimation(ImGuiID id)
@@ -69,30 +73,75 @@ namespace
     // ImGui::BeginMenu wrapper with a slide-down animation.
     bool animatedBeginMenu(const char* label, bool enabled = true)
     {
-        MenuAnimation& anim = getMenuAnimation(ImGui::GetID(label));
+        const ImGuiID id = ImGui::GetID(label);
+        MenuAnimation& anim = getMenuAnimation(id);
 
-        const bool open = ImGui::BeginMenu(label, enabled);
+        // Suppress the mouse click while submitting the menu item so that clicking an
+        // already-open menu does not close it. Hovering is used to open/switch menus.
+        ImGuiIO& io = ImGui::GetIO();
+        const bool savedMouseClicked = io.MouseClicked[0];
+        io.MouseClicked[0] = false;
+
+        bool open = ImGui::BeginMenu(label, enabled);
+
+        io.MouseClicked[0] = savedMouseClicked;
 
         // Open the menu automatically on hover, without a click.
         if (!open && enabled && ImGui::IsItemHovered())
         {
-            ImGui::OpenPopup(label);
+            ImGui::OpenPopup(id);
         }
 
         // Restart the animation when the menu opens for the first time.
         if (open && !anim.wasOpen)
         {
             anim.progress = 0.0f;
+            anim.closing = false;
         }
         anim.wasOpen = open;
 
         if (open)
         {
-            // Advance the animation progress.
-            if (anim.progress < 1.0f)
+            const bool popupHovered = ImGui::IsWindowHovered();
+            const bool itemHovered = ImGui::IsItemHovered();
+            const bool hovered = popupHovered || itemHovered;
+
+            if (!anim.closing)
             {
-                const float delta = ImGui::GetIO().DeltaTime;
-                anim.progress += delta / anim.duration;
+                // Start the close animation once the mouse leaves both the menu item and the popup.
+                if (!hovered)
+                {
+                    anim.hoverOutTimer += io.DeltaTime;
+                    if (anim.hoverOutTimer >= anim.closeDelay)
+                    {
+                        anim.closing = true;
+                    }
+                }
+                else
+                {
+                    anim.hoverOutTimer = 0.0f;
+                }
+            }
+            else if (hovered)
+            {
+                // Cancel closing and reopen if the mouse comes back.
+                anim.closing = false;
+                anim.hoverOutTimer = 0.0f;
+            }
+
+            // Advance the animation progress: forward while opening, backward while closing.
+            if (anim.closing)
+            {
+                anim.progress -= io.DeltaTime / anim.closeDuration;
+                if (anim.progress <= 0.0f)
+                {
+                    anim.progress = 0.0f;
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+            else if (anim.progress < 1.0f)
+            {
+                anim.progress += io.DeltaTime / anim.duration;
                 if (anim.progress > 1.0f)
                 {
                     anim.progress = 1.0f;
@@ -112,6 +161,8 @@ namespace
         {
             // Reset after closing so the animation replays on the next open.
             anim.progress = 1.0f;
+            anim.closing = false;
+            anim.hoverOutTimer = 0.0f;
         }
 
         return open;

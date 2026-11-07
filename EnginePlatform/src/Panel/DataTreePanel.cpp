@@ -192,21 +192,21 @@ namespace EgLab::Platform
     {
     }
 
-    void DataTreePanel::render()
+    void DataTreePanel::configureWindow() const
     {
         ImGui::SetNextWindowSize(ImVec2(320, 480), ImGuiCond_FirstUseEver);
-        if (ImGui::Begin("Data Tree", &_show))
+    }
+
+    void DataTreePanel::renderImpl()
+    {
+        // std::lock_guard<std::mutex> lock(Context::instance().getDataTreeMutex());
+        renderNode(Context::instance().getDataTree());
+        if (!_selectedMeshes.empty() && ImGui::IsWindowHovered() &&
+            ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())
         {
-            // std::lock_guard<std::mutex> lock(Context::instance().getDataTreeMutex());
-            renderNode(Context::instance().getDataTree());
-            if (!_selectedMeshes.empty() && ImGui::IsWindowHovered() &&
-                ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())
-            {
-                _selectedMeshes.clear();
-                _selectedDataNodeIds.clear();
-                RenderWork::instance().setHighlightedMeshes(_selectedMeshes);
-            }
+            _selectedMeshes.clear();
+            _selectedDataNodeIds.clear();
+            RenderWork::instance().setHighlightedMeshes(_selectedMeshes);
         }
-        ImGui::End();
     }
 } // namespace EgLab::Platform

@@ -18,7 +18,15 @@ namespace EgLab::Platform
             return "HEMesh";
         }
 
-        void render() override;
+    protected:
+        const char* getWindowTitle() const override
+        {
+            return "Half-Edge Mesh Data";
+        }
+
+        void configureWindow() const override;
+
+        void renderImpl() override;
 
     private:
         void renderNode(DataTree& node);

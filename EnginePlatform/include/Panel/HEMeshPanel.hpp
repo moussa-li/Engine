@@ -17,9 +17,16 @@ namespace EgLab::Platform
         }
 
         void setMesh(const Common::SharedPtr<ME::Mesh>& mesh, const Common::String& meshName);
-        void render() override;
 
     protected:
+        const char* getWindowTitle() const override
+        {
+            return "Half-Edge Mesh";
+        }
+
+        void configureWindow() const override;
+        void renderImpl() override;
+        void afterRenderFrame() override;
         void abortClose() override;
 
     private:

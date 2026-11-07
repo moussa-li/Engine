@@ -18,7 +18,7 @@ namespace EgLab::Platform
                                                 "Mesh files{.msh,.grd}", config);
     }
 
-    void MeshImportPanel::render()
+    void MeshImportPanel::renderImpl()
     {
         if (ImGuiFileDialog::Instance()->Display("ImportMesh"))
         {

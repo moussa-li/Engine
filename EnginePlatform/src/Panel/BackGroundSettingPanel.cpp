@@ -15,11 +15,13 @@ namespace EgLab::Platform
     {
     }
 
-    void BackGroundSettingPanel::render()
+    void BackGroundSettingPanel::configureWindow() const
     {
         ImGui::SetNextWindowSize(ImVec2(320, 480), ImGuiCond_FirstUseEver);
-        ImGui::Begin("BackGround Settings", &_show);
+    }
 
+    void BackGroundSettingPanel::renderImpl()
+    {
         ImGui::Text("Appearance");
         ImGui::Separator();
 
@@ -66,8 +68,6 @@ namespace EgLab::Platform
             ini.setFloat("appearance.background.b", bgColor.z);
             ini.setFloat("appearance.background.a", bgColor.w);
         }
-
-        ImGui::End();
     }
 
 } // namespace EgLab::Platform
