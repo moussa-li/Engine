@@ -104,6 +104,11 @@ namespace EgLab::Platform
         void setHighlightedMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
         void setHighlightedMeshes(
             const Common::DynamicArray<Common::SharedPtr<EgLab::ME::Mesh>>& meshes);
+        // Highlights the given elements of one mesh; every other face of that mesh becomes
+        // transparent. Pass an empty element list to clear the locate state.
+        void locateElements(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
+                            const Common::DynamicArray<uint32_t>& elementIds);
+        void clearLocate();
         void setHighlightColor(const Common::Vector4f& color);
         void setHEMeshHighlight(const Common::SharedPtr<ME::HEMesh>& mesh, uint32_t vertexIndex,
                                 uint32_t halfEdgeIndex = UINT32_MAX);
@@ -120,6 +125,7 @@ namespace EgLab::Platform
             Highlight,
             HighlightColor,
             HEMeshHighlight,
+            Locate,
             FitView,
         };
 
@@ -131,6 +137,7 @@ namespace EgLab::Platform
             Common::SharedPtr<ME::HEMesh> heMesh;
             uint32_t heMeshVertexIndex{UINT32_MAX};
             uint32_t heMeshHalfEdgeIndex{UINT32_MAX};
+            Common::DynamicArray<uint32_t> elementIds;
             Common::Vector4f color;
             Common::DynamicArray<uint8_t> payload;
             RenderPacket packet;
@@ -142,6 +149,8 @@ namespace EgLab::Platform
         Common::Return applyRenderUpdate(const RenderEvent& event);
         bool isMeshRemoved(const ME::Mesh* mesh);
         Common::Return uploadRenderPacket(const RenderPacket& packet);
+        void updateLocateHighlight();
+        Common::Vector4f getMeshBaseColor(const Common::SharedPtr<ME::Mesh>& mesh) const;
         void updateMeshHighlight();
         void updateViewDependentHighlights();
         void updateHEMeshHighlight(const RenderEvent& event);
@@ -190,6 +199,14 @@ namespace EgLab::Platform
         Common::DynamicArray<Common::SharedPtr<EgLab::ME::Mesh>> _activeHighlightedMeshes;
         Common::SharedPtr<RE::Shader> _highlightShader;
         Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _highlightPrimitives;
+        // Locate state: the target mesh, the requested element ids and the primitives that draw
+        // the located elements. The target mesh faces are dimmed while a locate is active.
+        Common::SharedPtr<ME::Mesh> _locateMesh;
+        Common::DynamicArray<uint32_t> _locateElementIds;
+        Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _locatePrimitives;
+        Common::SharedPtr<RE::RenderPrimitive> _locateTargetFace;
+        Common::SharedPtr<ME::Mesh> _locateTargetMesh;
+        Common::Vector4f _locateColor{1.0f, 0.55f, 0.1f, 1.0f};
         Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _highlightContourPrimitives;
         Common::Vector4f _highlightColor{1.0f, 0.75f, 0.7f, 0.3f};
         RE::CoordType _highlightViewPosition;

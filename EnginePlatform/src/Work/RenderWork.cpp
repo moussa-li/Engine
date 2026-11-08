@@ -188,6 +188,11 @@ namespace EgLab::Platform
         _highlightPrimitives.clear();
         _highlightContourPrimitives.clear();
         _heMeshHighlightPrimitives.clear();
+        _locatePrimitives.clear();
+        _locateMesh = nullptr;
+        _locateTargetFace = nullptr;
+        _locateTargetMesh = nullptr;
+        _locateElementIds.clear();
         _highlightShader = nullptr;
         _heMeshHighlightShader = nullptr;
 
@@ -536,6 +541,10 @@ namespace EgLab::Platform
                 break;
             case RenderEventType::HEMeshHighlight:
                 break;
+            case RenderEventType::Locate:
+                _locateMesh = event.mesh;
+                _locateElementIds = event.elementIds;
+                break;
             }
         }
 
@@ -555,7 +564,15 @@ namespace EgLab::Platform
         case RenderEventType::FitView:
             break;
         case RenderEventType::MeshUpdate:
-            return uploadRenderPacket(event.packet);
+        {
+            const Common::Return result = uploadRenderPacket(event.packet);
+            if (_locateMesh && _locateMesh == event.mesh)
+            {
+                // Rebuild the locate primitives against the updated mesh geometry.
+                updateLocateHighlight();
+            }
+            return result;
+        }
         case RenderEventType::MeshColor:
         {
             if (!event.mesh)
@@ -573,6 +590,10 @@ namespace EgLab::Platform
                 {
                     face->setColor(event.color);
                 }
+            }
+            if (_locateMesh && _locateMesh == event.mesh)
+            {
+                updateLocateHighlight();
             }
             break;
         }
@@ -606,6 +627,21 @@ namespace EgLab::Platform
                 _scene->removePrimitive(faceShader, packet.renderFace);
             }
             _activeMeshPackets = Common::move(remainingPackets);
+            if (_locateMesh && _locateMesh == event.mesh)
+            {
+                // The locate target is gone; drop its primitives and state.
+                Common::SharedPtr<RE::Shader> highlightShader;
+                RE::ShaderLib::instance().getHighlightShader(highlightShader);
+                for (const auto& primitive : _locatePrimitives)
+                {
+                    _scene->removePrimitive(highlightShader, primitive);
+                }
+                _locatePrimitives.clear();
+                _locateMesh = nullptr;
+                _locateElementIds.clear();
+                _locateTargetFace = nullptr;
+                _locateTargetMesh = nullptr;
+            }
             updateMeshHighlight();
             break;
         }
@@ -621,6 +657,9 @@ namespace EgLab::Platform
                     face->setColor(_highlightColor);
                 }
             }
+            break;
+        case RenderEventType::Locate:
+            updateLocateHighlight();
             break;
         case RenderEventType::HEMeshHighlight:
             updateHEMeshHighlight(event);
@@ -744,6 +783,21 @@ namespace EgLab::Platform
         event.type = RenderEventType::Highlight;
         event.meshes = meshes;
         queueRenderEvent(Common::move(event));
+    }
+
+    void RenderWork::locateElements(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
+                                    const Common::DynamicArray<uint32_t>& elementIds)
+    {
+        RenderEvent event{};
+        event.type = RenderEventType::Locate;
+        event.mesh = mesh;
+        event.elementIds = elementIds;
+        queueRenderEvent(Common::move(event));
+    }
+
+    void RenderWork::clearLocate()
+    {
+        locateElements(Common::SharedPtr<ME::Mesh>(), Common::DynamicArray<uint32_t>());
     }
 
     void RenderWork::setHighlightColor(const Common::Vector4f& color)
@@ -876,6 +930,147 @@ namespace EgLab::Platform
                 _highlightContourPrimitives.pushBack(linePrimitive);
             }
         }
+    }
+
+    Common::Vector4f RenderWork::getMeshBaseColor(const Common::SharedPtr<ME::Mesh>& mesh) const
+    {
+        for (const auto& meshColor : _meshColors)
+        {
+            if (meshColor.mesh == mesh)
+            {
+                return meshColor.color;
+            }
+        }
+        return Common::Vector4f(0.8f, 0.8f, 0.8f, 1.0f);
+    }
+
+    void RenderWork::updateLocateHighlight()
+    {
+        if (!_scene)
+        {
+            return;
+        }
+
+        Common::SharedPtr<RE::Shader> highlightShader;
+        RE::ShaderLib::instance().getHighlightShader(highlightShader);
+
+        for (const auto& primitive : _locatePrimitives)
+        {
+            _scene->removePrimitive(highlightShader, primitive);
+        }
+        _locatePrimitives.clear();
+
+        // Restore the faces of the previously dimmed mesh before applying a new locate request.
+        if (_locateTargetFace)
+        {
+            auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(_locateTargetFace);
+            if (face)
+            {
+                face->setColor(getMeshBaseColor(_locateTargetMesh));
+            }
+            _locateTargetFace = nullptr;
+            _locateTargetMesh = nullptr;
+        }
+
+        if (!_locateMesh || _locateElementIds.empty())
+        {
+            return;
+        }
+
+        RenderPacket* target = nullptr;
+        for (auto& packet : _activeMeshPackets)
+        {
+            if (packet.sourceMesh == _locateMesh)
+            {
+                target = &packet;
+                break;
+            }
+        }
+        if (target == nullptr || !target->translator || !target->renderFace)
+        {
+            LOG(WARNING) << "RenderWork::updateLocateHighlight() could not find the mesh packet";
+            return;
+        }
+
+        const Common::DynamicArray<RE::IdxType> faceIndices =
+            target->translator->getBoundaryFaceIdx();
+        const auto& locations = target->translator->getBoundaryFaceLocations();
+        const size_t triangleCount = faceIndices.size() / 3;
+        if (locations.size() < triangleCount)
+        {
+            LOG(WARNING)
+                << "RenderWork::updateLocateHighlight() received incomplete face locations";
+            return;
+        }
+
+        Common::DynamicArray<RE::IdxType> subsetIndices;
+        for (size_t triangle = 0; triangle < triangleCount; ++triangle)
+        {
+            bool requested = false;
+            for (size_t index = 0; index < _locateElementIds.size(); ++index)
+            {
+                if (static_cast<uint64_t>(locations[triangle].elemId) ==
+                    static_cast<uint64_t>(_locateElementIds[index]))
+                {
+                    requested = true;
+                    break;
+                }
+            }
+            if (!requested)
+            {
+                continue;
+            }
+
+            subsetIndices.pushBack(faceIndices[triangle * 3]);
+            subsetIndices.pushBack(faceIndices[triangle * 3 + 1]);
+            subsetIndices.pushBack(faceIndices[triangle * 3 + 2]);
+        }
+
+        if (subsetIndices.empty())
+        {
+            LOG(WARNING) << "RenderWork::updateLocateHighlight() found no boundary triangles for "
+                            "the requested element ids";
+            return;
+        }
+
+        // Draw only the requested triangles with the highlight shader.
+        RE::MeshPrimitiveCreator creator(_locateMesh);
+        auto primitive = creator.getPrimitive<RE::RenderFace>();
+        auto locateFace = Common::dynamicSharedPtrCast<RE::RenderFace>(primitive);
+        if (!locateFace)
+        {
+            return;
+        }
+        locateFace->setIndices(Common::move(subsetIndices));
+        locateFace->setColor(_locateColor);
+        locateFace->setDepthOffset(-2.0f, -2.0f);
+        primitive->setup();
+        if (_scene->addPrimitive(highlightShader, primitive) != Common::Return::Succeed)
+        {
+            LOG(ERROR) << "RenderWork::updateLocateHighlight() failed to add the locate primitive";
+            return;
+        }
+        _locatePrimitives.pushBack(primitive);
+
+        // Make every face of the target mesh transparent; the primitive above draws the
+        // requested elements opaquely on top of it.
+        auto targetFace = Common::dynamicSharedPtrCast<RE::RenderFace>(target->renderFace);
+        if (!targetFace)
+        {
+            return;
+        }
+
+        const Common::Vector4f baseColor = getMeshBaseColor(_locateMesh);
+        const Common::Vector4f transparentColor(baseColor[0], baseColor[1], baseColor[2], 0.0f);
+        Common::DynamicArray<Common::Vector4f> colors;
+        colors.reserve(triangleCount);
+        for (size_t triangle = 0; triangle < triangleCount; ++triangle)
+        {
+            colors.pushBack(transparentColor);
+        }
+        targetFace->setColors(Common::move(colors));
+        _locateTargetFace = target->renderFace;
+        _locateTargetMesh = _locateMesh;
     }
 
     void RenderWork::updateViewDependentHighlights()

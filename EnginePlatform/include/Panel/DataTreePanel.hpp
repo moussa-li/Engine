@@ -1,14 +1,8 @@
 #pragma once
 
 #include "Common/DynamicArray.hpp"
-#include "Common/SharedPtr.hpp"
 #include "DataBase/DataNode.hpp"
 #include "Panel/IPanel.hpp"
-
-namespace EgLab::ME
-{
-    class Mesh;
-}
 
 namespace EgLab::Platform
 {
@@ -37,6 +31,12 @@ namespace EgLab::Platform
 
         void renderImpl() override;
 
+        // Called by close() (Escape, hidePanel) before the panel hides.
+        void abortClose() override;
+
+        // Catches the window X button, which hides the panel without calling close().
+        void afterRenderFrame() override;
+
     private:
         bool renderNode(DataTree& node);
 
@@ -44,8 +44,13 @@ namespace EgLab::Platform
 
         bool renderMeshNode(MeshData& meshData);
 
+        // Sends the current selection to CommandManager as a Highlight command.
+        void commitHighlightSelection();
+
+        // Clears the selection and removes the highlight when the panel is closed.
+        void clearSelectionAndHighlight();
+
     private:
-        Common::DynamicArray<Common::SharedPtr<ME::Mesh>> _selectedMeshes;
         Common::DynamicArray<DataNodeId> _selectedDataNodeIds;
     };
 } // namespace EgLab::Platform

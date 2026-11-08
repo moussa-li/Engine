@@ -14,10 +14,12 @@ namespace EgLab::Platform
         Unknow = 0,
         ShowPanel = 100001,
         FitView = 100002,
+        Highlight = 100003,
         UpdateMesh = 200001, // Mesh = 2xxxxx
         MeshImport = 200002,
         MeshDelete = 200003,
         MeshPickInfo = 200004,
+        LocateElements = 200005,
     };
 }
 

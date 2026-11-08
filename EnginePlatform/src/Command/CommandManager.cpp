@@ -15,8 +15,11 @@
 #include "Command/CommandBus.hpp"
 #include "Command/CommandQueueName.hpp"
 #include "Command/DeleteMeshCmd.hpp"
+#include "Command/HighlightCmd.hpp"
 #include "Command/ICommand.hpp"
+#include "Command/IdList.hpp"
 #include "Command/ImportMeshCmd.hpp"
+#include "Command/LocateElementsCmd.hpp"
 #include "Command/UpdateMeshCmd.hpp"
 #include "Common/HashMap.hpp"
 #include "Common/Publisher.hpp"
@@ -124,6 +127,18 @@ namespace EgLab::Platform
                 return Common::makeShared<ImportMeshCmd>(param);
             };
 
+            _creator[EventId::Highlight] = [](const PacketPOD& pod) {
+                HighlightParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<HighlightCmd>(param);
+            };
+
+            _creator[EventId::LocateElements] = [](const PacketPOD& pod) {
+                LocateElementsParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<LocateElementsCmd>(param);
+            };
+
             _packetCreator[EventId::MeshImport] = [](const EventPacket& packet) {
                 PacketPOD pod{};
                 ImportMeshParam param{};
@@ -158,14 +173,39 @@ namespace EgLab::Platform
                 std::memcpy(pod.data, &param, sizeof(param));
                 return pod;
             };
+
+            _packetCreator[EventId::Highlight] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                HighlightParam param{};
+                const Common::String ids = packet.getData<Common::String>("ids");
+                param.count = static_cast<uint32_t>(
+                    parseIdList(ids, param.dataNodeIds, MAX_HIGHLIGHT_DATA_NODE_COUNT));
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
+            _packetCreator[EventId::LocateElements] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                LocateElementsParam param{};
+                param.dataNodeId = packet.getData<uint64_t>("nodeId");
+                const Common::String ids = packet.getData<Common::String>("ids");
+                param.count = static_cast<uint32_t>(
+                    parseIdList(ids, param.elementIds, MAX_LOCATE_ELEMENT_COUNT));
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
         }
 
         void startListen()
         {
             _subscriber.subscrib(static_cast<uint32_t>(EventId::ShowPanel));
             _subscriber.subscrib(static_cast<uint32_t>(EventId::FitView));
+            _subscriber.subscrib(static_cast<uint32_t>(EventId::Highlight));
             _subscriber.subscrib((uint32_t)EventId::MeshImport);
             _subscriber.subscrib((uint32_t)EventId::MeshDelete);
+            _subscriber.subscrib((uint32_t)EventId::LocateElements);
             _subscriber.subscrib((uint32_t)EventId::UpdateMesh);
 
             if (_isRunning == true) return;

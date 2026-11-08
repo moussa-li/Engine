@@ -22,6 +22,17 @@ namespace EgLab::Platform
              "Id of the data node to delete"},
         };
 
+        // ===== HighlightParam =====
+        const ParamFieldDesc kHighlightFields[] = {
+            {"ids", "Data Node Ids", ParamFieldType::String, 256, "1, 2, 3"},
+        };
+
+        // ===== LocateElementsParam =====
+        const ParamFieldDesc kLocateFields[] = {
+            {"nodeId", "Data Node Id", ParamFieldType::UInt64, 0, "Mesh data node id"},
+            {"ids", "Element Ids", ParamFieldType::String, 256, "1, 2, 3"},
+        };
+
         // UpdateMesh carries a raw memory pointer (published directly by MeshEngine) and has no
         // fixed field layout, therefore it is not part of the command catalog.
         const CommandDesc kCommands[] = {
@@ -34,6 +45,12 @@ namespace EgLab::Platform
             {EventId::MeshDelete, "MeshDelete", "Delete Mesh", "Mesh", true,
              sizeof(DeleteMeshParam), kDeleteMeshFields,
              sizeof(kDeleteMeshFields) / sizeof(kDeleteMeshFields[0])},
+            {EventId::Highlight, "Highlight", "Highlight Meshes", "View", true,
+             sizeof(HighlightParam), kHighlightFields,
+             sizeof(kHighlightFields) / sizeof(kHighlightFields[0])},
+            {EventId::LocateElements, "LocateElements", "Locate Elements", "Mesh", true,
+             sizeof(LocateElementsParam), kLocateFields,
+             sizeof(kLocateFields) / sizeof(kLocateFields[0])},
         };
 
         constexpr size_t kCommandCount = sizeof(kCommands) / sizeof(kCommands[0]);

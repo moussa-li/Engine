@@ -1,6 +1,7 @@
 #include "Panel/DataTreePanel.hpp"
 
 #include "Command/CommandManager.hpp"
+#include "Command/IdList.hpp"
 #include "DataBase/Context.hpp"
 #include "DataBase/DataTree.hpp"
 #include "DataBase/MeshData.hpp"
@@ -12,8 +13,8 @@ namespace EgLab::Platform
     bool DataTreePanel::renderMeshNode(MeshData& meshData)
     {
         const auto& mesh = meshData.getMesh();
-        size_t selectedIndex = _selectedMeshes.size();
-        for (size_t index = 0; index < _selectedMeshes.size(); ++index)
+        size_t selectedIndex = _selectedDataNodeIds.size();
+        for (size_t index = 0; index < _selectedDataNodeIds.size(); ++index)
         {
             if (_selectedDataNodeIds[index] == meshData.getId())
             {
@@ -21,7 +22,7 @@ namespace EgLab::Platform
                 break;
             }
         }
-        const bool isSelected = selectedIndex < _selectedMeshes.size();
+        const bool isSelected = selectedIndex < _selectedDataNodeIds.size();
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
         if (isSelected)
         {
@@ -35,35 +36,26 @@ namespace EgLab::Platform
             const bool shiftDown = ImGui::GetIO().KeyShift;
             if (!shiftDown)
             {
-                _selectedMeshes.clear();
                 _selectedDataNodeIds.clear();
-                auto selectedMesh = mesh;
-                _selectedMeshes.pushBack(selectedMesh);
                 _selectedDataNodeIds.pushBack(meshData.getId());
             }
             else if (!isSelected)
             {
-                auto selectedMesh = mesh;
-                _selectedMeshes.pushBack(selectedMesh);
                 _selectedDataNodeIds.pushBack(meshData.getId());
             }
             else
             {
-                Common::DynamicArray<Common::SharedPtr<ME::Mesh>> remainingMeshes;
                 Common::DynamicArray<DataNodeId> remainingNodeIds;
-                for (size_t index = 0; index < _selectedMeshes.size(); ++index)
+                for (size_t index = 0; index < _selectedDataNodeIds.size(); ++index)
                 {
                     if (index != selectedIndex)
                     {
-                        auto selectedMesh = _selectedMeshes[index];
-                        remainingMeshes.pushBack(selectedMesh);
                         remainingNodeIds.pushBack(_selectedDataNodeIds[index]);
                     }
                 }
-                _selectedMeshes = Common::move(remainingMeshes);
                 _selectedDataNodeIds = Common::move(remainingNodeIds);
             }
-            RenderWork::instance().setHighlightedMeshes(_selectedMeshes);
+            commitHighlightSelection();
         }
 
         if (ImGui::BeginPopupContextItem())
@@ -88,9 +80,8 @@ namespace EgLab::Platform
                     nodeIdsToDelete.pushBack(meshData.getId());
                 }
 
-                _selectedMeshes.clear();
                 _selectedDataNodeIds.clear();
-                RenderWork::instance().setHighlightedMeshes(_selectedMeshes);
+                commitHighlightSelection();
                 for (size_t index = 0; index < nodeIdsToDelete.size(); ++index)
                 {
                     EventPacket packet;
@@ -201,12 +192,44 @@ namespace EgLab::Platform
     {
         // std::lock_guard<std::mutex> lock(Context::instance().getDataTreeMutex());
         renderNode(Context::instance().getDataTree());
-        if (!_selectedMeshes.empty() && ImGui::IsWindowHovered() &&
+        if (!_selectedDataNodeIds.empty() && ImGui::IsWindowHovered() &&
             ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())
         {
-            _selectedMeshes.clear();
             _selectedDataNodeIds.clear();
-            RenderWork::instance().setHighlightedMeshes(_selectedMeshes);
+            commitHighlightSelection();
+        }
+    }
+
+    void DataTreePanel::commitHighlightSelection()
+    {
+        EventPacket packet;
+        packet.setData("ids",
+                       formatIdList(_selectedDataNodeIds.data(), _selectedDataNodeIds.size()));
+        CommandManager::instance().call(EventId::Highlight, Common::move(packet));
+    }
+
+    void DataTreePanel::clearSelectionAndHighlight()
+    {
+        if (_selectedDataNodeIds.empty())
+        {
+            return;
+        }
+
+        _selectedDataNodeIds.clear();
+        commitHighlightSelection();
+    }
+
+    void DataTreePanel::abortClose()
+    {
+        clearSelectionAndHighlight();
+    }
+
+    void DataTreePanel::afterRenderFrame()
+    {
+        // The X button only flips _show, so detect the hidden state after the frame.
+        if (!isShow())
+        {
+            clearSelectionAndHighlight();
         }
     }
 } // namespace EgLab::Platform
