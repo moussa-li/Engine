@@ -5,6 +5,7 @@
 
 #include "Panel/BackGroundSettingPanel.hpp"
 #include "Panel/CameraSettingPanel.hpp"
+#include "Panel/CommandParamWizardPanel.hpp"
 #include "Panel/DataTreePanel.hpp"
 #include "Panel/HEMeshDataPanel.hpp"
 #include "Panel/HEMeshPanel.hpp"
@@ -12,6 +13,7 @@
 #include "Panel/LightSettingPanel.hpp"
 #include "Panel/MeshImportPanel.hpp"
 #include "Panel/MeshRenderSettingPanel.hpp"
+#include "Panel/ShortcutSettingPanel.hpp"
 
 namespace EgLab::Platform
 {
@@ -32,6 +34,9 @@ namespace EgLab::Platform
         _panels[MeshRenderSettingPanel().getPanelName()] =
             Common::makeShared<MeshRenderSettingPanel>();
         _panels[LightSettingPanel().getPanelName()] = Common::makeShared<LightSettingPanel>();
+        _panels[ShortcutSettingPanel().getPanelName()] = Common::makeShared<ShortcutSettingPanel>();
+        _panels[CommandParamWizardPanel().getPanelName()] =
+            Common::makeShared<CommandParamWizardPanel>();
     }
 
     Common::Return PanelManager::showPanel(const Common::String& name)

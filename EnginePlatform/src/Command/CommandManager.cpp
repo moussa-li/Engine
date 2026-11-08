@@ -25,16 +25,6 @@
 #include "DataBase/Context.hpp"
 #include "Work/RenderWork.hpp"
 
-template <>
-struct EgLab::Common::hash<EgLab::Platform::EventId>
-{
-    size_t operator()(const EgLab::Platform::EventId& eventId) const
-    {
-        using UnderlyingType = std::underlying_type_t<EgLab::Platform::EventId>;
-        return std::hash<UnderlyingType>{}(static_cast<UnderlyingType>(eventId));
-    }
-};
-
 namespace EgLab::Platform
 {
     namespace
@@ -168,7 +158,6 @@ namespace EgLab::Platform
                 std::memcpy(pod.data, &param, sizeof(param));
                 return pod;
             };
-
         }
 
         void startListen()
@@ -242,7 +231,8 @@ namespace EgLab::Platform
             const auto& raw = packet.getRawBuffer();
             if (raw.size() > UINT32_MAX - sizeof(uint32_t))
             {
-                throw std::length_error("UpdateMesh payload exceeds the shared-memory protocol limit.");
+                throw std::length_error(
+                    "UpdateMesh payload exceeds the shared-memory protocol limit.");
             }
 
             const uint32_t dataSize = static_cast<uint32_t>(raw.size());

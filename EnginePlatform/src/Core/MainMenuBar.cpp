@@ -2,7 +2,9 @@
 
 #include <filesystem>
 
+#include "Command/CommandCatalog.hpp"
 #include "Command/CommandManager.hpp"
+#include "Command/ShortcutManager.hpp"
 #include "Common/HashMap.hpp"
 #include "Core/PidRegistry.hpp"
 #include "DataBase/Context.hpp"
@@ -201,6 +203,10 @@ namespace EgLab::Platform
 
     void renderRibbonToolbar()
     {
+        // Shortcut system: every binding is dispatched through CommandManager.
+        // EventId-only commands run immediately, parameterised ones open the wizard panel.
+        ShortcutManager::instance().processInput();
+
         const bool openRequested =
             ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal);
         if (openRequested)
@@ -244,6 +250,11 @@ namespace EgLab::Platform
                 if (ImGui::MenuItem("Data Tree"))
                 {
                     requestShowPanel("DataTree");
+                }
+                ImGui::Separator();
+                if (ImGui::MenuItem("Shortcut Settings"))
+                {
+                    requestShowPanel(kShortcutSettingPanelName);
                 }
 
                 ImGui::EndMenu();
