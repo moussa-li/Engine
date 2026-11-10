@@ -53,7 +53,7 @@ namespace EgLab::RE
     private:
         Common::DynamicArray<CoordType> _vertices;
         Common::DynamicArray<IdxType> _indices;
-        Common::Vector4f _color;
+        Common::Vector4f _color{0.18f, 0.24f, 0.30f, 1.0f};
         float _lineWidth{2.0f};
         bool _hasColor{false};
 

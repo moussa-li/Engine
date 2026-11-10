@@ -32,6 +32,9 @@ namespace EgLab::Platform
         bool _showElementEdgeInfo{false};
         bool _showElementFaceInfo{false};
         float _highlightColor[4]{1.0f, 0.75f, 0.7f, 0.3f};
+        float _nodePointSize{3.0f};
+        float _lineWidth{2.0f};
+        float _faceShrink{0.0f};
         PickInfoSubscriptionId _pickInfoSubscriptionId{0};
         bool _hasPickedInfo{false};
         PickedMeshInfo _pickedInfo;

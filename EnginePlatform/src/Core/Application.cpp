@@ -87,6 +87,9 @@ namespace EgLab::Platform
         RenderWork::instance().setHighlightColor(Common::Vector4f(
             ini.getFloat("mesh.highlight.r", 1.0f), ini.getFloat("mesh.highlight.g", 0.75f),
             ini.getFloat("mesh.highlight.b", 0.7f), ini.getFloat("mesh.highlight.a", 0.3f)));
+        RenderWork::instance().setNodePointSize(ini.getFloat("mesh.nodePointSize", 3.0f));
+        RenderWork::instance().setLineWidth(ini.getFloat("mesh.lineWidth", 2.0f));
+        RenderWork::instance().setFaceShrink(ini.getFloat("mesh.faceShrink", 0.0f));
 
         // 周期性读取注册表中的活动进程 PID，供主菜单实时高亮当前进程。
         const int pidIntervalMs = ini.getInt("registry.pidIntervalMs", 300);

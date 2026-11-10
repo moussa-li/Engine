@@ -10,7 +10,7 @@ void main()
 {
     vec4 viewPosition = view * vec4(position, 1.0);
     gl_Position = proj * viewPosition;
-    gl_PointSize = clamp(u_PointSize * 10.0 / max(-viewPosition.z, 0.1), 1.0, 3.0);
+    gl_PointSize = clamp(u_PointSize, 1.0, 8.0);
 };
 
 #shader fragment

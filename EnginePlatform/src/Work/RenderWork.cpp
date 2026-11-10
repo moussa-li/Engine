@@ -495,6 +495,15 @@ namespace EgLab::Platform
             case RenderEventType::HighlightColor:
                 _highlightColor = event.color;
                 break;
+            case RenderEventType::NodePointSize:
+                _nodePointSize = event.nodePointSize;
+                break;
+            case RenderEventType::LineWidth:
+                _lineWidth = event.lineWidth;
+                break;
+            case RenderEventType::FaceShrink:
+                _faceShrink = event.faceShrink;
+                break;
             case RenderEventType::MeshUpdate:
                 // if (_camera && _scene)
                 // {
@@ -551,8 +560,7 @@ namespace EgLab::Platform
         {
             std::lock_guard<std::mutex> lock(_renderEventMutex);
             _renderEventQueue.push_back(Common::move(event));
-            // _renderEventsPending.store(true, std::memory_order_release);
-            // _renderEventBus.setPushAllowed(false);
+            _renderEventsPending.store(true, std::memory_order_release);
         }
     }
 
@@ -658,6 +666,36 @@ namespace EgLab::Platform
                 }
             }
             break;
+        case RenderEventType::NodePointSize:
+            for (auto& packet : _activeMeshPackets)
+            {
+                auto node = Common::dynamicSharedPtrCast<RE::RenderNode>(packet.renderNode);
+                if (node)
+                {
+                    node->setPointSize(event.nodePointSize);
+                }
+            }
+            break;
+        case RenderEventType::LineWidth:
+            for (auto& packet : _activeMeshPackets)
+            {
+                auto line = Common::dynamicSharedPtrCast<RE::RenderLine>(packet.renderLine);
+                if (line)
+                {
+                    line->setLineWidth(event.lineWidth);
+                }
+            }
+            break;
+        case RenderEventType::FaceShrink:
+            for (auto& packet : _activeMeshPackets)
+            {
+                auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(packet.renderFace);
+                if (face)
+                {
+                    face->setFaceShrink(event.faceShrink);
+                }
+            }
+            break;
         case RenderEventType::Locate:
             updateLocateHighlight();
             break;
@@ -700,6 +738,22 @@ namespace EgLab::Platform
         packet.renderNode->setup();
         packet.renderLine->setup();
         packet.renderFace->setup();
+
+        auto node = Common::dynamicSharedPtrCast<RE::RenderNode>(packet.renderNode);
+        if (node)
+        {
+            node->setPointSize(_nodePointSize);
+        }
+        auto line = Common::dynamicSharedPtrCast<RE::RenderLine>(packet.renderLine);
+        if (line)
+        {
+            line->setLineWidth(_lineWidth);
+        }
+        auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(packet.renderFace);
+        if (face)
+        {
+            face->setFaceShrink(_faceShrink);
+        }
 
         if (_meshSelector && packet.mesh && packet.translator)
         {
@@ -805,6 +859,30 @@ namespace EgLab::Platform
         RenderEvent event{};
         event.type = RenderEventType::HighlightColor;
         event.color = color;
+        queueRenderEvent(Common::move(event));
+    }
+
+    void RenderWork::setNodePointSize(float pointSize)
+    {
+        RenderEvent event{};
+        event.type = RenderEventType::NodePointSize;
+        event.nodePointSize = pointSize;
+        queueRenderEvent(Common::move(event));
+    }
+
+    void RenderWork::setLineWidth(float lineWidth)
+    {
+        RenderEvent event{};
+        event.type = RenderEventType::LineWidth;
+        event.lineWidth = lineWidth;
+        queueRenderEvent(Common::move(event));
+    }
+
+    void RenderWork::setFaceShrink(float shrink)
+    {
+        RenderEvent event{};
+        event.type = RenderEventType::FaceShrink;
+        event.faceShrink = shrink;
         queueRenderEvent(Common::move(event));
     }
 

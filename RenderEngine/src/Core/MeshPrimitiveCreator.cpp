@@ -80,6 +80,35 @@ namespace EgLab::RE
         Common::DynamicArray<IdxType> sourceIndices = _translator->getBoundaryFaceIdx();
         primitive->setIndices(Common::move(sourceIndices));
 
+        // Hand the face primitive the geometric center of each boundary element face so that
+        // shrinking collapses every element face toward its own center. This works for both
+        // surface meshes (Tri/Quad) and volumetric meshes (Tet/Hex boundary faces).
+        const auto& faceLocations = _translator->getBoundaryFaceLocations();
+        Common::DynamicArray<RE::CoordType> faceCenters;
+        faceCenters.reserve(faceLocations.size() * 3);
+        for (size_t triangle = 0; triangle < faceLocations.size(); ++triangle)
+        {
+            const auto& location = faceLocations[triangle];
+            ME::ElemFaceGetter faceGetter(_mesh->getElemById(location.elemId));
+            const auto faceNodeIds = faceGetter.getNodes(location.faceIdx);
+
+            RE::CoordType center(0.0f, 0.0f, 0.0f);
+            for (auto nodeId : faceNodeIds)
+            {
+                const auto& node = _mesh->getNodeById(nodeId);
+                center = center + RE::CoordType(node.x(), node.y(), node.z());
+            }
+            if (faceNodeIds.size() > 0)
+            {
+                center = center * (1.0f / static_cast<float>(faceNodeIds.size()));
+            }
+
+            faceCenters.pushBack(center);
+            faceCenters.pushBack(center);
+            faceCenters.pushBack(center);
+        }
+        primitive->setFaceCenters(Common::move(faceCenters));
+
         static int testTime = 0;
         testTime++;
 

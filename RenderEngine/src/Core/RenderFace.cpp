@@ -80,6 +80,25 @@ namespace EgLab::RE
             arrayNormals.pushBack(_normals[index]);
         }
 
+        // Prefer the externally supplied element-face centers so all triangles of one element
+        // face shrink toward that face's center. Fall back to the per-triangle centroid.
+        Common::DynamicArray<CoordType> fallbackCenters;
+        Common::DynamicArray<CoordType> *centerSource = &_faceCenters;
+        if (_faceCenters.size() != arrayVertices.size())
+        {
+            fallbackCenters.reserve(arrayVertices.size());
+            for (size_t i = 0; i + 2 < arrayVertices.size(); i += 3)
+            {
+                const CoordType centroid =
+                    (arrayVertices[i] + arrayVertices[i + 1] + arrayVertices[i + 2]) *
+                    (1.0f / 3.0f);
+                fallbackCenters.pushBack(centroid);
+                fallbackCenters.pushBack(centroid);
+                fallbackCenters.pushBack(centroid);
+            }
+            centerSource = &fallbackCenters;
+        }
+
         _arrayVertexArray = Common::makeShared<VertexArray>();
         _arrayVertexArray->bind();
         VertexBufferLayout arrayLayout;
@@ -87,6 +106,8 @@ namespace EgLab::RE
         arrayLayout.pushBack<float>(3, _arrayVertexBuffer);
         _arrayNormalVertexBuffer = Common::makeShared<VertexBuffer>(arrayNormals);
         arrayLayout.pushBack<float>(3, _arrayNormalVertexBuffer);
+        _arrayCentroidVertexBuffer = Common::makeShared<VertexBuffer>(*centerSource);
+        arrayLayout.pushBack<float>(3, _arrayCentroidVertexBuffer);
         _arrayVertexArray->addBuffer(arrayLayout);
         _arrayVertexArray->unBind();
 
@@ -139,6 +160,7 @@ namespace EgLab::RE
 
         shader->bind();
         shader->setUniform1i("isPureColor", 0);
+        shader->setUniform1f("faceShrink", _faceShrink);
         if (!_colors.empty())
         {
             shader->setUniform4f("u_Color", _colors[0]);
@@ -342,6 +364,16 @@ namespace EgLab::RE
         _highlightScale = scale;
         _highlightScaleEnabled = true;
         updateHighlightScaleMatrix();
+    }
+
+    void RenderFace::setFaceShrink(float shrink)
+    {
+        _faceShrink = shrink;
+    }
+
+    void RenderFace::setFaceCenters(Common::DynamicArray<CoordType> &&centers)
+    {
+        _faceCenters = Common::move(centers);
     }
 
     void RenderFace::setDepthOffset(float factor, float units)

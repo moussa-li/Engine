@@ -20,6 +20,9 @@ namespace EgLab::Platform
         _highlightColor[1] = ini.getFloat("mesh.highlight.g", _highlightColor[1]);
         _highlightColor[2] = ini.getFloat("mesh.highlight.b", _highlightColor[2]);
         _highlightColor[3] = ini.getFloat("mesh.highlight.a", _highlightColor[3]);
+        _nodePointSize = ini.getFloat("mesh.nodePointSize", _nodePointSize);
+        _lineWidth = ini.getFloat("mesh.lineWidth", _lineWidth);
+        _faceShrink = ini.getFloat("mesh.faceShrink", _faceShrink);
     }
 
     MeshRenderSettingPanel::~MeshRenderSettingPanel()
@@ -70,6 +73,22 @@ namespace EgLab::Platform
             {
                 renderer->setRenderFacesEnabled(renderFaces);
                 IniManager::instance().setBool("mesh.renderFaces", renderFaces);
+            }
+
+            if (ImGui::SliderFloat("Point Size", &_nodePointSize, 1.0f, 8.0f))
+            {
+                RenderWork::instance().setNodePointSize(_nodePointSize);
+                IniManager::instance().setFloat("mesh.nodePointSize", _nodePointSize);
+            }
+            if (ImGui::SliderFloat("Line Width", &_lineWidth, 1.0f, 10.0f))
+            {
+                RenderWork::instance().setLineWidth(_lineWidth);
+                IniManager::instance().setFloat("mesh.lineWidth", _lineWidth);
+            }
+            if (ImGui::SliderFloat("Face Shrink", &_faceShrink, 0.0f, 1.0f))
+            {
+                RenderWork::instance().setFaceShrink(_faceShrink);
+                IniManager::instance().setFloat("mesh.faceShrink", _faceShrink);
             }
 
             if (ImGui::ColorEdit4("Highlight Color", _highlightColor))

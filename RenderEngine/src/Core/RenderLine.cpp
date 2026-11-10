@@ -59,15 +59,15 @@ namespace EgLab::RE
     void RenderLine::draw(Common::SharedPtr<Shader> shader)
     {
         shader->bind();
+        shader->setUniform4f("u_Color", _color);
         if (_hasColor)
         {
-            shader->setUniform4f("u_Color", _color);
             glEnable(GL_POLYGON_OFFSET_LINE);
             glPolygonOffset(-1.0f, -1.0f);
         }
         _vertexArray->bind();
         _indexBuffer->bind();
-        glLineWidth(_hasColor ? _lineWidth : 1.0f);
+        glLineWidth(_lineWidth);
         glDrawElements(GL_LINES, _indices.size(), GL_UNSIGNED_INT, 0);
         if (_hasColor)
         {

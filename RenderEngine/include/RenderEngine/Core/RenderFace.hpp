@@ -59,6 +59,13 @@ namespace EgLab::RE
         /// @brief Sets the scale applied to highlighted faces.
         /// @param scale Highlight scale factor.
         void setHighlightScale(float scale);
+        /// @brief Sets how far each face shrinks toward its own centroid.
+        /// @param shrink Shrink amount in [0, 1]; 0 keeps the full face, 1 collapses to the
+        /// centroid.
+        void setFaceShrink(float shrink);
+        /// @brief Sets per-vertex shrink centers (element-face centers) for array-mode drawing.
+        /// @param centers Three entries per triangle, all equal to that element face's center.
+        void setFaceCenters(Common::DynamicArray<CoordType> &&centers);
         /// @brief Sets the depth bias used when drawing faces.
         /// @param factor Slope-scaled depth bias factor.
         /// @param units Constant depth bias units.
@@ -84,6 +91,7 @@ namespace EgLab::RE
         Common::SharedPtr<VertexBuffer> _normalVertexBuffer;
         Common::SharedPtr<VertexBuffer> _arrayVertexBuffer;
         Common::SharedPtr<VertexBuffer> _arrayNormalVertexBuffer;
+        Common::SharedPtr<VertexBuffer> _arrayCentroidVertexBuffer;
         Common::SharedPtr<IndexBuffer> _indexBuffer;
 
         // Per-triangle color table stored in a Shader Storage Buffer Object (SSBO).
@@ -92,6 +100,8 @@ namespace EgLab::RE
         unsigned int _colorSSBO{0};
         float _highlightScale{1.0f};
         bool _highlightScaleEnabled{false};
+        float _faceShrink{0.0f};
+        Common::DynamicArray<CoordType> _faceCenters;
         float _depthOffsetFactor{1.0f};
         float _depthOffsetUnits{1.0f};
         DrawMode _drawMode{DrawMode::Arrays};

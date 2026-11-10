@@ -110,6 +110,9 @@ namespace EgLab::Platform
                             const Common::DynamicArray<uint32_t>& elementIds);
         void clearLocate();
         void setHighlightColor(const Common::Vector4f& color);
+        void setNodePointSize(float pointSize);
+        void setLineWidth(float lineWidth);
+        void setFaceShrink(float shrink);
         void setHEMeshHighlight(const Common::SharedPtr<ME::HEMesh>& mesh, uint32_t vertexIndex,
                                 uint32_t halfEdgeIndex = UINT32_MAX);
         void setMeshColor(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
@@ -124,6 +127,9 @@ namespace EgLab::Platform
             MeshRemoval,
             Highlight,
             HighlightColor,
+            NodePointSize,
+            LineWidth,
+            FaceShrink,
             HEMeshHighlight,
             Locate,
             FitView,
@@ -139,6 +145,9 @@ namespace EgLab::Platform
             uint32_t heMeshHalfEdgeIndex{UINT32_MAX};
             Common::DynamicArray<uint32_t> elementIds;
             Common::Vector4f color;
+            float nodePointSize{3.0f};
+            float lineWidth{2.0f};
+            float faceShrink{0.0f};
             Common::DynamicArray<uint8_t> payload;
             RenderPacket packet;
         };
@@ -209,6 +218,9 @@ namespace EgLab::Platform
         Common::Vector4f _locateColor{1.0f, 0.55f, 0.1f, 1.0f};
         Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _highlightContourPrimitives;
         Common::Vector4f _highlightColor{1.0f, 0.75f, 0.7f, 0.3f};
+        float _nodePointSize{3.0f};
+        float _lineWidth{2.0f};
+        float _faceShrink{0.0f};
         RE::CoordType _highlightViewPosition;
         RE::CoordType _highlightViewFront;
         bool _highlightViewValid{false};
