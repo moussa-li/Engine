@@ -251,6 +251,10 @@ namespace EgLab::Platform
                 {
                     requestShowPanel("DataTree");
                 }
+                if (ImGui::MenuItem("Message Log"))
+                {
+                    requestShowPanel("MessageLog");
+                }
                 ImGui::Separator();
                 if (ImGui::MenuItem("Shortcut Settings"))
                 {

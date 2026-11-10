@@ -3,6 +3,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#include "Common/MessageCenter.hpp"
 #include "Common/Return.hpp"
 #include "Common/String.hpp"
 #include "Common/StringLineIterator.hpp"
@@ -61,6 +62,8 @@ namespace EgLab::RE
             char* msg = new char[length];
             glGetShaderInfoLog(id, length, &length, msg);
             LOG(ERROR) << "Failed to comile [ " << type << "] : " << msg;
+            Common::MessageCenter::instance().emit(Common::MessageLevel::Error,
+                                                   "Failed to compile shader");
             GL_CHECK();
             glDeleteShader(id);
             return 0;

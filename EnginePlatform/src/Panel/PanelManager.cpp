@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cstring>
 
+#include "Common/MessageCenter.hpp"
+#include "DataBase/Context.hpp"
 #include "Panel/BackGroundSettingPanel.hpp"
 #include "Panel/CameraSettingPanel.hpp"
 #include "Panel/CommandParamWizardPanel.hpp"
@@ -13,7 +15,19 @@
 #include "Panel/LightSettingPanel.hpp"
 #include "Panel/MeshImportPanel.hpp"
 #include "Panel/MeshRenderSettingPanel.hpp"
+#include "Panel/MessageLogPanel.hpp"
+#include "Panel/MessageToast.hpp"
 #include "Panel/ShortcutSettingPanel.hpp"
+
+namespace
+{
+    // MessageCenter 的回调：EnginePlatform 将处理函数塞入回调，
+    // 消息到达时转发给 PanelManager（UI 层）进行分发。
+    void onMessageArrived(const EgLab::Common::Message& message)
+    {
+        EgLab::Platform::Context::instance().getPanelManager().handleMessage(message);
+    }
+} // namespace
 
 namespace EgLab::Platform
 {
@@ -37,6 +51,13 @@ namespace EgLab::Platform
         _panels[ShortcutSettingPanel().getPanelName()] = Common::makeShared<ShortcutSettingPanel>();
         _panels[CommandParamWizardPanel().getPanelName()] =
             Common::makeShared<CommandParamWizardPanel>();
+
+        _messageLogPanel = Common::makeShared<MessageLogPanel>();
+        _panels[_messageLogPanel->getPanelName()] = _messageLogPanel;
+        _messageToast = Common::makeShared<MessageToast>();
+
+        // EnginePlatform 将消息处理函数塞入 Common 层回调。
+        Common::MessageCenter::instance().setHandler(&onMessageArrived);
     }
 
     Common::Return PanelManager::showPanel(const Common::String& name)
@@ -87,6 +108,9 @@ namespace EgLab::Platform
             showPanel(Common::String(showRequest.panelName));
         }
 
+        // 取出消息中心回调中的消息并分发给消息面板。
+        Common::MessageCenter::instance().poll();
+
         for (auto& [name, panel] : _panels)
         {
             if (panel)
@@ -96,6 +120,24 @@ namespace EgLab::Platform
                     panel->render();
                 }
             }
+        }
+
+        // 及时消息弹窗不放入 _panels，单独渲染。
+        if (_messageToast && _messageToast->isShow())
+        {
+            _messageToast->render();
+        }
+    }
+
+    void PanelManager::handleMessage(const Common::Message& message)
+    {
+        if (_messageLogPanel)
+        {
+            _messageLogPanel->pushMessage(message);
+        }
+        if (_messageToast)
+        {
+            _messageToast->pushMessage(message);
         }
     }
 

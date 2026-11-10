@@ -1,9 +1,12 @@
 #pragma once
 
+#include <cstdio>
+
 #include "Command/CommandParam.hpp"
 #include "Common/DynamicArray.hpp"
 #include "Common/Exception.hpp"
 #include "Common/Log.hpp"
+#include "Common/MessageCenter.hpp"
 #include "Common/Performance.hpp"
 #include "Common/Return.hpp"
 #include "Common/Utils.hpp"
@@ -72,6 +75,16 @@ namespace EgLab::Platform
                 LOG(INFO) << "Finished executing command: " << getCmdName()
                           << ", end_ms=" << _performance.getEndTimestampMs()
                           << ", elapsed_ms=" << _performance.getElapsedMilliseconds();
+
+                // 每条命令执行结束后发送一条消息，附上运行耗时。
+                char commandMessage[192];
+                std::snprintf(commandMessage, sizeof(commandMessage),
+                              "Command %s finished, elapsed_ms=%.3f", getCmdName().c_str(),
+                              _performance.getElapsedMilliseconds());
+                Common::MessageCenter::instance().emit(ret == Common::Return::Succeed
+                                                           ? Common::MessageLevel::Info
+                                                           : Common::MessageLevel::Warning,
+                                                       commandMessage);
                 return ret;
             }
             catch (Common::Exception& e)
@@ -81,6 +94,13 @@ namespace EgLab::Platform
                 LOG(ERROR) << "Command failed: " << getCmdName()
                            << ", end_ms=" << _performance.getEndTimestampMs()
                            << ", elapsed_ms=" << _performance.getElapsedMilliseconds();
+
+                // 命令执行异常时同样发送一条带耗时的错误消息。
+                char commandMessage[192];
+                std::snprintf(commandMessage, sizeof(commandMessage),
+                              "Command %s failed, elapsed_ms=%.3f", getCmdName().c_str(),
+                              _performance.getElapsedMilliseconds());
+                Common::MessageCenter::instance().emit(Common::MessageLevel::Error, commandMessage);
                 return Common::Return::Failed;
             }
         }

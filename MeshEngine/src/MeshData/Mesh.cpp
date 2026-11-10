@@ -1,6 +1,7 @@
 #include "MeshEngine/MeshData/Mesh.hpp"
 
 #include "Common/HashMap.hpp"
+#include "Common/MessageCenter.hpp"
 
 namespace EgLab::ME
 {
@@ -60,6 +61,8 @@ namespace EgLab::ME
         if (_impl->_nodeIdToIdx.find(id) == _impl->_nodeIdToIdx.end())
         {
             LOG(ERROR) << "mesh::node not added!";
+            Common::MessageCenter::instance().emit(Common::MessageLevel::Error,
+                                                   "mesh::node not added!");
             return Common::Return::BadInput;
         }
 

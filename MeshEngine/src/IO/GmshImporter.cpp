@@ -5,6 +5,7 @@
 #include <string>
 
 #include "Common/Log.hpp"
+#include "Common/MessageCenter.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 
 namespace EgLab::ME
@@ -40,6 +41,9 @@ namespace EgLab::ME
             if (!file.is_open())
             {
                 LOG(ERROR) << "Failed to open file: " << filePath;
+                Common::MessageCenter::instance().emit(
+                    Common::MessageLevel::Error,
+                    Common::String("Failed to open file: ") + filePath);
                 return;
             }
 
