@@ -995,6 +995,12 @@ namespace EgLab::Platform
         const Common::DynamicArray<RE::IdxType> faceIndices =
             target->translator->getBoundaryFaceIdx();
         const auto& locations = target->translator->getBoundaryFaceLocations();
+        if (faceIndices.empty())
+        {
+            LOG(WARNING)
+                << "RenderWork::updateLocateHighlight() the target mesh has no boundary faces";
+            return;
+        }
         const size_t triangleCount = faceIndices.size() / 3;
         if (locations.size() < triangleCount)
         {

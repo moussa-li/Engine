@@ -52,6 +52,20 @@ namespace EgLab::Platform
             return Common::Return::BadInput;
         }
 
+        // A gmsh file can contain nodes for every dimension it references while only
+        // providing elements for some of them (e.g. a pure surface mesh still lists the
+        // volume nodes). Treat a dimension without elements as absent so that we never
+        // create an empty mesh node. An empty 3D node would otherwise become the only
+        // locatable target and make locate/render operations see zero elements.
+        if (mesh3d && mesh3d->getElemNumber() == 0)
+        {
+            mesh3d = nullptr;
+        }
+        if (mesh2d && mesh2d->getElemNumber() == 0)
+        {
+            mesh2d = nullptr;
+        }
+
         if (!mesh3d && !mesh2d)
         {
             return Common::Return::Failed;
