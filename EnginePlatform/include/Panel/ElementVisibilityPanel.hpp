@@ -34,7 +34,6 @@ namespace EgLab::Platform
 
         void configureWindow() const override;
         void renderImpl() override;
-        void abortClose() override;
 
     private:
         struct MeshEntry
@@ -50,7 +49,6 @@ namespace EgLab::Platform
         void requestShowAll();
         void requestElementsVisibility(DataNodeId nodeId, uint32_t mode,
                                        const Common::String& ids);
-        void syncPlanePreview();
 
         Common::DynamicArray<MeshEntry> _meshEntries;
         int _selectedMeshIndex{-1};
@@ -60,15 +58,9 @@ namespace EgLab::Platform
         float _referenceMax{0.0f};
         float _boundsMin[3]{0.0f, 0.0f, 0.0f};
         float _boundsMax[3]{0.0f, 0.0f, 0.0f};
-        float _planeExtent{10.0f};
         bool _autoApply{true};
         DataNodeId _boundsNodeId{0};
         Common::DynamicArray<uint32_t> _positiveElementIds;
         Common::DynamicArray<uint32_t> _negativeElementIds;
-
-        float _lastNormal[3]{0.0f, 0.0f, -1.0f};
-        float _lastPoint[3]{0.0f, 0.0f, 0.0f};
-        float _lastExtent{0.0f};
-        bool _planePreviewVisible{false};
     };
 } // namespace EgLab::Platform

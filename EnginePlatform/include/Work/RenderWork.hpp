@@ -2,8 +2,6 @@
 
 #include <atomic>
 #include <cstdint>
-#include <deque>
-#include <memory>
 #include <mutex>
 #include <thread>
 #include <type_traits>
@@ -12,16 +10,17 @@
 #include "Command/CommandIds.hpp"
 #include "Command/CommandParam.hpp"
 #include "Common/DynamicArray.hpp"
-#include "Common/HashSet.hpp"
 #include "Common/Publisher.hpp"
 #include "Common/SharedPtr.hpp"
 #include "Common/Singleton.hpp"
 #include "Common/Subscriber.hpp"
+#include "Common/UniquePtr.hpp"
 #include "Common/Vector.hpp"
-#include "MeshEngine/Common/Definitions.hpp"
 #include "RenderEngine/Core/Definites.hpp"
-#include "RenderEngine/Core/RenderPrimitive.hpp"
 #include "RenderEngine/Core/Selector.hpp"
+#include "Work/RenderDataManager.hpp"
+#include "Work/RenderEvent.hpp"
+#include "Work/RenderEventHandler.hpp"
 
 namespace EgLab::ME
 {
@@ -35,8 +34,6 @@ namespace EgLab::RE
     class Renderer;
     class Scene;
     class Camera;
-    class Shader;
-    class MeshToTriFace;
     class MeshSelector;
 } // namespace EgLab::RE
 
@@ -68,16 +65,9 @@ namespace EgLab::Platform
     static_assert(std::is_trivially_copyable<PickedMeshInfo>::value,
                   "PickedMeshInfo must be trivially copyable");
 
-    struct RenderPacket
-    {
-        Common::SharedPtr<RE::RenderPrimitive> renderNode;
-        Common::SharedPtr<RE::RenderPrimitive> renderLine;
-        Common::SharedPtr<RE::RenderPrimitive> renderFace;
-        Common::SharedPtr<ME::Mesh> sourceMesh;
-        Common::SharedPtr<ME::Mesh> mesh;
-        Common::SharedPtr<RE::MeshToTriFace> translator;
-    };
-
+    /// Accepts rendering requests, forwards them to their RenderEvent handlers and runs the
+    /// render loop. RenderWork does not own or manage render data; all render state lives in
+    /// RenderDataManager.
     class RenderWork : public EgLab::Common::Singleton<RenderWork>
     {
     public:
@@ -117,9 +107,6 @@ namespace EgLab::Platform
         void setElementsVisibility(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
                                    uint32_t mode,
                                    const Common::DynamicArray<uint32_t>& elementIds);
-        // Shows or hides a translucent helper plane used to preview visibility cuts.
-        void setVisibilityPlane(const Common::Vector3f& normal, const Common::Vector3f& point,
-                                float extent, bool visible);
         void setHighlightColor(const Common::Vector4f& color);
         void setNodePointSize(float pointSize);
         void setLineWidth(float lineWidth);
@@ -131,88 +118,18 @@ namespace EgLab::Platform
         void removeMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
 
     private:
-        struct MeshElementVisibilityState;
-
-        enum class RenderEventType
-        {
-            MeshColor,
-            MeshUpdate,
-            MeshRemoval,
-            Highlight,
-            HighlightColor,
-            NodePointSize,
-            LineWidth,
-            FaceShrink,
-            HEMeshHighlight,
-            Locate,
-            ElementsVisibility,
-            VisibilityPlane,
-            FitView,
-        };
-
-        struct RenderEvent
-        {
-            RenderEventType type{RenderEventType::FitView};
-            Common::SharedPtr<ME::Mesh> mesh;
-            Common::DynamicArray<Common::SharedPtr<ME::Mesh>> meshes;
-            Common::SharedPtr<ME::HEMesh> heMesh;
-            uint32_t heMeshVertexIndex{UINT32_MAX};
-            uint32_t heMeshHalfEdgeIndex{UINT32_MAX};
-            Common::DynamicArray<uint32_t> elementIds;
-            uint32_t elementsMode{0};
-            Common::Vector3f planeNormal{0.0f, 0.0f, 1.0f};
-            Common::Vector3f planePoint{0.0f, 0.0f, 0.0f};
-            float planeExtent{10.0f};
-            bool planeVisible{false};
-            Common::Vector4f planeColor{0.2f, 0.5f, 1.0f, 0.25f};
-            Common::Vector4f color;
-            float nodePointSize{3.0f};
-            float lineWidth{2.0f};
-            float faceShrink{0.0f};
-            Common::DynamicArray<uint8_t> payload;
-            RenderPacket packet;
-        };
-
-        void queueRenderEvent(RenderEvent event);
+        void queueRenderEvent(Common::SharedPtr<RenderEvent> event);
         void drainRenderEvents();
-        void processRenderEvent(RenderEvent event);
-        Common::Return applyRenderUpdate(const RenderEvent& event);
-        bool isMeshRemoved(const ME::Mesh* mesh);
-        Common::Return uploadRenderPacket(const RenderPacket& packet);
-        void updateLocateHighlight();
-        void updateElementsVisibility(const RenderEvent& event);
-        void updateVisibilityPlane(const RenderEvent& event);
-        MeshElementVisibilityState* findElementVisibilityState(
-            const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
-        Common::DynamicArray<ME::IdType> collectHiddenElementIds(
-            MeshElementVisibilityState& state);
-        void rebuildMeshSurface(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
-                                const Common::DynamicArray<ME::IdType>& hiddenElementIds);
-        Common::Vector4f getMeshBaseColor(const Common::SharedPtr<ME::Mesh>& mesh) const;
-        void updateMeshHighlight();
-        void updateViewDependentHighlights();
-        void updateHEMeshHighlight(const RenderEvent& event);
+        void processRenderEvent(Common::SharedPtr<RenderEvent> event);
         void publishPickInfo(const RE::PrimitivePickInfo& info);
 
     private:
-        struct MeshColor
-        {
-            Common::SharedPtr<ME::Mesh> mesh;
-            Common::Vector4f color;
-        };
-
-        struct MeshElementVisibilityState
-        {
-            Common::SharedPtr<ME::Mesh> mesh;
-            Common::HashSet<ME::IdType> hiddenElementIds;
-        };
-
         struct PickInfoSubscription
         {
             PickInfoSubscriptionId id{0};
-            std::unique_ptr<Common::MemoryQueue> queue;
-            std::unique_ptr<Common::Publisher> publisher;
-            std::unique_ptr<Common::Subscriber> subscriber;
+            Common::UniquePtr<Common::MemoryQueue> queue;
+            Common::UniquePtr<Common::Publisher> publisher;
+            Common::UniquePtr<Common::Subscriber> subscriber;
         };
 
         std::thread _thread;
@@ -224,45 +141,17 @@ namespace EgLab::Platform
         Common::SharedPtr<EgLab::RE::MeshSelector> _meshSelector;
 
         std::mutex _pickInfoSubscriptionsMutex;
-        Common::DynamicArray<std::unique_ptr<PickInfoSubscription>> _pickInfoSubscriptions;
+        Common::DynamicArray<Common::UniquePtr<PickInfoSubscription>> _pickInfoSubscriptions;
         PickInfoSubscriptionId _nextPickInfoSubscriptionId{1};
         PickedMeshInfo _lastPublishedPickInfo;
         bool _hasPublishedPickInfo{false};
 
         std::mutex _renderEventMutex;
-        std::deque<RenderEvent> _renderEventQueue;
+        Common::DynamicArray<Common::SharedPtr<RenderEvent>> _renderEventQueue;
         std::atomic<bool> _renderEventsPending{false};
-        std::mutex _renderStateMutex;
 
-        Common::DynamicArray<MeshColor> _meshColors;
-        Common::DynamicArray<RenderPacket> _activeMeshPackets;
-        Common::DynamicArray<MeshElementVisibilityState> _elementVisibilityStates;
-
-        Common::DynamicArray<ME::Mesh*> _removedMeshes;
-
-        Common::DynamicArray<Common::SharedPtr<EgLab::ME::Mesh>> _requestedHighlightedMeshes;
-        Common::DynamicArray<Common::SharedPtr<EgLab::ME::Mesh>> _activeHighlightedMeshes;
-        Common::SharedPtr<RE::Shader> _highlightShader;
-        Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _highlightPrimitives;
-        // Locate state: the target mesh, the requested element ids and the primitives that draw
-        // the located elements. The target mesh faces are dimmed while a locate is active.
-        Common::SharedPtr<ME::Mesh> _locateMesh;
-        Common::DynamicArray<uint32_t> _locateElementIds;
-        Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _locatePrimitives;
-        Common::SharedPtr<RE::RenderPrimitive> _locateTargetFace;
-        Common::SharedPtr<ME::Mesh> _locateTargetMesh;
-        Common::Vector4f _locateColor{1.0f, 0.55f, 0.1f, 1.0f};
-        Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _highlightContourPrimitives;
-        Common::Vector4f _highlightColor{1.0f, 0.75f, 0.7f, 0.3f};
-        float _nodePointSize{3.0f};
-        float _lineWidth{2.0f};
-        float _faceShrink{0.0f};
-        RE::CoordType _highlightViewPosition;
-        RE::CoordType _highlightViewFront;
-        bool _highlightViewValid{false};
-        Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _heMeshHighlightPrimitives;
-        Common::SharedPtr<RE::Shader> _heMeshHighlightShader;
-        Common::SharedPtr<RE::RenderPrimitive> _visibilityPlanePrimitive;
+        RenderDataManager _renderData;
+        RenderEventHandlerFactory _handlerFactory;
 
         EgLab::RE::DeltaTime lastFrame;
         EgLab::RE::DeltaTime deltaTime;

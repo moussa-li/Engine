@@ -1,14 +1,13 @@
 #include "Panel/ElementVisibilityPanel.hpp"
 
-#include <cmath>
 #include <limits>
 
 #include "Command/CommandManager.hpp"
 #include "Common/Log.hpp"
 #include "DataBase/Context.hpp"
 #include "DataBase/MeshData.hpp"
+#include "MeshEngine/Algorithm/PlaneCut.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
-#include "Work/RenderWork.hpp"
 #include "imgui.h"
 
 namespace
@@ -167,15 +166,6 @@ namespace EgLab::Platform
             _referenceMax += 1.0f;
         }
 
-        const float spanX = _boundsMax[0] - _boundsMin[0];
-        const float spanY = _boundsMax[1] - _boundsMin[1];
-        const float spanZ = _boundsMax[2] - _boundsMin[2];
-        _planeExtent = std::sqrt(spanX * spanX + spanY * spanY + spanZ * spanZ);
-        if (_planeExtent < 1e-6f)
-        {
-            _planeExtent = 10.0f;
-        }
-
         for (int axis = 0; axis < 3; ++axis)
         {
             if (_referencePoint[axis] < _boundsMin[axis])
@@ -197,58 +187,23 @@ namespace EgLab::Platform
             return;
         }
 
-        float normalX = _normal[0];
-        float normalY = _normal[1];
-        float normalZ = _normal[2];
-        const float normalLength = std::sqrt(normalX * normalX + normalY * normalY + normalZ * normalZ);
-        if (normalLength < 1e-6f)
+        const ME::CoordType normal(static_cast<double>(_normal[0]),
+                                   static_cast<double>(_normal[1]),
+                                   static_cast<double>(_normal[2]));
+        if (normal.length() < 1e-12)
         {
             LOG(WARNING) << "ElementVisibilityPanel::applyPlaneCut() plane normal is zero";
             return;
         }
-        normalX /= normalLength;
-        normalY /= normalLength;
-        normalZ /= normalLength;
 
-        _positiveElementIds.clear();
-        _negativeElementIds.clear();
-        ME::MeshIterator iterator(*mesh);
-        for (; iterator.hasMoreElem(); iterator.nextElem())
-        {
-            const auto& element = iterator.currentElem();
-            const auto& nodeIds = element.getNodes();
-            if (nodeIds.empty())
-            {
-                continue;
-            }
+        const ME::CoordType point(static_cast<double>(_referencePoint[0]),
+                                  static_cast<double>(_referencePoint[1]),
+                                  static_cast<double>(_referencePoint[2]));
 
-            double centerX = 0.0;
-            double centerY = 0.0;
-            double centerZ = 0.0;
-            for (size_t nodeIndex = 0; nodeIndex < nodeIds.size(); ++nodeIndex)
-            {
-                const auto& node = mesh->getNodeById(nodeIds[nodeIndex]);
-                centerX += node.x();
-                centerY += node.y();
-                centerZ += node.z();
-            }
-            centerX /= static_cast<double>(nodeIds.size());
-            centerY /= static_cast<double>(nodeIds.size());
-            centerZ /= static_cast<double>(nodeIds.size());
-
-            const double signedDistance =
-                normalX * (centerX - _referencePoint[0]) +
-                normalY * (centerY - _referencePoint[1]) +
-                normalZ * (centerZ - _referencePoint[2]);
-            if (signedDistance >= 0.0)
-            {
-                _positiveElementIds.pushBack(element.getId());
-            }
-            else
-            {
-                _negativeElementIds.pushBack(element.getId());
-            }
-        }
+        ME::PlaneCut planeCut(mesh);
+        const ME::PlaneCutResult result = planeCut.cut(normal, point);
+        _positiveElementIds = result.positiveElementIds;
+        _negativeElementIds = result.negativeElementIds;
 
         const DataNodeId nodeId = _meshEntries[_selectedMeshIndex].nodeId;
         // Show positive and hide negative in a single command call. Describe the result with
@@ -282,46 +237,6 @@ namespace EgLab::Platform
         packet.setData("mode", mode);
         packet.setData("ids", ids);
         CommandManager::instance().call(EventId::ElementsVisibility, Common::move(packet));
-    }
-
-    void ElementVisibilityPanel::abortClose()
-    {
-        if (_planePreviewVisible)
-        {
-            RenderWork::instance().setVisibilityPlane(
-                Common::Vector3f(_lastNormal[0], _lastNormal[1], _lastNormal[2]),
-                Common::Vector3f(_lastPoint[0], _lastPoint[1], _lastPoint[2]),
-                _lastExtent, false);
-            _planePreviewVisible = false;
-        }
-    }
-
-    void ElementVisibilityPanel::syncPlanePreview()
-    {
-        const bool changed =
-            _normal[0] != _lastNormal[0] || _normal[1] != _lastNormal[1] ||
-            _normal[2] != _lastNormal[2] || _referencePoint[0] != _lastPoint[0] ||
-            _referencePoint[1] != _lastPoint[1] || _referencePoint[2] != _lastPoint[2] ||
-            _planeExtent != _lastExtent;
-
-        if (_planePreviewVisible && !changed)
-        {
-            return;
-        }
-
-        RenderWork::instance().setVisibilityPlane(
-            Common::Vector3f(_normal[0], _normal[1], _normal[2]),
-            Common::Vector3f(_referencePoint[0], _referencePoint[1], _referencePoint[2]),
-            _planeExtent, true);
-
-        _lastNormal[0] = _normal[0];
-        _lastNormal[1] = _normal[1];
-        _lastNormal[2] = _normal[2];
-        _lastPoint[0] = _referencePoint[0];
-        _lastPoint[1] = _referencePoint[1];
-        _lastPoint[2] = _referencePoint[2];
-        _lastExtent = _planeExtent;
-        _planePreviewVisible = true;
     }
 
     void ElementVisibilityPanel::renderImpl()
@@ -399,7 +314,5 @@ namespace EgLab::Platform
 
         ImGui::Text("Positive side: %zu", _positiveElementIds.size());
         ImGui::Text("Negative side: %zu", _negativeElementIds.size());
-
-        syncPlanePreview();
     }
 } // namespace EgLab::Platform

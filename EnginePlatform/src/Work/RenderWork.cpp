@@ -1,28 +1,14 @@
 #include "Work/RenderWork.hpp"
 
-#include <cmath>
-#include <cstring>
-#include <map>
-#include <sstream>
-#include <stdexcept>
+#include <exception>
+#include <mutex>
+#include <thread>
 
-#include "Command/MeshPODWire.hpp"
 #include "Common/Log.hpp"
-#include "Common/Performance.hpp"
-#include "MeshEngine/Algorithm/ExtractSilhouette.hpp"
-#include "MeshEngine/MeshData/HEMesh.hpp"
-#include "MeshEngine/MeshData/Mesh.hpp"
-#include "MeshEngine/MeshData/MeshPOD.hpp"
-#include "MeshEngine/MeshData/MeshToPOD.hpp"
-#include "RenderEngine/Core/Camera.hpp"
-#include "RenderEngine/Core/MeshPrimitiveCreator.hpp"
+#include "Common/StringTools.hpp"
 #include "RenderEngine/Core/MeshSelector.hpp"
-#include "RenderEngine/Core/RenderFace.hpp"
-#include "RenderEngine/Core/RenderLine.hpp"
-#include "RenderEngine/Core/RenderNode.hpp"
 #include "RenderEngine/Core/Renderer.hpp"
 #include "RenderEngine/Core/Scene.hpp"
-#include "RenderEngine/Core/ShaderLib.hpp"
 #include "RenderEngine/Core/Window.hpp"
 #include "Work/UIWork.hpp"
 
@@ -36,7 +22,7 @@ namespace EgLab::Platform
     class RenderEventCommand : public ICommand
     {
     public:
-        RenderEventCommand(RenderWork* worker, RenderWork::RenderEvent event)
+        RenderEventCommand(RenderWork* worker, Common::SharedPtr<RenderEvent> event)
             : _worker(worker), _event(Common::move(event))
         {
         }
@@ -62,10 +48,10 @@ namespace EgLab::Platform
 
     private:
         RenderWork* _worker;
-        RenderWork::RenderEvent _event;
+        Common::SharedPtr<RenderEvent> _event;
     };
 
-    RenderWork::RenderWork()
+    RenderWork::RenderWork() : _handlerFactory(_renderData)
     {
     }
 
@@ -110,7 +96,6 @@ namespace EgLab::Platform
                     _window->deactiveContext();
                     break;
                 }
-                // updateViewDependentHighlights();
                 _scene->update(deltaTime);
                 _renderer->update(deltaTime);
                 if (!_running.load())
@@ -144,21 +129,25 @@ namespace EgLab::Platform
             _renderer->setSelector(Common::SharedPtr<RE::Selector>(_meshSelector));
             _meshSelector->registerPickInfoCallback(
                 [this](const RE::PrimitivePickInfo& info) { publishPickInfo(info); });
+            _renderData.bindMeshSelector(_meshSelector);
         }
         else
         {
             _meshSelector = nullptr;
+            _renderData.bindMeshSelector(nullptr);
         }
     }
 
     void RenderWork::bindScene(const Common::SharedPtr<EgLab::RE::Scene>& scene)
     {
         _scene = scene;
+        _renderData.bindScene(scene);
     }
 
     void RenderWork::bindCamera(const Common::SharedPtr<EgLab::RE::Camera>& camera)
     {
         _camera = camera;
+        _renderData.bindCamera(camera);
     }
 
     void RenderWork::stop()
@@ -181,23 +170,7 @@ namespace EgLab::Platform
             _renderer->setSelector(nullptr);
         }
         _meshSelector = nullptr;
-        _activeMeshPackets.clear();
-        _meshColors.clear();
-        _elementVisibilityStates.clear();
-        _removedMeshes.clear();
-        _requestedHighlightedMeshes.clear();
-        _activeHighlightedMeshes.clear();
-        _highlightPrimitives.clear();
-        _highlightContourPrimitives.clear();
-        _heMeshHighlightPrimitives.clear();
-        _locatePrimitives.clear();
-        _locateMesh = nullptr;
-        _locateTargetFace = nullptr;
-        _locateTargetMesh = nullptr;
-        _locateElementIds.clear();
-        _highlightShader = nullptr;
-        _heMeshHighlightShader = nullptr;
-        _visibilityPlanePrimitive = nullptr;
+        _renderData.releaseResources();
 
         {
             std::lock_guard<std::mutex> lock(_renderEventMutex);
@@ -234,16 +207,15 @@ namespace EgLab::Platform
         std::lock_guard<std::mutex> lock(_pickInfoSubscriptionsMutex);
         const PickInfoSubscriptionId subscriptionId = _nextPickInfoSubscriptionId++;
 
-        std::ostringstream queueName;
-        queueName << "RenderPickInfo_" << reinterpret_cast<uintptr_t>(this) << '_'
-                  << subscriptionId;
+        Common::String queueName = Common::String("RenderPickInfo_") +
+                                   Common::ToString(reinterpret_cast<uintptr_t>(this)) +
+                                   Common::String("_") + Common::ToString(subscriptionId);
 
-        auto subscription = std::make_unique<PickInfoSubscription>();
+        auto subscription = Common::makeUnique<PickInfoSubscription>();
         subscription->id = subscriptionId;
-        subscription->queue =
-            std::make_unique<Common::MemoryQueue>(Common::String(queueName.str().c_str()), true);
-        subscription->publisher = std::make_unique<Common::Publisher>(*subscription->queue);
-        subscription->subscriber = std::make_unique<Common::Subscriber>(*subscription->queue);
+        subscription->queue = Common::makeUnique<Common::MemoryQueue>(queueName, true);
+        subscription->publisher = Common::makeUnique<Common::Publisher>(*subscription->queue);
+        subscription->subscriber = Common::makeUnique<Common::Subscriber>(*subscription->queue);
         subscription->subscriber->subscrib(static_cast<uint32_t>(EventId::MeshPickInfo));
 
         if (_hasPublishedPickInfo)
@@ -258,7 +230,7 @@ namespace EgLab::Platform
     void RenderWork::unsubscribePickInfo(PickInfoSubscriptionId subscriptionId)
     {
         std::lock_guard<std::mutex> lock(_pickInfoSubscriptionsMutex);
-        Common::DynamicArray<std::unique_ptr<PickInfoSubscription>> remaining;
+        Common::DynamicArray<Common::UniquePtr<PickInfoSubscription>> remaining;
         for (auto& subscription : _pickInfoSubscriptions)
         {
             if (subscription->id != subscriptionId)
@@ -324,7 +296,7 @@ namespace EgLab::Platform
         }
     }
 
-    void RenderWork::queueRenderEvent(RenderEvent event)
+    void RenderWork::queueRenderEvent(Common::SharedPtr<RenderEvent> event)
     {
         auto command = Common::SharedPtr<ICommand>(
             Common::makeShared<RenderEventCommand>(this, Common::move(event)));
@@ -337,493 +309,75 @@ namespace EgLab::Platform
 
     void RenderWork::drainRenderEvents()
     {
-        std::deque<RenderEvent> events;
+        Common::DynamicArray<Common::SharedPtr<RenderEvent>> events;
         {
             std::lock_guard<std::mutex> lock(_renderEventMutex);
             if (!_renderEventsPending.load(std::memory_order_acquire))
             {
                 return;
             }
-            events.swap(_renderEventQueue);
+            events = Common::move(_renderEventQueue);
             _renderEventsPending.store(false, std::memory_order_release);
             _renderEventBus.setPushAllowed(true);
         }
 
-        for (const auto& event : events)
+        for (size_t index = 0; index < events.size(); ++index)
         {
             if (!_running.load())
             {
                 break;
             }
-            applyRenderUpdate(event);
+            const Common::SharedPtr<RenderEvent>& event = events[index];
+            auto handler = _handlerFactory.create(event->getType());
+            if (!handler)
+            {
+                LOG(ERROR) << "RenderWork::drainRenderEvents() no handler for render event type";
+                continue;
+            }
+            std::lock_guard<std::mutex> lock(_renderData.stateMutex());
+            handler->apply(*event);
         }
     }
 
-    void RenderWork::processRenderEvent(RenderEvent event)
+    void RenderWork::processRenderEvent(Common::SharedPtr<RenderEvent> event)
     {
-        if (event.type == RenderEventType::MeshUpdate)
+        auto handler = _handlerFactory.create(event->getType());
+        if (!handler)
         {
-            Common::SharedPtr<ME::Mesh> renderMesh = event.mesh;
-            if (!event.payload.empty())
-            {
-                if (event.payload.size() <= sizeof(MeshPODWireHeader))
-                {
-                    LOG(ERROR) << "RenderWork::processRenderEvent() received truncated mesh data";
-                    return;
-                }
+            LOG(ERROR) << "RenderWork::processRenderEvent() no handler for render event type";
+            return;
+        }
 
-                MeshPODWireHeader wire{};
-                std::memcpy(&wire, event.payload.data(), sizeof(wire));
-                if (wire.totalDataSize == 0 ||
-                    wire.totalDataSize > event.payload.size() - sizeof(MeshPODWireHeader))
-                {
-                    LOG(ERROR)
-                        << "RenderWork::processRenderEvent() received invalid mesh data size";
-                    return;
-                }
-
-                const uint32_t offsets[] = {
-                    wire.nodeIdsOffset,   wire.nodeDataOffset, wire.elemIdsOffset,
-                    wire.elemTypesOffset, wire.elemDataOffset,
-                };
-                for (uint32_t offset : offsets)
-                {
-                    if (offset > wire.totalDataSize)
-                    {
-                        LOG(ERROR)
-                            << "RenderWork::processRenderEvent() received invalid mesh offset";
-                        return;
-                    }
-                }
-
-                ME::MeshPOD pod{};
-                pod.nodeNumber = wire.nodeNumber;
-                pod.elemNumber = wire.elemNumber;
-                pod.nodeIdsOffset = wire.nodeIdsOffset;
-                pod.nodeDataOffset = wire.nodeDataOffset;
-                pod.elemIdsOffset = wire.elemIdsOffset;
-                pod.elemTypesOffset = wire.elemTypesOffset;
-                pod.elemDataOffset = wire.elemDataOffset;
-                pod.totalDataSize = wire.totalDataSize;
-                pod.data = new uint8_t[pod.totalDataSize];
-                std::memcpy(pod.data, event.payload.data() + sizeof(MeshPODWireHeader),
-                            pod.totalDataSize);
-
-                renderMesh = ME::MeshToPOD::deserialize(pod);
-                if (!renderMesh)
-                {
-                    LOG(ERROR) << "RenderWork::processRenderEvent() failed to deserialize mesh";
-                    return;
-                }
-            }
-            if (!renderMesh)
-            {
-                LOG(ERROR) << "RenderWork::processRenderEvent() cannot update a null mesh";
-                return;
-            }
-
-            RE::MeshPrimitiveCreator creator(renderMesh);
-            event.packet = {creator.getPrimitive<RE::RenderNode>(),
-                            creator.getPrimitive<RE::RenderLine>(),
-                            creator.getPrimitive<RE::RenderFace>(),
-                            event.mesh,
-                            renderMesh,
-                            creator.getTranslator()};
+        if (handler->prepare(*event) != Common::Return::Succeed)
+        {
+            return;
         }
 
         {
-            std::lock_guard<std::mutex> stateLock(_renderStateMutex);
-            switch (event.type)
+            std::lock_guard<std::mutex> lock(_renderData.stateMutex());
+            if (handler->record(*event) != Common::Return::Succeed)
             {
-            case RenderEventType::MeshColor:
-                if (!event.mesh || isMeshRemoved(event.mesh.get()))
-                {
-                    return;
-                }
-                {
-                    bool found = false;
-                    for (auto& meshColor : _meshColors)
-                    {
-                        if (meshColor.mesh == event.mesh)
-                        {
-                            meshColor.color = event.color;
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found)
-                    {
-                        _meshColors.pushBack(MeshColor{event.mesh, event.color});
-                    }
-                }
-                break;
-            case RenderEventType::MeshRemoval:
-                if (!event.mesh || isMeshRemoved(event.mesh.get()))
-                {
-                    return;
-                }
-                _removedMeshes.pushBack(event.mesh.get());
-                {
-                    Common::DynamicArray<MeshColor> remainingColors;
-                    for (const auto& meshColor : _meshColors)
-                    {
-                        if (meshColor.mesh != event.mesh)
-                        {
-                            remainingColors.pushBack(meshColor);
-                        }
-                    }
-                    _meshColors = Common::move(remainingColors);
-
-                    Common::DynamicArray<Common::SharedPtr<ME::Mesh>> remainingMeshes;
-                    for (const auto& mesh : _requestedHighlightedMeshes)
-                    {
-                        if (mesh != event.mesh)
-                        {
-                            remainingMeshes.pushBack(mesh);
-                        }
-                    }
-                    _requestedHighlightedMeshes = Common::move(remainingMeshes);
-
-                    Common::DynamicArray<MeshElementVisibilityState> remainingVisibilityStates;
-                    for (const auto& state : _elementVisibilityStates)
-                    {
-                        if (state.mesh != event.mesh)
-                        {
-                            remainingVisibilityStates.pushBack(state);
-                        }
-                    }
-                    _elementVisibilityStates = Common::move(remainingVisibilityStates);
-                }
-                break;
-            case RenderEventType::Highlight:
-                _requestedHighlightedMeshes.clear();
-                for (const auto& mesh : event.meshes)
-                {
-                    if (mesh && !isMeshRemoved(mesh.get()))
-                    {
-                        _requestedHighlightedMeshes.pushBack(mesh);
-                    }
-                }
-                break;
-            case RenderEventType::HighlightColor:
-                _highlightColor = event.color;
-                break;
-            case RenderEventType::NodePointSize:
-                _nodePointSize = event.nodePointSize;
-                break;
-            case RenderEventType::LineWidth:
-                _lineWidth = event.lineWidth;
-                break;
-            case RenderEventType::FaceShrink:
-                _faceShrink = event.faceShrink;
-                break;
-            case RenderEventType::MeshUpdate:
-                // if (_camera && _scene)
-                // {
-                //     _camera->fitView(_scene->getBounds(), 2);
-                // }
-                break;
-            case RenderEventType::FitView:
-                if (_camera)
-                {
-                    if (event.mesh)
-                    {
-                        Common::BBox<RE::Scalar, 3> bounds;
-                        for (const auto& packet : _activeMeshPackets)
-                        {
-                            if (packet.sourceMesh != event.mesh)
-                            {
-                                continue;
-                            }
-                            if (packet.renderNode)
-                            {
-                                bounds.merge(packet.renderNode->getBounds());
-                            }
-                            if (packet.renderLine)
-                            {
-                                bounds.merge(packet.renderLine->getBounds());
-                            }
-                            if (packet.renderFace)
-                            {
-                                bounds.merge(packet.renderFace->getBounds());
-                            }
-                            break;
-                        }
-                        if (!bounds.isEmpty())
-                        {
-                            _camera->fitView(bounds, 2);
-                            break;
-                        }
-                    }
-                    else if (_scene)
-                    {
-                        _camera->fitView(_scene->getBounds(), 2);
-                    }
-                }
-                break;
-            case RenderEventType::HEMeshHighlight:
-                break;
-            case RenderEventType::Locate:
-                _locateMesh = event.mesh;
-                _locateElementIds = event.elementIds;
-                break;
-            case RenderEventType::ElementsVisibility:
-                break;
-            case RenderEventType::VisibilityPlane:
-                break;
+                return;
             }
         }
 
         {
             std::lock_guard<std::mutex> lock(_renderEventMutex);
-            _renderEventQueue.push_back(Common::move(event));
+            _renderEventQueue.pushBack(Common::move(event));
             _renderEventsPending.store(true, std::memory_order_release);
         }
     }
 
-    Common::Return RenderWork::applyRenderUpdate(const RenderEvent& event)
-    {
-        std::lock_guard<std::mutex> stateLock(_renderStateMutex);
-        switch (event.type)
-        {
-        case RenderEventType::FitView:
-            break;
-        case RenderEventType::MeshUpdate:
-        {
-            const Common::Return result = uploadRenderPacket(event.packet);
-            if (result == Common::Return::Succeed)
-            {
-                MeshElementVisibilityState* visibilityState =
-                    findElementVisibilityState(event.mesh);
-                if (visibilityState != nullptr)
-                {
-                    rebuildMeshSurface(event.mesh,
-                                       collectHiddenElementIds(*visibilityState));
-                }
-                else if (_locateMesh && _locateMesh == event.mesh)
-                {
-                    // Rebuild the locate primitives against the updated mesh geometry.
-                    updateLocateHighlight();
-                }
-            }
-            return result;
-        }
-        case RenderEventType::MeshColor:
-        {
-            if (!event.mesh)
-            {
-                break;
-            }
-            for (auto& packet : _activeMeshPackets)
-            {
-                if (packet.sourceMesh != event.mesh)
-                {
-                    continue;
-                }
-                auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(packet.renderFace);
-                if (face)
-                {
-                    face->setColor(event.color);
-                }
-            }
-            if (_locateMesh && _locateMesh == event.mesh)
-            {
-                updateLocateHighlight();
-            }
-            break;
-        }
-        case RenderEventType::MeshRemoval:
-        {
-            if (!event.mesh)
-            {
-                break;
-            }
-
-            Common::SharedPtr<RE::Shader> nodeShader;
-            Common::SharedPtr<RE::Shader> lineShader;
-            Common::SharedPtr<RE::Shader> faceShader;
-            RE::ShaderLib::instance().getNodeShader(nodeShader);
-            RE::ShaderLib::instance().getLineShader(lineShader);
-            RE::ShaderLib::instance().getFaceShader(faceShader);
-            Common::DynamicArray<RenderPacket> remainingPackets;
-            for (auto packet : _activeMeshPackets)
-            {
-                if (packet.sourceMesh != event.mesh)
-                {
-                    remainingPackets.pushBack(packet);
-                    continue;
-                }
-                if (_meshSelector && packet.mesh)
-                {
-                    _meshSelector->unregisterMesh(packet.mesh.get());
-                }
-                _scene->removePrimitive(nodeShader, packet.renderNode);
-                _scene->removePrimitive(lineShader, packet.renderLine);
-                _scene->removePrimitive(faceShader, packet.renderFace);
-            }
-            _activeMeshPackets = Common::move(remainingPackets);
-            if (_locateMesh && _locateMesh == event.mesh)
-            {
-                // The locate target is gone; drop its primitives and state.
-                Common::SharedPtr<RE::Shader> highlightShader;
-                RE::ShaderLib::instance().getHighlightShader(highlightShader);
-                for (const auto& primitive : _locatePrimitives)
-                {
-                    _scene->removePrimitive(highlightShader, primitive);
-                }
-                _locatePrimitives.clear();
-                _locateMesh = nullptr;
-                _locateElementIds.clear();
-                _locateTargetFace = nullptr;
-                _locateTargetMesh = nullptr;
-            }
-            updateMeshHighlight();
-            break;
-        }
-        case RenderEventType::Highlight:
-            updateMeshHighlight();
-            break;
-        case RenderEventType::HighlightColor:
-            for (const auto& primitive : _highlightPrimitives)
-            {
-                auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(primitive);
-                if (face)
-                {
-                    face->setColor(_highlightColor);
-                }
-            }
-            break;
-        case RenderEventType::NodePointSize:
-            for (auto& packet : _activeMeshPackets)
-            {
-                auto node = Common::dynamicSharedPtrCast<RE::RenderNode>(packet.renderNode);
-                if (node)
-                {
-                    node->setPointSize(event.nodePointSize);
-                }
-            }
-            break;
-        case RenderEventType::LineWidth:
-            for (auto& packet : _activeMeshPackets)
-            {
-                auto line = Common::dynamicSharedPtrCast<RE::RenderLine>(packet.renderLine);
-                if (line)
-                {
-                    line->setLineWidth(event.lineWidth);
-                }
-            }
-            break;
-        case RenderEventType::FaceShrink:
-            for (auto& packet : _activeMeshPackets)
-            {
-                auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(packet.renderFace);
-                if (face)
-                {
-                    face->setFaceShrink(event.faceShrink);
-                }
-            }
-            break;
-        case RenderEventType::Locate:
-            updateLocateHighlight();
-            break;
-        case RenderEventType::ElementsVisibility:
-            updateElementsVisibility(event);
-            break;
-        case RenderEventType::VisibilityPlane:
-            updateVisibilityPlane(event);
-            break;
-        case RenderEventType::HEMeshHighlight:
-            updateHEMeshHighlight(event);
-            break;
-        }
-        return Common::Return::Succeed;
-    }
-
-    Common::Return RenderWork::uploadRenderPacket(const RenderPacket& packet)
-    {
-        if (!_running.load() || !_scene || !_camera)
-        {
-            return Common::Return::Failed;
-        }
-        if (packet.sourceMesh && isMeshRemoved(packet.sourceMesh.get()))
-        {
-            return Common::Return::Succeed;
-        }
-
-        if (packet.sourceMesh)
-        {
-            Common::Vector4f color(0.8f, 0.8f, 0.8f, 1.0f);
-            for (const auto& meshColor : _meshColors)
-            {
-                if (meshColor.mesh == packet.sourceMesh)
-                {
-                    color = meshColor.color;
-                    break;
-                }
-            }
-            auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(packet.renderFace);
-            if (face)
-            {
-                face->setColor(color);
-            }
-        }
-
-        packet.renderNode->setup();
-        packet.renderLine->setup();
-        packet.renderFace->setup();
-
-        auto node = Common::dynamicSharedPtrCast<RE::RenderNode>(packet.renderNode);
-        if (node)
-        {
-            node->setPointSize(_nodePointSize);
-        }
-        auto line = Common::dynamicSharedPtrCast<RE::RenderLine>(packet.renderLine);
-        if (line)
-        {
-            line->setLineWidth(_lineWidth);
-        }
-        auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(packet.renderFace);
-        if (face)
-        {
-            face->setFaceShrink(_faceShrink);
-        }
-
-        if (_meshSelector && packet.mesh && packet.translator)
-        {
-            _meshSelector->registerMesh(packet.mesh, packet.translator, packet.renderNode,
-                                        packet.renderLine, packet.renderFace);
-        }
-
-        Common::SharedPtr<RE::Shader> nodeShader;
-        Common::SharedPtr<RE::Shader> lineShader;
-        Common::SharedPtr<RE::Shader> faceShader;
-        RE::ShaderLib::instance().getNodeShader(nodeShader);
-        RE::ShaderLib::instance().getLineShader(lineShader);
-        RE::ShaderLib::instance().getFaceShader(faceShader);
-        _scene->addPrimitive(nodeShader, packet.renderNode);
-        _scene->addPrimitive(lineShader, packet.renderLine);
-        _scene->addPrimitive(faceShader, packet.renderFace);
-        if (packet.sourceMesh)
-        {
-            _activeMeshPackets.pushBack(packet);
-        }
-        //_camera->fitView(_scene->getBounds(), 2);
-        return Common::Return::Succeed;
-    }
-
     void RenderWork::fitView()
     {
-        RenderEvent event{};
-        event.type = RenderEventType::FitView;
-        queueRenderEvent(Common::move(event));
+        queueRenderEvent(Common::makeShared<FitViewEvent>());
     }
 
     void RenderWork::fitView(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
     {
-        RenderEvent event{};
-        event.type = RenderEventType::FitView;
-        event.mesh = mesh;
-        queueRenderEvent(Common::move(event));
+        auto event = Common::makeShared<FitViewEvent>();
+        event->mesh = mesh;
+        queueRenderEvent(event);
     }
 
     void RenderWork::onUpdateMesh(const UpdateMeshParam& params)
@@ -833,10 +387,9 @@ namespace EgLab::Platform
             return;
         }
 
-        RenderEvent event{};
-        event.type = RenderEventType::MeshUpdate;
-        event.payload.pushBack(params.data, params.dataSize);
-        queueRenderEvent(Common::move(event));
+        auto event = Common::makeShared<MeshUpdateEvent>();
+        event->payload.pushBack(params.data, params.dataSize);
+        queueRenderEvent(event);
     }
 
     void RenderWork::onUpdateMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
@@ -846,10 +399,9 @@ namespace EgLab::Platform
             return;
         }
 
-        RenderEvent event{};
-        event.type = RenderEventType::MeshUpdate;
-        event.mesh = mesh;
-        queueRenderEvent(Common::move(event));
+        auto event = Common::makeShared<MeshUpdateEvent>();
+        event->mesh = mesh;
+        queueRenderEvent(event);
     }
 
     void RenderWork::setHighlightedMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
@@ -866,20 +418,18 @@ namespace EgLab::Platform
     void RenderWork::setHighlightedMeshes(
         const Common::DynamicArray<Common::SharedPtr<EgLab::ME::Mesh>>& meshes)
     {
-        RenderEvent event{};
-        event.type = RenderEventType::Highlight;
-        event.meshes = meshes;
-        queueRenderEvent(Common::move(event));
+        auto event = Common::makeShared<HighlightEvent>();
+        event->meshes = meshes;
+        queueRenderEvent(event);
     }
 
     void RenderWork::locateElements(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
                                     const Common::DynamicArray<uint32_t>& elementIds)
     {
-        RenderEvent event{};
-        event.type = RenderEventType::Locate;
-        event.mesh = mesh;
-        event.elementIds = elementIds;
-        queueRenderEvent(Common::move(event));
+        auto event = Common::makeShared<LocateEvent>();
+        event->mesh = mesh;
+        event->elementIds = elementIds;
+        queueRenderEvent(event);
     }
 
     void RenderWork::clearLocate()
@@ -897,67 +447,49 @@ namespace EgLab::Platform
             return;
         }
 
-        RenderEvent event{};
-        event.type = RenderEventType::ElementsVisibility;
-        event.mesh = mesh;
-        event.elementIds = elementIds;
-        event.elementsMode = mode;
-        queueRenderEvent(Common::move(event));
-    }
-
-    void RenderWork::setVisibilityPlane(const Common::Vector3f& normal,
-                                        const Common::Vector3f& point, float extent, bool visible)
-    {
-        RenderEvent event{};
-        event.type = RenderEventType::VisibilityPlane;
-        event.planeNormal = normal;
-        event.planePoint = point;
-        event.planeExtent = extent;
-        event.planeVisible = visible;
-        queueRenderEvent(Common::move(event));
+        auto event = Common::makeShared<ElementsVisibilityEvent>();
+        event->mesh = mesh;
+        event->elementIds = elementIds;
+        event->mode = mode;
+        queueRenderEvent(event);
     }
 
     void RenderWork::setHighlightColor(const Common::Vector4f& color)
     {
-        RenderEvent event{};
-        event.type = RenderEventType::HighlightColor;
-        event.color = color;
-        queueRenderEvent(Common::move(event));
+        auto event = Common::makeShared<HighlightColorEvent>();
+        event->color = color;
+        queueRenderEvent(event);
     }
 
     void RenderWork::setNodePointSize(float pointSize)
     {
-        RenderEvent event{};
-        event.type = RenderEventType::NodePointSize;
-        event.nodePointSize = pointSize;
-        queueRenderEvent(Common::move(event));
+        auto event = Common::makeShared<NodePointSizeEvent>();
+        event->pointSize = pointSize;
+        queueRenderEvent(event);
     }
 
     void RenderWork::setLineWidth(float lineWidth)
     {
-        RenderEvent event{};
-        event.type = RenderEventType::LineWidth;
-        event.lineWidth = lineWidth;
-        queueRenderEvent(Common::move(event));
+        auto event = Common::makeShared<LineWidthEvent>();
+        event->lineWidth = lineWidth;
+        queueRenderEvent(event);
     }
 
     void RenderWork::setFaceShrink(float shrink)
     {
-        RenderEvent event{};
-        event.type = RenderEventType::FaceShrink;
-        event.faceShrink = shrink;
-        queueRenderEvent(Common::move(event));
+        auto event = Common::makeShared<FaceShrinkEvent>();
+        event->faceShrink = shrink;
+        queueRenderEvent(event);
     }
 
     void RenderWork::setHEMeshHighlight(const Common::SharedPtr<ME::HEMesh>& mesh,
                                         uint32_t vertexIndex, uint32_t halfEdgeIndex)
     {
-        RenderEvent event{};
-        event.type = RenderEventType::HEMeshHighlight;
-        event.heMesh = mesh;
-        event.heMeshVertexIndex = vertexIndex;
-        event.heMeshHalfEdgeIndex = halfEdgeIndex;
-        queueRenderEvent(Common::move(event));
+        auto event = Common::makeShared<HEMeshHighlightEvent>();
+        event->heMesh = mesh;
+        event->vertexIndex = vertexIndex;
+        event->halfEdgeIndex = halfEdgeIndex;
+        queueRenderEvent(event);
     }
 
     void RenderWork::setMeshColor(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
@@ -969,11 +501,10 @@ namespace EgLab::Platform
             return;
         }
 
-        RenderEvent event{};
-        event.type = RenderEventType::MeshColor;
-        event.mesh = mesh;
-        event.color = color;
-        queueRenderEvent(Common::move(event));
+        auto event = Common::makeShared<MeshColorEvent>();
+        event->mesh = mesh;
+        event->color = color;
+        queueRenderEvent(event);
     }
 
     void RenderWork::removeMesh(const Common::SharedPtr<ME::Mesh>& mesh)
@@ -983,679 +514,8 @@ namespace EgLab::Platform
             return;
         }
 
-        RenderEvent event{};
-        event.type = RenderEventType::MeshRemoval;
-        event.mesh = mesh;
-        queueRenderEvent(Common::move(event));
-    }
-
-    bool RenderWork::isMeshRemoved(const ME::Mesh* mesh)
-    {
-        for (ME::Mesh* removedMesh : _removedMeshes)
-        {
-            if (removedMesh == mesh)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    void RenderWork::updateMeshHighlight()
-    {
-        bool highlightsMatch =
-            _requestedHighlightedMeshes.size() == _activeHighlightedMeshes.size();
-        for (size_t index = 0; highlightsMatch && index < _requestedHighlightedMeshes.size();
-             ++index)
-        {
-            highlightsMatch = _requestedHighlightedMeshes[index] == _activeHighlightedMeshes[index];
-        }
-        if (highlightsMatch)
-        {
-            return;
-        }
-
-        for (size_t index = 0; index < _highlightPrimitives.size(); ++index)
-        {
-            auto primitive = _highlightPrimitives[index];
-            const Common::Return result = _scene->removePrimitive(_highlightShader, primitive);
-            if (result != Common::Return::Succeed)
-            {
-                LOG(WARNING) << "RenderWork::updateMeshHighlight() could not remove old highlight";
-            }
-        }
-        _highlightPrimitives.clear();
-        for (size_t index = 0; index < _highlightContourPrimitives.size(); ++index)
-        {
-            _scene->removePrimitive(_highlightShader, _highlightContourPrimitives[index]);
-        }
-        _highlightContourPrimitives.clear();
-        _highlightViewValid = false;
-        _activeHighlightedMeshes = _requestedHighlightedMeshes;
-
-        if (_activeHighlightedMeshes.empty())
-        {
-            return;
-        }
-
-        if (!_highlightShader)
-        {
-            RE::ShaderLib::instance().getHighlightShader(_highlightShader);
-        }
-
-        for (size_t index = 0; index < _activeHighlightedMeshes.size(); ++index)
-        {
-            auto mesh = _activeHighlightedMeshes[index];
-            RE::MeshPrimitiveCreator creator(mesh);
-            auto primitive = creator.getPrimitive<RE::RenderFace>();
-            auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(primitive);
-            face->setColor(_highlightColor);
-            face->setDepthOffset(-1.0f, -1.0f);
-            primitive->setup();
-
-            if (_scene->addPrimitive(_highlightShader, primitive) != Common::Return::Succeed)
-            {
-                LOG(ERROR) << "RenderWork::updateMeshHighlight() failed to add mesh highlight";
-                continue;
-            }
-            _highlightPrimitives.pushBack(primitive);
-
-            auto linePrimitive = Common::dynamicSharedPtrCast<RE::RenderLine>(
-                creator.getPrimitive<RE::RenderLine>());
-            linePrimitive->setIndices(creator.getTranslator()->getBoundaryElementEdgeIdx());
-            linePrimitive->setColor(Common::Vector4f(1.0f, 0.75f, 0.1f, 1.0f));
-            linePrimitive->setLineWidth(3.0f);
-            linePrimitive->setup();
-            if (_scene->addPrimitive(_highlightShader, linePrimitive) == Common::Return::Succeed)
-            {
-                _highlightContourPrimitives.pushBack(linePrimitive);
-            }
-        }
-    }
-
-    Common::Vector4f RenderWork::getMeshBaseColor(const Common::SharedPtr<ME::Mesh>& mesh) const
-    {
-        for (const auto& meshColor : _meshColors)
-        {
-            if (meshColor.mesh == mesh)
-            {
-                return meshColor.color;
-            }
-        }
-        return Common::Vector4f(0.8f, 0.8f, 0.8f, 1.0f);
-    }
-
-    void RenderWork::updateLocateHighlight()
-    {
-        if (!_scene)
-        {
-            return;
-        }
-
-        Common::SharedPtr<RE::Shader> highlightShader;
-        RE::ShaderLib::instance().getHighlightShader(highlightShader);
-
-        for (const auto& primitive : _locatePrimitives)
-        {
-            _scene->removePrimitive(highlightShader, primitive);
-        }
-        _locatePrimitives.clear();
-
-        // Restore the faces of the previously dimmed mesh before applying a new locate request.
-        if (_locateTargetFace)
-        {
-            auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(_locateTargetFace);
-            if (face)
-            {
-                face->setColor(getMeshBaseColor(_locateTargetMesh));
-            }
-            _locateTargetFace = nullptr;
-            _locateTargetMesh = nullptr;
-        }
-
-        if (!_locateMesh || _locateElementIds.empty())
-        {
-            return;
-        }
-
-        RenderPacket* target = nullptr;
-        for (auto& packet : _activeMeshPackets)
-        {
-            if (packet.sourceMesh == _locateMesh)
-            {
-                target = &packet;
-                break;
-            }
-        }
-        if (target == nullptr || !target->translator || !target->renderFace)
-        {
-            LOG(WARNING) << "RenderWork::updateLocateHighlight() could not find the mesh packet";
-            return;
-        }
-
-        const Common::DynamicArray<RE::IdxType> faceIndices =
-            target->translator->getBoundaryFaceIdx();
-        const auto& locations = target->translator->getBoundaryFaceLocations();
-        if (faceIndices.empty())
-        {
-            LOG(WARNING)
-                << "RenderWork::updateLocateHighlight() the target mesh has no boundary faces";
-            return;
-        }
-        const size_t triangleCount = faceIndices.size() / 3;
-        if (locations.size() < triangleCount)
-        {
-            LOG(WARNING)
-                << "RenderWork::updateLocateHighlight() received incomplete face locations";
-            return;
-        }
-
-        Common::DynamicArray<RE::IdxType> subsetIndices;
-        for (size_t triangle = 0; triangle < triangleCount; ++triangle)
-        {
-            bool requested = false;
-            for (size_t index = 0; index < _locateElementIds.size(); ++index)
-            {
-                if (static_cast<uint64_t>(locations[triangle].elemId) ==
-                    static_cast<uint64_t>(_locateElementIds[index]))
-                {
-                    requested = true;
-                    break;
-                }
-            }
-            if (!requested)
-            {
-                continue;
-            }
-
-            subsetIndices.pushBack(faceIndices[triangle * 3]);
-            subsetIndices.pushBack(faceIndices[triangle * 3 + 1]);
-            subsetIndices.pushBack(faceIndices[triangle * 3 + 2]);
-        }
-
-        if (subsetIndices.empty())
-        {
-            LOG(WARNING) << "RenderWork::updateLocateHighlight() found no boundary triangles for "
-                            "the requested element ids";
-            return;
-        }
-
-        // Draw only the requested triangles with the highlight shader.
-        RE::MeshPrimitiveCreator creator(_locateMesh);
-        auto primitive = creator.getPrimitive<RE::RenderFace>();
-        auto locateFace = Common::dynamicSharedPtrCast<RE::RenderFace>(primitive);
-        if (!locateFace)
-        {
-            return;
-        }
-        locateFace->setIndices(Common::move(subsetIndices));
-        locateFace->setColor(_locateColor);
-        locateFace->setDepthOffset(-2.0f, -2.0f);
-        primitive->setup();
-        if (_scene->addPrimitive(highlightShader, primitive) != Common::Return::Succeed)
-        {
-            LOG(ERROR) << "RenderWork::updateLocateHighlight() failed to add the locate primitive";
-            return;
-        }
-        _locatePrimitives.pushBack(primitive);
-
-        // Make every face of the target mesh transparent; the primitive above draws the
-        // requested elements opaquely on top of it.
-        auto targetFace = Common::dynamicSharedPtrCast<RE::RenderFace>(target->renderFace);
-        if (!targetFace)
-        {
-            return;
-        }
-
-        const Common::Vector4f baseColor = getMeshBaseColor(_locateMesh);
-        const Common::Vector4f transparentColor(baseColor[0], baseColor[1], baseColor[2], 0.0f);
-        Common::DynamicArray<Common::Vector4f> colors;
-        colors.reserve(triangleCount);
-        for (size_t triangle = 0; triangle < triangleCount; ++triangle)
-        {
-            colors.pushBack(transparentColor);
-        }
-        targetFace->setColors(Common::move(colors));
-        _locateTargetFace = target->renderFace;
-        _locateTargetMesh = _locateMesh;
-    }
-
-    void RenderWork::updateElementsVisibility(const RenderEvent& event)
-    {
-        if (!event.mesh)
-        {
-            return;
-        }
-
-        MeshElementVisibilityState* state = findElementVisibilityState(event.mesh);
-        if (state == nullptr)
-        {
-            MeshElementVisibilityState newState;
-            newState.mesh = event.mesh;
-            _elementVisibilityStates.pushBack(newState);
-            state = &_elementVisibilityStates.back();
-        }
-
-        if (event.elementsMode == 2)
-        {
-            // Show only the requested ids; everything else becomes hidden.
-            if (event.elementIds.empty())
-            {
-                state->hiddenElementIds.clear();
-            }
-            else
-            {
-                Common::HashSet<ME::IdType> requested;
-                for (size_t index = 0; index < event.elementIds.size(); ++index)
-                {
-                    requested.insert(static_cast<ME::IdType>(event.elementIds[index]));
-                }
-
-                Common::HashSet<ME::IdType> hidden;
-                ME::MeshIterator iterator(*event.mesh);
-                for (; iterator.hasMoreElem(); iterator.nextElem())
-                {
-                    const ME::IdType elementId = iterator.currentElem().getId();
-                    if (requested.find(elementId) == requested.end())
-                    {
-                        hidden.insert(elementId);
-                    }
-                }
-                state->hiddenElementIds = hidden;
-            }
-        }
-        else if (event.elementsMode == 3)
-        {
-            // Hide only the requested ids; everything else becomes visible.
-            state->hiddenElementIds.clear();
-            for (size_t index = 0; index < event.elementIds.size(); ++index)
-            {
-                state->hiddenElementIds.insert(static_cast<ME::IdType>(event.elementIds[index]));
-            }
-        }
-        else if (event.elementsMode == 1)
-        {
-            // Show the requested ids. An empty list restores the full mesh surface.
-            if (event.elementIds.empty())
-            {
-                state->hiddenElementIds.clear();
-            }
-            else if (!state->hiddenElementIds.empty())
-            {
-                Common::HashSet<ME::IdType> requested;
-                for (size_t index = 0; index < event.elementIds.size(); ++index)
-                {
-                    requested.insert(static_cast<ME::IdType>(event.elementIds[index]));
-                }
-
-                Common::HashSet<ME::IdType> remaining;
-                for (auto it = state->hiddenElementIds.begin(); it.hasNext(); it.next())
-                {
-                    const ME::IdType hiddenId = it.data();
-                    if (requested.find(hiddenId) == requested.end())
-                    {
-                        remaining.insert(hiddenId);
-                    }
-                }
-                state->hiddenElementIds = remaining;
-            }
-        }
-        else
-        {
-            // Hide the requested ids (accumulate).
-            for (size_t index = 0; index < event.elementIds.size(); ++index)
-            {
-                state->hiddenElementIds.insert(static_cast<ME::IdType>(event.elementIds[index]));
-            }
-        }
-
-        rebuildMeshSurface(event.mesh, collectHiddenElementIds(*state));
-    }
-
-    void RenderWork::updateVisibilityPlane(const RenderEvent& event)
-    {
-        if (!_scene)
-        {
-            return;
-        }
-
-        Common::SharedPtr<RE::Shader> faceShader;
-        RE::ShaderLib::instance().getFaceShader(faceShader);
-
-        if (_visibilityPlanePrimitive)
-        {
-            _scene->removePrimitive(faceShader, _visibilityPlanePrimitive);
-            _visibilityPlanePrimitive = nullptr;
-        }
-
-        if (!event.planeVisible)
-        {
-            return;
-        }
-
-        Common::Vector3f normal = event.planeNormal;
-        const float normalLength = normal.length();
-        if (normalLength < 1e-6f)
-        {
-            normal = Common::Vector3f(0.0f, 0.0f, 1.0f);
-        }
-        else
-        {
-            normal = normal * (1.0f / normalLength);
-        }
-
-        Common::Vector3f reference(1.0f, 0.0f, 0.0f);
-        if (std::fabs(normal.x()) > 0.9f)
-        {
-            reference = Common::Vector3f(0.0f, 1.0f, 0.0f);
-        }
-        Common::Vector3f tangent = normal.cross(reference);
-        tangent.normalize();
-        Common::Vector3f bitangent = normal.cross(tangent);
-        bitangent.normalize();
-
-        const float halfExtent = event.planeExtent;
-        const Common::Vector3f center = event.planePoint;
-        Common::DynamicArray<RE::CoordType> nodes;
-        nodes.pushBack(RE::CoordType(center.x() - tangent.x() * halfExtent -
-                                         bitangent.x() * halfExtent,
-                                     center.y() - tangent.y() * halfExtent -
-                                         bitangent.y() * halfExtent,
-                                     center.z() - tangent.z() * halfExtent -
-                                         bitangent.z() * halfExtent));
-        nodes.pushBack(RE::CoordType(center.x() + tangent.x() * halfExtent -
-                                         bitangent.x() * halfExtent,
-                                     center.y() + tangent.y() * halfExtent -
-                                         bitangent.y() * halfExtent,
-                                     center.z() + tangent.z() * halfExtent -
-                                         bitangent.z() * halfExtent));
-        nodes.pushBack(RE::CoordType(center.x() + tangent.x() * halfExtent +
-                                         bitangent.x() * halfExtent,
-                                     center.y() + tangent.y() * halfExtent +
-                                         bitangent.y() * halfExtent,
-                                     center.z() + tangent.z() * halfExtent +
-                                         bitangent.z() * halfExtent));
-        nodes.pushBack(RE::CoordType(center.x() - tangent.x() * halfExtent +
-                                         bitangent.x() * halfExtent,
-                                     center.y() - tangent.y() * halfExtent +
-                                         bitangent.y() * halfExtent,
-                                     center.z() - tangent.z() * halfExtent +
-                                         bitangent.z() * halfExtent));
-
-        Common::DynamicArray<RE::IdxType> indices;
-        indices.pushBack(0);
-        indices.pushBack(1);
-        indices.pushBack(2);
-        indices.pushBack(0);
-        indices.pushBack(2);
-        indices.pushBack(3);
-
-        auto primitive = Common::makeShared<RE::RenderFace>();
-        primitive->setNodes(Common::move(nodes));
-        primitive->setIndices(Common::move(indices));
-        primitive->setColor(event.planeColor);
-        primitive->setup();
-
-        if (_scene->addPrimitive(faceShader, primitive) == Common::Return::Succeed)
-        {
-            _visibilityPlanePrimitive = primitive;
-        }
-    }
-
-    RenderWork::MeshElementVisibilityState* RenderWork::findElementVisibilityState(
-        const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
-    {
-        if (!mesh)
-        {
-            return nullptr;
-        }
-
-        for (auto& state : _elementVisibilityStates)
-        {
-            if (state.mesh == mesh)
-            {
-                return &state;
-            }
-        }
-        return nullptr;
-    }
-
-    Common::DynamicArray<ME::IdType> RenderWork::collectHiddenElementIds(
-        MeshElementVisibilityState& state)
-    {
-        Common::DynamicArray<ME::IdType> hiddenElementIds;
-        hiddenElementIds.reserve(state.hiddenElementIds.size());
-        for (auto it = state.hiddenElementIds.begin(); it.hasNext(); it.next())
-        {
-            hiddenElementIds.pushBack(it.data());
-        }
-        return hiddenElementIds;
-    }
-
-    void RenderWork::rebuildMeshSurface(
-        const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
-        const Common::DynamicArray<ME::IdType>& hiddenElementIds)
-    {
-        if (!_scene || !mesh)
-        {
-            return;
-        }
-
-        RenderPacket* target = nullptr;
-        for (auto& packet : _activeMeshPackets)
-        {
-            if (packet.sourceMesh == mesh)
-            {
-                target = &packet;
-                break;
-            }
-        }
-        if (target == nullptr || !target->translator)
-        {
-            LOG(WARNING) << "RenderWork::rebuildMeshSurface() could not find the mesh packet";
-            return;
-        }
-
-        // Locate primitives reference the previous boundary; drop them before swapping faces.
-        if (_locateMesh == mesh)
-        {
-            Common::SharedPtr<RE::Shader> highlightShader;
-            RE::ShaderLib::instance().getHighlightShader(highlightShader);
-            for (const auto& primitive : _locatePrimitives)
-            {
-                _scene->removePrimitive(highlightShader, primitive);
-            }
-            _locatePrimitives.clear();
-            _locateTargetFace = nullptr;
-            _locateTargetMesh = nullptr;
-        }
-
-        target->translator->setHiddenElements(hiddenElementIds);
-
-        RE::MeshPrimitiveCreator creator(mesh, target->translator);
-        auto facePrimitive = creator.getPrimitive<RE::RenderFace>();
-        auto linePrimitive = creator.getPrimitive<RE::RenderLine>();
-        auto newFace = Common::dynamicSharedPtrCast<RE::RenderFace>(facePrimitive);
-        auto newLine = Common::dynamicSharedPtrCast<RE::RenderLine>(linePrimitive);
-        if (!newFace || !newLine)
-        {
-            LOG(ERROR) << "RenderWork::rebuildMeshSurface() failed to create rebuilt primitives";
-            return;
-        }
-
-        newFace->setColor(getMeshBaseColor(mesh));
-        newFace->setFaceShrink(_faceShrink);
-        newLine->setLineWidth(_lineWidth);
-        newFace->setup();
-        newLine->setup();
-
-        Common::SharedPtr<RE::Shader> faceShader;
-        Common::SharedPtr<RE::Shader> lineShader;
-        RE::ShaderLib::instance().getFaceShader(faceShader);
-        RE::ShaderLib::instance().getLineShader(lineShader);
-        _scene->removePrimitive(faceShader, target->renderFace);
-        _scene->removePrimitive(lineShader, target->renderLine);
-        _scene->addPrimitive(faceShader, facePrimitive);
-        _scene->addPrimitive(lineShader, linePrimitive);
-
-        target->renderFace = facePrimitive;
-        target->renderLine = linePrimitive;
-
-        if (_meshSelector && target->mesh)
-        {
-            _meshSelector->registerMesh(target->mesh, target->translator, target->renderNode,
-                                        target->renderLine, target->renderFace);
-        }
-
-        if (_locateMesh == mesh)
-        {
-            updateLocateHighlight();
-        }
-    }
-
-    void RenderWork::updateViewDependentHighlights()
-    {
-        if (!_scene || !_camera || _activeHighlightedMeshes.empty())
-        {
-            return;
-        }
-
-        const RE::CoordType cameraPosition = _camera->getPosition();
-        const RE::CoordType cameraFront = _camera->getFront();
-        if (_highlightViewValid && (cameraPosition - _highlightViewPosition).length2() < 1e-8f &&
-            (cameraFront - _highlightViewFront).length2() < 1e-8f)
-        {
-            return;
-        }
-
-        for (const auto& primitive : _highlightContourPrimitives)
-        {
-            _scene->removePrimitive(_highlightShader, primitive);
-        }
-        _highlightContourPrimitives.clear();
-        _highlightViewPosition = cameraPosition;
-        _highlightViewFront = cameraFront;
-        _highlightViewValid = true;
-
-        for (const auto& mesh : _activeHighlightedMeshes)
-        {
-            ME::ExtractSilhouette extractor(mesh);
-            const auto edges = extractor.getSilhouetteEdges(
-                ME::CoordType(cameraPosition.x(), cameraPosition.y(), cameraPosition.z()));
-            if (edges.empty())
-            {
-                continue;
-            }
-
-            Common::DynamicArray<RE::CoordType> nodeCoordinates;
-            std::map<ME::IdType, RE::IdxType> nodeIndices;
-            ME::MeshIterator meshIterator(*mesh);
-            for (; meshIterator.hasMoreNode(); meshIterator.nextNode())
-            {
-                auto& node = meshIterator.currentNode();
-                nodeIndices[node.getId()] = static_cast<RE::IdxType>(nodeCoordinates.size());
-                nodeCoordinates.pushBack(RE::CoordType(node.x(), node.y(), node.z()));
-            }
-
-            Common::DynamicArray<RE::IdxType> indices;
-            for (const auto& edge : edges)
-            {
-                const auto firstIndex = nodeIndices.find(edge.first);
-                const auto secondIndex = nodeIndices.find(edge.second);
-                if (firstIndex == nodeIndices.end() || secondIndex == nodeIndices.end())
-                {
-                    continue;
-                }
-                indices.pushBack(firstIndex->second);
-                indices.pushBack(secondIndex->second);
-            }
-            if (indices.empty())
-            {
-                continue;
-            }
-
-            auto linePrimitive = Common::makeShared<RE::RenderLine>();
-            linePrimitive->setNodes(Common::move(nodeCoordinates));
-            linePrimitive->setIndices(Common::move(indices));
-            linePrimitive->setColor(Common::Vector4f(1.0f, 0.75f, 0.1f, 1.0f));
-            linePrimitive->setup();
-            if (_scene->addPrimitive(_highlightShader, linePrimitive) == Common::Return::Succeed)
-            {
-                _highlightContourPrimitives.pushBack(linePrimitive);
-            }
-        }
-    }
-
-    void RenderWork::updateHEMeshHighlight(const RenderEvent& event)
-    {
-        if (!_scene)
-        {
-            return;
-        }
-        for (const auto& primitive : _heMeshHighlightPrimitives)
-        {
-            _scene->removePrimitive(_heMeshHighlightShader, primitive);
-        }
-        _heMeshHighlightPrimitives.clear();
-
-        if (!event.heMesh || event.heMeshVertexIndex >= event.heMesh->getVertexCount())
-        {
-            return;
-        }
-        if (!_heMeshHighlightShader)
-        {
-            RE::ShaderLib::instance().getHighlightShader(_heMeshHighlightShader);
-        }
-
-        const Common::Vector4f highlightColor(1.0f, 0.28f, 0.04f, 1.0f);
-        const auto selectedVertex = event.heMesh->getVertex(event.heMeshVertexIndex);
-        Common::DynamicArray<RE::CoordType> nodeCoordinates;
-        RE::CoordType nodeCoordinate(selectedVertex._coord.x(), selectedVertex._coord.y(),
-                                     selectedVertex._coord.z());
-        nodeCoordinates.pushBack(nodeCoordinate);
-        auto nodePrimitive = Common::makeShared<RE::RenderNode>();
-        nodePrimitive->setNodes(Common::move(nodeCoordinates));
-        nodePrimitive->setColor(highlightColor);
-        nodePrimitive->setPointSize(12.0f);
-        nodePrimitive->setDepthTestEnabled(false);
-        nodePrimitive->setup();
-        if (_scene->addPrimitive(_heMeshHighlightShader, nodePrimitive) == Common::Return::Succeed)
-        {
-            _heMeshHighlightPrimitives.pushBack(nodePrimitive);
-        }
-
-        if (event.heMeshHalfEdgeIndex >= event.heMesh->getHalfEdgeCount())
-        {
-            return;
-        }
-        const auto halfEdge = event.heMesh->getHalfEdge(event.heMeshHalfEdgeIndex);
-        if (halfEdge.vertex != event.heMeshVertexIndex ||
-            halfEdge.next >= event.heMesh->getHalfEdgeCount())
-        {
-            return;
-        }
-        const auto nextHalfEdge = event.heMesh->getHalfEdge(halfEdge.next);
-        const auto nextVertex = event.heMesh->getVertex(nextHalfEdge.vertex);
-        Common::DynamicArray<RE::CoordType> edgeCoordinates;
-        RE::CoordType edgeStart(selectedVertex._coord.x(), selectedVertex._coord.y(),
-                                selectedVertex._coord.z());
-        RE::CoordType edgeEnd(nextVertex._coord.x(), nextVertex._coord.y(), nextVertex._coord.z());
-        edgeCoordinates.pushBack(edgeStart);
-        edgeCoordinates.pushBack(edgeEnd);
-        Common::DynamicArray<RE::IdxType> edgeIndices;
-        RE::IdxType firstIndex = 0;
-        RE::IdxType secondIndex = 1;
-        edgeIndices.pushBack(firstIndex);
-        edgeIndices.pushBack(secondIndex);
-        auto linePrimitive = Common::makeShared<RE::RenderLine>();
-        linePrimitive->setNodes(Common::move(edgeCoordinates));
-        linePrimitive->setIndices(Common::move(edgeIndices));
-        linePrimitive->setColor(highlightColor);
-        linePrimitive->setLineWidth(5.0f);
-        linePrimitive->setup();
-        if (_scene->addPrimitive(_heMeshHighlightShader, linePrimitive) == Common::Return::Succeed)
-        {
-            _heMeshHighlightPrimitives.pushBack(linePrimitive);
-        }
+        auto event = Common::makeShared<MeshRemovalEvent>();
+        event->mesh = mesh;
+        queueRenderEvent(event);
     }
 } // namespace EgLab::Platform
