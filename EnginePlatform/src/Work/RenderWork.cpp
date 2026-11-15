@@ -1,5 +1,6 @@
 #include "Work/RenderWork.hpp"
 
+#include <cmath>
 #include <cstring>
 #include <map>
 #include <sstream>
@@ -182,6 +183,7 @@ namespace EgLab::Platform
         _meshSelector = nullptr;
         _activeMeshPackets.clear();
         _meshColors.clear();
+        _elementVisibilityStates.clear();
         _removedMeshes.clear();
         _requestedHighlightedMeshes.clear();
         _activeHighlightedMeshes.clear();
@@ -195,6 +197,7 @@ namespace EgLab::Platform
         _locateElementIds.clear();
         _highlightShader = nullptr;
         _heMeshHighlightShader = nullptr;
+        _visibilityPlanePrimitive = nullptr;
 
         {
             std::lock_guard<std::mutex> lock(_renderEventMutex);
@@ -480,6 +483,16 @@ namespace EgLab::Platform
                         }
                     }
                     _requestedHighlightedMeshes = Common::move(remainingMeshes);
+
+                    Common::DynamicArray<MeshElementVisibilityState> remainingVisibilityStates;
+                    for (const auto& state : _elementVisibilityStates)
+                    {
+                        if (state.mesh != event.mesh)
+                        {
+                            remainingVisibilityStates.pushBack(state);
+                        }
+                    }
+                    _elementVisibilityStates = Common::move(remainingVisibilityStates);
                 }
                 break;
             case RenderEventType::Highlight:
@@ -554,6 +567,10 @@ namespace EgLab::Platform
                 _locateMesh = event.mesh;
                 _locateElementIds = event.elementIds;
                 break;
+            case RenderEventType::ElementsVisibility:
+                break;
+            case RenderEventType::VisibilityPlane:
+                break;
             }
         }
 
@@ -574,10 +591,20 @@ namespace EgLab::Platform
         case RenderEventType::MeshUpdate:
         {
             const Common::Return result = uploadRenderPacket(event.packet);
-            if (_locateMesh && _locateMesh == event.mesh)
+            if (result == Common::Return::Succeed)
             {
-                // Rebuild the locate primitives against the updated mesh geometry.
-                updateLocateHighlight();
+                MeshElementVisibilityState* visibilityState =
+                    findElementVisibilityState(event.mesh);
+                if (visibilityState != nullptr)
+                {
+                    rebuildMeshSurface(event.mesh,
+                                       collectHiddenElementIds(*visibilityState));
+                }
+                else if (_locateMesh && _locateMesh == event.mesh)
+                {
+                    // Rebuild the locate primitives against the updated mesh geometry.
+                    updateLocateHighlight();
+                }
             }
             return result;
         }
@@ -698,6 +725,12 @@ namespace EgLab::Platform
             break;
         case RenderEventType::Locate:
             updateLocateHighlight();
+            break;
+        case RenderEventType::ElementsVisibility:
+            updateElementsVisibility(event);
+            break;
+        case RenderEventType::VisibilityPlane:
+            updateVisibilityPlane(event);
             break;
         case RenderEventType::HEMeshHighlight:
             updateHEMeshHighlight(event);
@@ -852,6 +885,36 @@ namespace EgLab::Platform
     void RenderWork::clearLocate()
     {
         locateElements(Common::SharedPtr<ME::Mesh>(), Common::DynamicArray<uint32_t>());
+    }
+
+    void RenderWork::setElementsVisibility(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
+                                           uint32_t mode,
+                                           const Common::DynamicArray<uint32_t>& elementIds)
+    {
+        if (!mesh)
+        {
+            LOG(WARNING) << "RenderWork::setElementsVisibility() skipped null mesh";
+            return;
+        }
+
+        RenderEvent event{};
+        event.type = RenderEventType::ElementsVisibility;
+        event.mesh = mesh;
+        event.elementIds = elementIds;
+        event.elementsMode = mode;
+        queueRenderEvent(Common::move(event));
+    }
+
+    void RenderWork::setVisibilityPlane(const Common::Vector3f& normal,
+                                        const Common::Vector3f& point, float extent, bool visible)
+    {
+        RenderEvent event{};
+        event.type = RenderEventType::VisibilityPlane;
+        event.planeNormal = normal;
+        event.planePoint = point;
+        event.planeExtent = extent;
+        event.planeVisible = visible;
+        queueRenderEvent(Common::move(event));
     }
 
     void RenderWork::setHighlightColor(const Common::Vector4f& color)
@@ -1155,6 +1218,299 @@ namespace EgLab::Platform
         targetFace->setColors(Common::move(colors));
         _locateTargetFace = target->renderFace;
         _locateTargetMesh = _locateMesh;
+    }
+
+    void RenderWork::updateElementsVisibility(const RenderEvent& event)
+    {
+        if (!event.mesh)
+        {
+            return;
+        }
+
+        MeshElementVisibilityState* state = findElementVisibilityState(event.mesh);
+        if (state == nullptr)
+        {
+            MeshElementVisibilityState newState;
+            newState.mesh = event.mesh;
+            _elementVisibilityStates.pushBack(newState);
+            state = &_elementVisibilityStates.back();
+        }
+
+        if (event.elementsMode == 2)
+        {
+            // Show only the requested ids; everything else becomes hidden.
+            if (event.elementIds.empty())
+            {
+                state->hiddenElementIds.clear();
+            }
+            else
+            {
+                Common::HashSet<ME::IdType> requested;
+                for (size_t index = 0; index < event.elementIds.size(); ++index)
+                {
+                    requested.insert(static_cast<ME::IdType>(event.elementIds[index]));
+                }
+
+                Common::HashSet<ME::IdType> hidden;
+                ME::MeshIterator iterator(*event.mesh);
+                for (; iterator.hasMoreElem(); iterator.nextElem())
+                {
+                    const ME::IdType elementId = iterator.currentElem().getId();
+                    if (requested.find(elementId) == requested.end())
+                    {
+                        hidden.insert(elementId);
+                    }
+                }
+                state->hiddenElementIds = hidden;
+            }
+        }
+        else if (event.elementsMode == 3)
+        {
+            // Hide only the requested ids; everything else becomes visible.
+            state->hiddenElementIds.clear();
+            for (size_t index = 0; index < event.elementIds.size(); ++index)
+            {
+                state->hiddenElementIds.insert(static_cast<ME::IdType>(event.elementIds[index]));
+            }
+        }
+        else if (event.elementsMode == 1)
+        {
+            // Show the requested ids. An empty list restores the full mesh surface.
+            if (event.elementIds.empty())
+            {
+                state->hiddenElementIds.clear();
+            }
+            else if (!state->hiddenElementIds.empty())
+            {
+                Common::HashSet<ME::IdType> requested;
+                for (size_t index = 0; index < event.elementIds.size(); ++index)
+                {
+                    requested.insert(static_cast<ME::IdType>(event.elementIds[index]));
+                }
+
+                Common::HashSet<ME::IdType> remaining;
+                for (auto it = state->hiddenElementIds.begin(); it.hasNext(); it.next())
+                {
+                    const ME::IdType hiddenId = it.data();
+                    if (requested.find(hiddenId) == requested.end())
+                    {
+                        remaining.insert(hiddenId);
+                    }
+                }
+                state->hiddenElementIds = remaining;
+            }
+        }
+        else
+        {
+            // Hide the requested ids (accumulate).
+            for (size_t index = 0; index < event.elementIds.size(); ++index)
+            {
+                state->hiddenElementIds.insert(static_cast<ME::IdType>(event.elementIds[index]));
+            }
+        }
+
+        rebuildMeshSurface(event.mesh, collectHiddenElementIds(*state));
+    }
+
+    void RenderWork::updateVisibilityPlane(const RenderEvent& event)
+    {
+        if (!_scene)
+        {
+            return;
+        }
+
+        Common::SharedPtr<RE::Shader> faceShader;
+        RE::ShaderLib::instance().getFaceShader(faceShader);
+
+        if (_visibilityPlanePrimitive)
+        {
+            _scene->removePrimitive(faceShader, _visibilityPlanePrimitive);
+            _visibilityPlanePrimitive = nullptr;
+        }
+
+        if (!event.planeVisible)
+        {
+            return;
+        }
+
+        Common::Vector3f normal = event.planeNormal;
+        const float normalLength = normal.length();
+        if (normalLength < 1e-6f)
+        {
+            normal = Common::Vector3f(0.0f, 0.0f, 1.0f);
+        }
+        else
+        {
+            normal = normal * (1.0f / normalLength);
+        }
+
+        Common::Vector3f reference(1.0f, 0.0f, 0.0f);
+        if (std::fabs(normal.x()) > 0.9f)
+        {
+            reference = Common::Vector3f(0.0f, 1.0f, 0.0f);
+        }
+        Common::Vector3f tangent = normal.cross(reference);
+        tangent.normalize();
+        Common::Vector3f bitangent = normal.cross(tangent);
+        bitangent.normalize();
+
+        const float halfExtent = event.planeExtent;
+        const Common::Vector3f center = event.planePoint;
+        Common::DynamicArray<RE::CoordType> nodes;
+        nodes.pushBack(RE::CoordType(center.x() - tangent.x() * halfExtent -
+                                         bitangent.x() * halfExtent,
+                                     center.y() - tangent.y() * halfExtent -
+                                         bitangent.y() * halfExtent,
+                                     center.z() - tangent.z() * halfExtent -
+                                         bitangent.z() * halfExtent));
+        nodes.pushBack(RE::CoordType(center.x() + tangent.x() * halfExtent -
+                                         bitangent.x() * halfExtent,
+                                     center.y() + tangent.y() * halfExtent -
+                                         bitangent.y() * halfExtent,
+                                     center.z() + tangent.z() * halfExtent -
+                                         bitangent.z() * halfExtent));
+        nodes.pushBack(RE::CoordType(center.x() + tangent.x() * halfExtent +
+                                         bitangent.x() * halfExtent,
+                                     center.y() + tangent.y() * halfExtent +
+                                         bitangent.y() * halfExtent,
+                                     center.z() + tangent.z() * halfExtent +
+                                         bitangent.z() * halfExtent));
+        nodes.pushBack(RE::CoordType(center.x() - tangent.x() * halfExtent +
+                                         bitangent.x() * halfExtent,
+                                     center.y() - tangent.y() * halfExtent +
+                                         bitangent.y() * halfExtent,
+                                     center.z() - tangent.z() * halfExtent +
+                                         bitangent.z() * halfExtent));
+
+        Common::DynamicArray<RE::IdxType> indices;
+        indices.pushBack(0);
+        indices.pushBack(1);
+        indices.pushBack(2);
+        indices.pushBack(0);
+        indices.pushBack(2);
+        indices.pushBack(3);
+
+        auto primitive = Common::makeShared<RE::RenderFace>();
+        primitive->setNodes(Common::move(nodes));
+        primitive->setIndices(Common::move(indices));
+        primitive->setColor(event.planeColor);
+        primitive->setup();
+
+        if (_scene->addPrimitive(faceShader, primitive) == Common::Return::Succeed)
+        {
+            _visibilityPlanePrimitive = primitive;
+        }
+    }
+
+    RenderWork::MeshElementVisibilityState* RenderWork::findElementVisibilityState(
+        const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
+    {
+        if (!mesh)
+        {
+            return nullptr;
+        }
+
+        for (auto& state : _elementVisibilityStates)
+        {
+            if (state.mesh == mesh)
+            {
+                return &state;
+            }
+        }
+        return nullptr;
+    }
+
+    Common::DynamicArray<ME::IdType> RenderWork::collectHiddenElementIds(
+        MeshElementVisibilityState& state)
+    {
+        Common::DynamicArray<ME::IdType> hiddenElementIds;
+        hiddenElementIds.reserve(state.hiddenElementIds.size());
+        for (auto it = state.hiddenElementIds.begin(); it.hasNext(); it.next())
+        {
+            hiddenElementIds.pushBack(it.data());
+        }
+        return hiddenElementIds;
+    }
+
+    void RenderWork::rebuildMeshSurface(
+        const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
+        const Common::DynamicArray<ME::IdType>& hiddenElementIds)
+    {
+        if (!_scene || !mesh)
+        {
+            return;
+        }
+
+        RenderPacket* target = nullptr;
+        for (auto& packet : _activeMeshPackets)
+        {
+            if (packet.sourceMesh == mesh)
+            {
+                target = &packet;
+                break;
+            }
+        }
+        if (target == nullptr || !target->translator)
+        {
+            LOG(WARNING) << "RenderWork::rebuildMeshSurface() could not find the mesh packet";
+            return;
+        }
+
+        // Locate primitives reference the previous boundary; drop them before swapping faces.
+        if (_locateMesh == mesh)
+        {
+            Common::SharedPtr<RE::Shader> highlightShader;
+            RE::ShaderLib::instance().getHighlightShader(highlightShader);
+            for (const auto& primitive : _locatePrimitives)
+            {
+                _scene->removePrimitive(highlightShader, primitive);
+            }
+            _locatePrimitives.clear();
+            _locateTargetFace = nullptr;
+            _locateTargetMesh = nullptr;
+        }
+
+        target->translator->setHiddenElements(hiddenElementIds);
+
+        RE::MeshPrimitiveCreator creator(mesh, target->translator);
+        auto facePrimitive = creator.getPrimitive<RE::RenderFace>();
+        auto linePrimitive = creator.getPrimitive<RE::RenderLine>();
+        auto newFace = Common::dynamicSharedPtrCast<RE::RenderFace>(facePrimitive);
+        auto newLine = Common::dynamicSharedPtrCast<RE::RenderLine>(linePrimitive);
+        if (!newFace || !newLine)
+        {
+            LOG(ERROR) << "RenderWork::rebuildMeshSurface() failed to create rebuilt primitives";
+            return;
+        }
+
+        newFace->setColor(getMeshBaseColor(mesh));
+        newFace->setFaceShrink(_faceShrink);
+        newLine->setLineWidth(_lineWidth);
+        newFace->setup();
+        newLine->setup();
+
+        Common::SharedPtr<RE::Shader> faceShader;
+        Common::SharedPtr<RE::Shader> lineShader;
+        RE::ShaderLib::instance().getFaceShader(faceShader);
+        RE::ShaderLib::instance().getLineShader(lineShader);
+        _scene->removePrimitive(faceShader, target->renderFace);
+        _scene->removePrimitive(lineShader, target->renderLine);
+        _scene->addPrimitive(faceShader, facePrimitive);
+        _scene->addPrimitive(lineShader, linePrimitive);
+
+        target->renderFace = facePrimitive;
+        target->renderLine = linePrimitive;
+
+        if (_meshSelector && target->mesh)
+        {
+            _meshSelector->registerMesh(target->mesh, target->translator, target->renderNode,
+                                        target->renderLine, target->renderFace);
+        }
+
+        if (_locateMesh == mesh)
+        {
+            updateLocateHighlight();
+        }
     }
 
     void RenderWork::updateViewDependentHighlights()

@@ -265,6 +265,10 @@ namespace EgLab::Platform
             }
             if (animatedBeginMenu("Mesh"))
             {
+                if (ImGui::MenuItem("Element Visibility"))
+                {
+                    requestShowPanel("ElementVisibility");
+                }
                 if (ImGui::MenuItem("Half Edge Mesh"))
                 {
                     requestShowPanel("HEMesh");

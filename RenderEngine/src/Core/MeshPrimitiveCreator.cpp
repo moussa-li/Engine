@@ -14,6 +14,12 @@ namespace EgLab::RE
         _translator->setMesh(mesh);
     }
 
+    MeshPrimitiveCreator::MeshPrimitiveCreator(Common::SharedPtr<ME::Mesh> mesh,
+                                               Common::SharedPtr<MeshToTriFace> translator)
+        : _mesh(mesh), _translator(translator)
+    {
+    }
+
     MeshPrimitiveCreator::~MeshPrimitiveCreator()
     {
     }

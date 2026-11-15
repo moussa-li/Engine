@@ -259,7 +259,7 @@ namespace EgLab::Common
     public:
         bool hasNext() const
         {
-            return _bucketIndex != _table.buckets.size();
+            return _bucketIndex < _table.buckets.size() && !_table.empty();
         }
         ValueCRef next()
         {
@@ -394,7 +394,7 @@ namespace EgLab::Common
     public:
         bool hasNext() const
         {
-            return _bucketIndex != _table.buckets.size();
+            return _bucketIndex < _table.buckets.size() && !_table.empty();
         }
         ValueCRef next()
         {

@@ -9,6 +9,7 @@
 #include "Panel/CameraSettingPanel.hpp"
 #include "Panel/CommandParamWizardPanel.hpp"
 #include "Panel/DataTreePanel.hpp"
+#include "Panel/ElementVisibilityPanel.hpp"
 #include "Panel/HEMeshDataPanel.hpp"
 #include "Panel/HEMeshPanel.hpp"
 #include "Panel/IPanel.hpp"
@@ -42,6 +43,8 @@ namespace EgLab::Platform
         _panels[BackGroundSettingPanel().getPanelName()] =
             Common::makeShared<BackGroundSettingPanel>();
         _panels[DataTreePanel().getPanelName()] = Common::makeShared<DataTreePanel>();
+        _panels[ElementVisibilityPanel().getPanelName()] =
+            Common::makeShared<ElementVisibilityPanel>();
         _panels[HEMeshDataPanel().getPanelName()] = Common::makeShared<HEMeshDataPanel>();
         _heMeshPanel = Common::makeShared<HEMeshPanel>();
         _panels[_heMeshPanel->getPanelName()] = _heMeshPanel;

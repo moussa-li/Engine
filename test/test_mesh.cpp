@@ -83,6 +83,61 @@ TEST_F(TestMesh, extraceSurface)
     auto idxs = extractor.getSurface();
 }
 
+TEST_F(TestMesh, extraceSurfaceWithHiddenElements)
+{
+    EgLab::Common::SharedPtr<EgLab::ME::Mesh> mesh = EgLab::Common::makeShared<EgLab::ME::Mesh>();
+
+    for (int i = 0; i < 5; i++)
+    {
+        EgLab::ME::Node n;
+        n.setId(i + 1);
+        EgLab::ME::CoordType c(i % 2, i % 3, i / 3);
+        n.setXYZ(c);
+        mesh->addNode(EgLab::Common::move(n));
+    }
+
+    EgLab::ME::Elem e1;
+    e1.setId(1);
+    e1.setType(EgLab::ME::ElemType::Tet4);
+    e1.setNode(0, 1);
+    e1.setNode(1, 2);
+    e1.setNode(2, 3);
+    e1.setNode(3, 4);
+    mesh->addElem(EgLab::Common::move(e1));
+
+    EgLab::ME::Elem e2;
+    e2.setId(2);
+    e2.setType(EgLab::ME::ElemType::Tet4);
+    e2.setNode(0, 3);
+    e2.setNode(1, 2);
+    e2.setNode(2, 1);
+    e2.setNode(3, 5);
+    mesh->addElem(EgLab::Common::move(e2));
+
+    EgLab::ME::ExtractSurface extractor(mesh);
+    const auto fullSurface = extractor.getSurface();
+    EXPECT_EQ(fullSurface.size(), 6u);
+
+    EgLab::Common::DynamicArray<EgLab::ME::IdType> hiddenElementIds;
+    hiddenElementIds.pushBack(1u);
+    extractor.setHiddenElementIds(hiddenElementIds);
+
+    const auto visibleSurface = extractor.getSurface();
+    ASSERT_EQ(visibleSurface.size(), 4u);
+
+    // With element 1 hidden, every face of element 2 becomes a boundary face. In the full
+    // mesh only 3 of element 2's faces were boundary faces (the shared face was internal).
+    size_t element2FaceCount = 0;
+    for (const auto& surfaceFace : visibleSurface)
+    {
+        if (surfaceFace.first == 2u)
+        {
+            ++element2FaceCount;
+        }
+    }
+    EXPECT_EQ(element2FaceCount, 4u);
+}
+
 TEST_F(TestMesh, extractSilhouetteEdgesFromOpenTriangle)
 {
     auto mesh = EgLab::Common::makeShared<EgLab::ME::Mesh>();

@@ -448,6 +448,18 @@ TEST_F(TestCommon, HashMap_const_lookup)
     EXPECT_EQ(iter.data().second, "seven");
 }
 
+TEST_F(TestCommon, HashMap_empty_iterator_has_no_next)
+{
+    EgLab::Common::HashMap<int, int> map;
+    EXPECT_FALSE(map.begin().hasNext());
+
+    map.reserve(8);
+    EXPECT_FALSE(map.begin().hasNext());
+
+    const auto& constMap = map;
+    EXPECT_FALSE(constMap.begin().hasNext());
+}
+
 TEST_F(TestCommon, mix)
 {
     int data[] = {1,       3,    2,    1,   4,     5,       6,     6,   7,     1,     12,

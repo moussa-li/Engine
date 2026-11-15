@@ -12,11 +12,13 @@
 #include "Command/CommandIds.hpp"
 #include "Command/CommandParam.hpp"
 #include "Common/DynamicArray.hpp"
+#include "Common/HashSet.hpp"
 #include "Common/Publisher.hpp"
 #include "Common/SharedPtr.hpp"
 #include "Common/Singleton.hpp"
 #include "Common/Subscriber.hpp"
 #include "Common/Vector.hpp"
+#include "MeshEngine/Common/Definitions.hpp"
 #include "RenderEngine/Core/Definites.hpp"
 #include "RenderEngine/Core/RenderPrimitive.hpp"
 #include "RenderEngine/Core/Selector.hpp"
@@ -109,6 +111,15 @@ namespace EgLab::Platform
         void locateElements(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
                             const Common::DynamicArray<uint32_t>& elementIds);
         void clearLocate();
+        // Changes element visibility of one mesh. mode: 0 = hide ids, 1 = show ids,
+        // 2 = show only ids (hide the rest), 3 = hide only ids (show the rest). An empty id
+        // list in modes 1/3 restores the full mesh surface.
+        void setElementsVisibility(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
+                                   uint32_t mode,
+                                   const Common::DynamicArray<uint32_t>& elementIds);
+        // Shows or hides a translucent helper plane used to preview visibility cuts.
+        void setVisibilityPlane(const Common::Vector3f& normal, const Common::Vector3f& point,
+                                float extent, bool visible);
         void setHighlightColor(const Common::Vector4f& color);
         void setNodePointSize(float pointSize);
         void setLineWidth(float lineWidth);
@@ -120,6 +131,8 @@ namespace EgLab::Platform
         void removeMesh(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
 
     private:
+        struct MeshElementVisibilityState;
+
         enum class RenderEventType
         {
             MeshColor,
@@ -132,6 +145,8 @@ namespace EgLab::Platform
             FaceShrink,
             HEMeshHighlight,
             Locate,
+            ElementsVisibility,
+            VisibilityPlane,
             FitView,
         };
 
@@ -144,6 +159,12 @@ namespace EgLab::Platform
             uint32_t heMeshVertexIndex{UINT32_MAX};
             uint32_t heMeshHalfEdgeIndex{UINT32_MAX};
             Common::DynamicArray<uint32_t> elementIds;
+            uint32_t elementsMode{0};
+            Common::Vector3f planeNormal{0.0f, 0.0f, 1.0f};
+            Common::Vector3f planePoint{0.0f, 0.0f, 0.0f};
+            float planeExtent{10.0f};
+            bool planeVisible{false};
+            Common::Vector4f planeColor{0.2f, 0.5f, 1.0f, 0.25f};
             Common::Vector4f color;
             float nodePointSize{3.0f};
             float lineWidth{2.0f};
@@ -159,6 +180,14 @@ namespace EgLab::Platform
         bool isMeshRemoved(const ME::Mesh* mesh);
         Common::Return uploadRenderPacket(const RenderPacket& packet);
         void updateLocateHighlight();
+        void updateElementsVisibility(const RenderEvent& event);
+        void updateVisibilityPlane(const RenderEvent& event);
+        MeshElementVisibilityState* findElementVisibilityState(
+            const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
+        Common::DynamicArray<ME::IdType> collectHiddenElementIds(
+            MeshElementVisibilityState& state);
+        void rebuildMeshSurface(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
+                                const Common::DynamicArray<ME::IdType>& hiddenElementIds);
         Common::Vector4f getMeshBaseColor(const Common::SharedPtr<ME::Mesh>& mesh) const;
         void updateMeshHighlight();
         void updateViewDependentHighlights();
@@ -170,6 +199,12 @@ namespace EgLab::Platform
         {
             Common::SharedPtr<ME::Mesh> mesh;
             Common::Vector4f color;
+        };
+
+        struct MeshElementVisibilityState
+        {
+            Common::SharedPtr<ME::Mesh> mesh;
+            Common::HashSet<ME::IdType> hiddenElementIds;
         };
 
         struct PickInfoSubscription
@@ -201,6 +236,7 @@ namespace EgLab::Platform
 
         Common::DynamicArray<MeshColor> _meshColors;
         Common::DynamicArray<RenderPacket> _activeMeshPackets;
+        Common::DynamicArray<MeshElementVisibilityState> _elementVisibilityStates;
 
         Common::DynamicArray<ME::Mesh*> _removedMeshes;
 
@@ -226,6 +262,7 @@ namespace EgLab::Platform
         bool _highlightViewValid{false};
         Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _heMeshHighlightPrimitives;
         Common::SharedPtr<RE::Shader> _heMeshHighlightShader;
+        Common::SharedPtr<RE::RenderPrimitive> _visibilityPlanePrimitive;
 
         EgLab::RE::DeltaTime lastFrame;
         EgLab::RE::DeltaTime deltaTime;

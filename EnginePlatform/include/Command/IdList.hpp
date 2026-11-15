@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "Common/DynamicArray.hpp"
 #include "Common/String.hpp"
 
 namespace EgLab::Platform
@@ -51,6 +52,48 @@ namespace EgLab::Platform
             }
         }
         return count;
+    }
+
+    // Parses a separator separated id list ("1, 2, 3" or "1 2 3") into a dynamic array.
+    // Returns the number of parsed ids. No fixed capacity is imposed.
+    template <typename T>
+    size_t parseIdList(const Common::String& text, Common::DynamicArray<T>& values)
+    {
+        values.clear();
+
+        const char* cursor = text.c_str();
+        while (cursor != nullptr && *cursor != '\0')
+        {
+            while (*cursor == ',' || *cursor == ';' || *cursor == ' ' || *cursor == '\t')
+            {
+                ++cursor;
+            }
+            if (*cursor == '\0')
+            {
+                break;
+            }
+
+            uint64_t value = 0;
+            bool hasDigits = false;
+            while (*cursor >= '0' && *cursor <= '9')
+            {
+                value = value * 10 + static_cast<uint64_t>(*cursor - '0');
+                hasDigits = true;
+                ++cursor;
+            }
+
+            if (hasDigits)
+            {
+                values.pushBack(static_cast<T>(value));
+            }
+
+            // Skip the remainder of an unexpected token.
+            while (*cursor != '\0' && *cursor != ',' && *cursor != ';')
+            {
+                ++cursor;
+            }
+        }
+        return values.size();
     }
 
     // Formats an id array as "1, 2, 3" for EventPacket string fields and the UI.

@@ -27,6 +27,11 @@ namespace EgLab::RE
         /// @details The supplied mesh is used to build boundary topology data.
         void setMesh(Common::SharedPtr<ME::Mesh>&);
 
+        /// @brief Sets the element ids excluded from boundary topology computation.
+        /// @details Faces shared between a hidden element and a visible element are treated as
+        /// boundary faces. Replaces any previously configured hidden element set.
+        void setHiddenElements(const Common::DynamicArray<ME::IdType>& hiddenElementIds);
+
         /// @brief Returns indices for triangulated boundary faces.
         /// @return Triangle vertex indices.
         Common::DynamicArray<IdxType> getBoundaryFaceIdx() const;

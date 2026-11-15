@@ -20,6 +20,7 @@ namespace EgLab::Platform
         MeshDelete = 200003,
         MeshPickInfo = 200004,
         LocateElements = 200005,
+        ElementsVisibility = 200006,
     };
 }
 

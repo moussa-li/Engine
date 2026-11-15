@@ -1,5 +1,6 @@
 #include "MeshEngine/Algorithm/ExtractSurface.hpp"
 
+#include "Common/HashSet.hpp"
 #include "Common/Loop.hpp"
 #include "Common/Sort.hpp"
 
@@ -103,6 +104,7 @@ namespace EgLab::ME
     {
     public:
         Common::SharedPtr<Mesh> _mesh;
+        Common::HashSet<IdType> _hiddenElementIds;
     };
 
     ExtractSurface::ExtractSurface(Common::SharedPtr<Mesh> mesh) : _impl(Common::makeUnique<Impl>())
@@ -114,9 +116,21 @@ namespace EgLab::ME
     {
     }
 
+    void ExtractSurface::setHiddenElementIds(
+        const Common::DynamicArray<IdType>& hiddenElementIds)
+    {
+        _impl->_hiddenElementIds.clear();
+        for (size_t index = 0; index < hiddenElementIds.size(); ++index)
+        {
+            _impl->_hiddenElementIds.insert(hiddenElementIds[index]);
+        }
+    }
+
     Common::DynamicArray<Common::Pair<IdType, IdxType>> ExtractSurface::getSurface()
     {
         if (_impl->_mesh == nullptr) return {};
+
+        const bool filterHidden = !_impl->_hiddenElementIds.empty();
 
         Common::DynamicArray<Common::Pair<IdType, IdxType>> idxs;
         Common::DynamicArray<ElemFace> elemFaces;
@@ -126,6 +140,12 @@ namespace EgLab::ME
         for (; it.hasMoreElem(); it.nextElem())
         {
             auto& e = it.currentElem();
+            if (filterHidden &&
+                _impl->_hiddenElementIds.find(e.getId()) != _impl->_hiddenElementIds.end())
+            {
+                continue;
+            }
+
             ElemFaceGetter getter(e);
 
             for (int i = 0; i < getter.elemFaceNumber(); i++)

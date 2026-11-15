@@ -14,6 +14,11 @@ namespace EgLab::RE
         /// @details The source mesh is used to populate render primitives.
         MeshPrimitiveCreator(Common::SharedPtr<ME::Mesh>);
 
+        /// @brief Creates a primitive creator that reuses an existing topology translator.
+        /// @details Used to rebuild face and line primitives after the translator's hidden
+        /// element set changes, without recomputing a new translator.
+        MeshPrimitiveCreator(Common::SharedPtr<ME::Mesh>, Common::SharedPtr<MeshToTriFace>);
+
         /// @brief Releases the mesh translator and associated state.
         ~MeshPrimitiveCreator();
 

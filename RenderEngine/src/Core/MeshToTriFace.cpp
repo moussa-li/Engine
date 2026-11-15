@@ -13,6 +13,7 @@ namespace EgLab::RE
     {
     public:
         Common::SharedPtr<ME::Mesh> _mesh;
+        Common::HashSet<ME::IdType> _hiddenElementIds;
         Common::DynamicArray<IdxType> _boundaryFaceIdx;
         Common::DynamicArray<IdxType> _boundaryFaceNodeIdx;
         Common::DynamicArray<IdxType> _boundaryLineIdx;
@@ -33,6 +34,13 @@ namespace EgLab::RE
             _boundaryLineLocations.clear();
 
             ME::ExtractSurface extractor(_mesh);
+            Common::DynamicArray<ME::IdType> hiddenElementIds;
+            hiddenElementIds.reserve(_hiddenElementIds.size());
+            for (auto it = _hiddenElementIds.begin(); it.hasNext(); it.next())
+            {
+                hiddenElementIds.pushBack(it.data());
+            }
+            extractor.setHiddenElementIds(hiddenElementIds);
             auto faceIndices = extractor.getSurface();
 
             _boundaryFaceIdx.reserve(faceIndices.size() * 6);
@@ -98,9 +106,15 @@ namespace EgLab::RE
             using Edge = Common::Pair<ME::IdType, ME::IdType>;
             Common::HashMap<Edge, size_t> edgeUseCounts;
             ME::MeshIterator elemIterator(*_mesh);
+            const bool hasHiddenElements = !_hiddenElementIds.empty();
             for (; elemIterator.hasMoreElem(); elemIterator.nextElem())
             {
                 const auto& elem = elemIterator.currentElem();
+                if (hasHiddenElements &&
+                    _hiddenElementIds.find(elem.getId()) != _hiddenElementIds.end())
+                {
+                    continue;
+                }
                 const auto type = elem.getType();
                 if (type != ME::ElemType::Tri3 && type != ME::ElemType::Quad4 &&
                     type != ME::ElemType::Tet4)
@@ -155,6 +169,17 @@ namespace EgLab::RE
     void MeshToTriFace::setMesh(Common::SharedPtr<ME::Mesh>& mesh)
     {
         _impl->_mesh = mesh;
+        _impl->_dirty = true;
+    }
+
+    void MeshToTriFace::setHiddenElements(
+        const Common::DynamicArray<ME::IdType>& hiddenElementIds)
+    {
+        _impl->_hiddenElementIds.clear();
+        for (size_t index = 0; index < hiddenElementIds.size(); ++index)
+        {
+            _impl->_hiddenElementIds.insert(hiddenElementIds[index]);
+        }
         _impl->_dirty = true;
     }
 
