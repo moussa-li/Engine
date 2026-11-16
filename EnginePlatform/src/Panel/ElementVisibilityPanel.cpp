@@ -1,17 +1,79 @@
 #include "Panel/ElementVisibilityPanel.hpp"
 
+#include <cmath>
 #include <limits>
 
 #include "Command/CommandManager.hpp"
 #include "Common/Log.hpp"
+#include "Common/Vector.hpp"
 #include "DataBase/Context.hpp"
 #include "DataBase/MeshData.hpp"
 #include "MeshEngine/Algorithm/PlaneCut.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
+#include "Work/RenderWork.hpp"
 #include "imgui.h"
 
 namespace
 {
+    // Translucent blue used for the cut plane preview so the mesh behind it stays visible.
+    EgLab::Common::Vector4f previewColor(float opacity)
+    {
+        const float alpha = opacity < 0.05f ? 0.05f : (opacity > 1.0f ? 1.0f : opacity);
+        return EgLab::Common::Vector4f(0.2f, 0.6f, 1.0f, alpha);
+    }
+
+    // Builds the quad mesh that visualises the plane. The quad lies inside the plane, so its
+    // two in-plane axes are derived from the normal.
+    EgLab::Common::SharedPtr<EgLab::ME::Mesh> buildPlaneMesh(
+        const EgLab::Common::Vector3f& normal,
+        const EgLab::Common::Vector3f& referencePoint, float halfExtent)
+    {
+        EgLab::Common::Vector3f unitNormal = normal;
+        unitNormal.normalize();
+        if (unitNormal.length() < 0.5f || halfExtent <= 0.0f)
+        {
+            return EgLab::Common::SharedPtr<EgLab::ME::Mesh>(nullptr);
+        }
+
+        // Pick a helper axis that is not parallel to the normal so the cross product stays
+        // well defined for every orientation.
+        EgLab::Common::Vector3f helper(0.0f, 0.0f, 1.0f);
+        if (std::abs(unitNormal.z()) > 0.9f)
+        {
+            helper = EgLab::Common::Vector3f(0.0f, 1.0f, 0.0f);
+        }
+        EgLab::Common::Vector3f axisU = helper.cross(unitNormal);
+        axisU.normalize();
+        const EgLab::Common::Vector3f axisV = unitNormal.cross(axisU);
+
+        const EgLab::Common::Vector3f corners[4] = {
+            referencePoint + (axisU * -1.0f + axisV * -1.0f) * halfExtent,
+            referencePoint + (axisU + axisV * -1.0f) * halfExtent,
+            referencePoint + (axisU + axisV) * halfExtent,
+            referencePoint + (axisU * -1.0f + axisV) * halfExtent,
+        };
+
+        auto mesh = EgLab::Common::makeShared<EgLab::ME::Mesh>();
+        for (uint32_t index = 0; index < 4; ++index)
+        {
+            EgLab::ME::Node node;
+            node.setId(index + 1);
+            EgLab::ME::CoordType xyz(corners[index].x(), corners[index].y(), corners[index].z());
+            node.setXYZ(xyz);
+            mesh->addNode(EgLab::Common::move(node));
+        }
+
+        EgLab::ME::Elem elem;
+        elem.setId(1);
+        elem.setType(EgLab::ME::ElemType::Quad4);
+        for (uint32_t index = 0; index < 4; ++index)
+        {
+            elem.setNode(index, index + 1);
+        }
+        mesh->addElem(EgLab::Common::move(elem));
+        return mesh;
+    }
+
     // Formats an element id list as "1, 2, 3" without repeated string concatenation so that
     // large plane-cut id sets are cheap to build.
     EgLab::Common::String formatElementIds(const EgLab::Common::DynamicArray<uint32_t>& ids)
@@ -166,6 +228,18 @@ namespace EgLab::Platform
             _referenceMax += 1.0f;
         }
 
+        // Size the preview quad from the bounding box diagonal so it always covers the mesh
+        // regardless of which way the plane is oriented.
+        const float extentX = _boundsMax[0] - _boundsMin[0];
+        const float extentY = _boundsMax[1] - _boundsMin[1];
+        const float extentZ = _boundsMax[2] - _boundsMin[2];
+        const float diagonal = std::sqrt(extentX * extentX + extentY * extentY + extentZ * extentZ);
+        _previewHalfExtent = diagonal * 0.55f;
+        if (_previewHalfExtent < 1.0f)
+        {
+            _previewHalfExtent = 1.0f;
+        }
+
         for (int axis = 0; axis < 3; ++axis)
         {
             if (_referencePoint[axis] < _boundsMin[axis])
@@ -239,12 +313,72 @@ namespace EgLab::Platform
         CommandManager::instance().call(EventId::ElementsVisibility, Common::move(packet));
     }
 
+    void ElementVisibilityPanel::updatePlanePreview()
+    {
+        hidePlanePreview();
+
+        if (!_showPreview)
+        {
+            return;
+        }
+
+        const Common::Vector3f normal(_normal[0], _normal[1], _normal[2]);
+        const Common::Vector3f referencePoint(_referencePoint[0], _referencePoint[1],
+                                              _referencePoint[2]);
+        auto mesh = buildPlaneMesh(normal, referencePoint, _previewHalfExtent);
+        if (!mesh)
+        {
+            LOG(WARNING) << "ElementVisibilityPanel::updatePlanePreview() skipped an invalid "
+                            "plane";
+            return;
+        }
+
+        _previewMesh = mesh;
+        // Record the colour before the geometry so the faces are uploaded already translucent.
+        RenderWork::instance().setMeshColor(mesh, previewColor(_previewOpacity));
+        RenderWork::instance().onUpdateMesh(mesh);
+    }
+
+    void ElementVisibilityPanel::hidePlanePreview()
+    {
+        if (!_previewMesh)
+        {
+            return;
+        }
+
+        RenderWork::instance().removeMesh(_previewMesh);
+        _previewMesh = nullptr;
+    }
+
+    void ElementVisibilityPanel::afterRenderFrame()
+    {
+        if (!isShow())
+        {
+            hidePlanePreview();
+        }
+    }
+
+    void ElementVisibilityPanel::abortShow()
+    {
+        // The preview is hidden when the panel closes, so rebuild it when the panel returns.
+        if (_showPreview && _boundsNodeId != 0)
+        {
+            updatePlanePreview();
+        }
+    }
+
+    void ElementVisibilityPanel::abortClose()
+    {
+        hidePlanePreview();
+    }
+
     void ElementVisibilityPanel::renderImpl()
     {
         refreshMeshEntries();
 
         if (_meshEntries.empty())
         {
+            hidePlanePreview();
             ImGui::TextDisabled("No mesh data nodes available.");
             return;
         }
@@ -275,31 +409,58 @@ namespace EgLab::Platform
         auto mesh = getSelectedMesh();
         if (!mesh)
         {
+            hidePlanePreview();
             ImGui::TextDisabled("Selected mesh has no geometry.");
             return;
         }
 
         const DataNodeId selectedNodeId = _meshEntries[_selectedMeshIndex].nodeId;
+        bool previewChanged = false;
         if (_boundsNodeId != selectedNodeId)
         {
             _positiveElementIds.clear();
             _negativeElementIds.clear();
             updateReferenceBounds(mesh, selectedNodeId);
+            previewChanged = true;
         }
 
-        ImGui::SliderFloat3("Plane Normal", _normal, -1.0f, 1.0f);
+        if (ImGui::SliderFloat3("Plane Normal", _normal, -1.0f, 1.0f))
+        {
+            previewChanged = true;
+        }
         if (_autoApply && ImGui::IsItemDeactivatedAfterEdit())
         {
             applyPlaneCut();
         }
 
-        ImGui::SliderFloat3("Reference Point", _referencePoint, _referenceMin, _referenceMax);
+        if (ImGui::SliderFloat3("Reference Point", _referencePoint, _referenceMin, _referenceMax))
+        {
+            previewChanged = true;
+        }
         if (_autoApply && ImGui::IsItemDeactivatedAfterEdit())
         {
             applyPlaneCut();
         }
 
         ImGui::Checkbox("Auto Apply", &_autoApply);
+
+        if (ImGui::Checkbox("Show Preview Plane", &_showPreview))
+        {
+            previewChanged = true;
+        }
+        if (_showPreview)
+        {
+            if (ImGui::SliderFloat("Preview Opacity", &_previewOpacity, 0.05f, 1.0f, "%.2f"))
+            {
+                previewChanged = true;
+            }
+        }
+
+        if (previewChanged)
+        {
+            updatePlanePreview();
+        }
+
         ImGui::Separator();
 
         if (ImGui::Button("Apply Plane Cut"))

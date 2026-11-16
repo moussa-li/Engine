@@ -65,8 +65,7 @@ namespace EgLab::Platform
 
         // ---- apply phase: mutate the scene ----
         Common::Return applyMeshUpdate(const MeshUpdateEvent& event);
-        void applyMeshColor(const Common::SharedPtr<ME::Mesh>& mesh,
-                            const Common::Vector4f& color);
+        void applyMeshColor(const Common::SharedPtr<ME::Mesh>& mesh, const Common::Vector4f& color);
         void applyMeshRemoval(const Common::SharedPtr<ME::Mesh>& mesh);
         void applyHighlight();
         void applyHighlightColor();
@@ -107,8 +106,7 @@ namespace EgLab::Platform
         void updateHEMeshHighlight(const HEMeshHighlightEvent& event);
         MeshElementVisibilityState* findElementVisibilityState(
             const Common::SharedPtr<ME::Mesh>& mesh);
-        Common::DynamicArray<ME::IdType> collectHiddenElementIds(
-            MeshElementVisibilityState& state);
+        Common::DynamicArray<ME::IdType> collectHiddenElementIds(MeshElementVisibilityState& state);
         void rebuildMeshSurface(const Common::SharedPtr<ME::Mesh>& mesh,
                                 const Common::DynamicArray<ME::IdType>& hiddenElementIds);
         Common::Vector4f getMeshBaseColor(const Common::SharedPtr<ME::Mesh>& mesh) const;

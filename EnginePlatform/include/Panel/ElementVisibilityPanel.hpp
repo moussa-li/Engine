@@ -34,6 +34,9 @@ namespace EgLab::Platform
 
         void configureWindow() const override;
         void renderImpl() override;
+        void afterRenderFrame() override;
+        void abortShow() override;
+        void abortClose() override;
 
     private:
         struct MeshEntry
@@ -49,6 +52,10 @@ namespace EgLab::Platform
         void requestShowAll();
         void requestElementsVisibility(DataNodeId nodeId, uint32_t mode,
                                        const Common::String& ids);
+        // Rebuilds the temporary translucent quad that previews the cut plane. The previous
+        // preview mesh is retired and the new one is handed to RenderWork.
+        void updatePlanePreview();
+        void hidePlanePreview();
 
         Common::DynamicArray<MeshEntry> _meshEntries;
         int _selectedMeshIndex{-1};
@@ -59,6 +66,12 @@ namespace EgLab::Platform
         float _boundsMin[3]{0.0f, 0.0f, 0.0f};
         float _boundsMax[3]{0.0f, 0.0f, 0.0f};
         bool _autoApply{true};
+        bool _showPreview{true};
+        float _previewOpacity{0.25f};
+        float _previewHalfExtent{1.0f};
+        // Temporary mesh that renders the cut plane. Owned here so it can be replaced or
+        // retired through RenderWork's regular mesh path.
+        Common::SharedPtr<ME::Mesh> _previewMesh;
         DataNodeId _boundsNodeId{0};
         Common::DynamicArray<uint32_t> _positiveElementIds;
         Common::DynamicArray<uint32_t> _negativeElementIds;

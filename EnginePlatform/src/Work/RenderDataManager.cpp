@@ -596,9 +596,8 @@ namespace EgLab::Platform
         const size_t triangleCount = faceIndices.size() / 3;
         if (locations.size() < triangleCount)
         {
-            LOG(WARNING)
-                << "RenderDataManager::updateLocateHighlight() received incomplete face "
-                   "locations";
+            LOG(WARNING) << "RenderDataManager::updateLocateHighlight() received incomplete face "
+                            "locations";
             return;
         }
 
@@ -651,8 +650,7 @@ namespace EgLab::Platform
         }
         _locatePrimitives.pushBack(primitive);
 
-        auto targetFace =
-            Common::dynamicSharedPtrCast<RE::RenderFace>(target->packet.renderFace);
+        auto targetFace = Common::dynamicSharedPtrCast<RE::RenderFace>(target->packet.renderFace);
         if (!targetFace)
         {
             return;
@@ -809,8 +807,7 @@ namespace EgLab::Platform
         }
         if (target == nullptr || !target->translator)
         {
-            LOG(WARNING)
-                << "RenderDataManager::rebuildMeshSurface() could not find the mesh entry";
+            LOG(WARNING) << "RenderDataManager::rebuildMeshSurface() could not find the mesh entry";
             return;
         }
 
@@ -857,9 +854,8 @@ namespace EgLab::Platform
 
         if (_meshSelector && target->mesh)
         {
-            _meshSelector->registerMesh(target->mesh, target->translator,
-                                        target->packet.renderNode, target->packet.renderLine,
-                                        target->packet.renderFace);
+            _meshSelector->registerMesh(target->mesh, target->translator, target->packet.renderNode,
+                                        target->packet.renderLine, target->packet.renderFace);
         }
 
         if (_locateMesh == mesh)
