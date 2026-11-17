@@ -61,6 +61,14 @@ namespace EgLab::Platform
             {EventId::ElementsVisibility, "ElementsVisibility", "Elements Visibility",
              "Mesh", true, sizeof(ElementsVisibilityParam), kElementsVisibilityFields,
              sizeof(kElementsVisibilityFields) / sizeof(kElementsVisibilityFields[0])},
+            {EventId::CameraPan, "CameraPan", "Pan Camera", "Camera", false, 0, nullptr, 0, true,
+             true},
+            {EventId::CameraRotate, "CameraRotate", "Rotate Camera", "Camera", false, 0, nullptr,
+             0, true, true},
+            {EventId::CameraRotateLocal, "CameraRotateLocal", "Rotate Camera (Local Axis)",
+             "Camera", false, 0, nullptr, 0, true, true},
+            {EventId::CameraZoom, "CameraZoom", "Zoom Camera", "Camera", false, 0, nullptr, 0,
+             true, true},
         };
 
         constexpr size_t kCommandCount = sizeof(kCommands) / sizeof(kCommands[0]);

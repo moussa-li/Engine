@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "Command/CommandManager.hpp"
+#include "Command/ShortcutManager.hpp"
 #include "Core/IniManager.hpp"
 #include "Core/MainMenuBar.hpp"
 #include "Core/PidRegistry.hpp"
@@ -34,6 +35,14 @@ namespace EgLab::Platform
         camera->setZoomSensitivity(ini.getFloat("camera.zoomSensitivity", 1.0f));
         cameraController = EgLab::Common::makeShared<EgLab::RE::OrbitCameraController>();
         cameraController->setCamera(camera);
+        cameraController->setInputBindings(ShortcutManager::instance().cameraInputBindings());
+        cameraController->setLocalPivotProvider([](EgLab::RE::CoordType& center) {
+            return RenderWork::instance().tryGetPickedMeshCenter(center);
+        });
+        cameraController->setZoomAnchor(
+            ini.getBool("camera.zoomAtCursor", false)
+                ? EgLab::RE::CameraZoomAnchor::MouseCursor
+                : EgLab::RE::CameraZoomAnchor::ScreenCenter);
         window->setCameraController(cameraController);
 
         window->deactiveContext();
@@ -139,6 +148,9 @@ namespace EgLab::Platform
             lastFrame = currentFrame;
 
             // GLFW event processing must remain on the main thread.
+            ShortcutManager& shortcuts = ShortcutManager::instance();
+            window->setShortcutCaptureActive(shortcuts.isCapturing());
+            cameraController->setInputBindings(shortcuts.cameraInputBindings());
             glfwWaitEventsTimeout(0.016);
             cameraController->update(deltaTime);
         }

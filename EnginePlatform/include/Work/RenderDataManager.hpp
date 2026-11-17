@@ -46,7 +46,7 @@ namespace EgLab::Platform
 
         /// Mutex protecting the render data managed by this object. Handlers are
         /// invoked while the caller holds this mutex.
-        std::mutex& stateMutex();
+        std::mutex& stateMutex() const;
 
         // ---- prepare phase: record requested state without mutating the scene ----
         bool recordMeshColor(const Common::SharedPtr<ME::Mesh>& mesh,
@@ -62,6 +62,10 @@ namespace EgLab::Platform
         void setLocateState(const Common::SharedPtr<ME::Mesh>& mesh,
                             const Common::DynamicArray<uint32_t>& elementIds);
         void fitView(const Common::SharedPtr<ME::Mesh>& mesh);
+
+        /// Returns the bounding-box center of the mesh's visible primitives, the same
+        /// primitives fitView uses, so hidden element changes are respected.
+        bool getMeshCenter(const Common::SharedPtr<ME::Mesh>& mesh, RE::CoordType& center) const;
 
         // ---- apply phase: mutate the scene ----
         Common::Return applyMeshUpdate(const MeshUpdateEvent& event);
@@ -112,7 +116,7 @@ namespace EgLab::Platform
         Common::Vector4f getMeshBaseColor(const Common::SharedPtr<ME::Mesh>& mesh) const;
 
     private:
-        std::mutex _renderStateMutex;
+        mutable std::mutex _renderStateMutex;
 
         Common::SharedPtr<RE::Scene> _scene;
         Common::SharedPtr<RE::Camera> _camera;

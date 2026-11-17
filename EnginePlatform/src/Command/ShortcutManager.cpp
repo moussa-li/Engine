@@ -41,12 +41,23 @@ namespace EgLab::Platform
             return expected[index] == '\0';
         }
 
+        // Friendly name of a mouse-button key, or nullptr when the key is not a mouse button.
+        const char* mouseKeyName(int keyValue);
+
         // Resolve a key name persisted in the ini file ("F", "Delete", "Num 0", ...).
         int findKeyByName(const char* name, size_t length)
         {
             if (name == nullptr || length == 0)
             {
                 return 0;
+            }
+
+            for (int keyValue = ImGuiKey_MouseLeft; keyValue <= ImGuiKey_MouseX2; ++keyValue)
+            {
+                if (equalsIgnoreCase(name, length, mouseKeyName(keyValue)))
+                {
+                    return keyValue;
+                }
             }
 
             for (int keyValue = ImGuiKey_NamedKey_BEGIN; keyValue < ImGuiKey_NamedKey_END;
@@ -59,6 +70,46 @@ namespace EgLab::Platform
                 }
             }
             return 0;
+        }
+
+        // Friendly name of a mouse-button key, or nullptr when the key is not a mouse button.
+        const char* mouseKeyName(int keyValue)
+        {
+            switch (keyValue)
+            {
+            case ImGuiKey_MouseLeft:
+                return "Mouse Left";
+            case ImGuiKey_MouseRight:
+                return "Mouse Right";
+            case ImGuiKey_MouseMiddle:
+                return "Mouse Middle";
+            case ImGuiKey_MouseX1:
+                return "Mouse X1";
+            case ImGuiKey_MouseX2:
+                return "Mouse X2";
+            default:
+                return nullptr;
+            }
+        }
+
+        // Zero-based mouse button index used by the camera input bindings, -1 when not a mouse.
+        int mouseButtonIndex(int keyValue)
+        {
+            switch (keyValue)
+            {
+            case ImGuiKey_MouseLeft:
+                return 0;
+            case ImGuiKey_MouseRight:
+                return 1;
+            case ImGuiKey_MouseMiddle:
+                return 2;
+            case ImGuiKey_MouseX1:
+                return 3;
+            case ImGuiKey_MouseX2:
+                return 4;
+            default:
+                return -1;
+            }
         }
 
         // Skip the modifier keys themselves while recording, wait for the real main key.
@@ -96,7 +147,11 @@ namespace EgLab::Platform
             text += Common::String("Super+");
         }
 
-        const char* keyName = ImGui::GetKeyName(static_cast<ImGuiKey>(key));
+        const char* keyName = mouseKeyName(key);
+        if (keyName == nullptr)
+        {
+            keyName = ImGui::GetKeyName(static_cast<ImGuiKey>(key));
+        }
         text += Common::String(keyName != nullptr ? keyName : "Unknown");
         return text;
     }
@@ -179,6 +234,7 @@ namespace EgLab::Platform
 
         applyDefaultBindings();
         loadFromIni();
+        refreshCameraBindings();
     }
 
     void ShortcutManager::processInput()
@@ -203,6 +259,15 @@ namespace EgLab::Platform
             {
                 continue;
             }
+
+            // Held gestures (camera pan/rotate/zoom) are consumed by the camera controller,
+            // which reacts to press and release instead of a one-shot chord.
+            const CommandDesc* desc = CommandCatalog::find(entry.first);
+            if (desc != nullptr && desc->holdInput)
+            {
+                continue;
+            }
+
             if (ImGui::Shortcut(entry.second.toImGuiChord(), ImGuiInputFlags_RouteGlobal))
             {
                 trigger(entry.first);
@@ -223,38 +288,91 @@ namespace EgLab::Platform
             return;
         }
 
-        // Only keyboard keys are scanned; mouse and gamepad keys are ignored.
-        for (int keyValue = ImGuiKey_Tab; keyValue <= ImGuiKey_Oem102; ++keyValue)
+        const EventId target = _captureTarget.load();
+        const CommandDesc* desc = CommandCatalog::find(target);
+        const bool mouseOnly = desc != nullptr && desc->mouseOnly;
+
+        ShortcutChord chord;
+        bool captured = false;
+
+        // Camera gestures are recorded from mouse buttons so modifier keys can be held while
+        // the button is clicked. Buttons already held when recording started are ignored.
+        if (mouseOnly)
         {
-            if (isModifierKey(keyValue))
+            for (int index = 0; index < 5; ++index)
             {
-                continue;
-            }
-            if (!ImGui::IsKeyPressed(static_cast<ImGuiKey>(keyValue), false))
-            {
-                continue;
+                if (!ImGui::IsMouseDown(static_cast<ImGuiMouseButton>(index)))
+                {
+                    _captureIgnoreMouseButtons &= ~(1u << index);
+                }
             }
 
-            ShortcutChord chord;
-            chord.key = keyValue;
-            chord.mods = ImGui::GetIO().KeyMods & ImGuiMod_Mask_;
+            for (int index = 0; index < 5 && !captured; ++index)
+            {
+                if ((_captureIgnoreMouseButtons & (1u << index)) != 0)
+                {
+                    continue;
+                }
+                if (!ImGui::IsMouseClicked(static_cast<ImGuiMouseButton>(index)))
+                {
+                    continue;
+                }
 
-            const EventId target = _captureTarget;
-            _captureTarget = EventId::Unknow;
-            bind(target, chord);
+                chord.key = static_cast<int>(ImGuiKey_MouseLeft) + index;
+                chord.mods = ImGui::GetIO().KeyMods & ImGuiMod_Mask_;
+                captured = true;
+            }
+        }
+        else
+        {
+            // Keyboard commands only record keyboard keys.
+            for (int keyValue = ImGuiKey_Tab; keyValue <= ImGuiKey_Oem102; ++keyValue)
+            {
+                if (isModifierKey(keyValue))
+                {
+                    continue;
+                }
+                if (!ImGui::IsKeyPressed(static_cast<ImGuiKey>(keyValue), false))
+                {
+                    continue;
+                }
+
+                chord.key = keyValue;
+                chord.mods = ImGui::GetIO().KeyMods & ImGuiMod_Mask_;
+                captured = true;
+                break;
+            }
+        }
+
+        if (!captured)
+        {
             return;
         }
+
+        _captureTarget.store(EventId::Unknow);
+        bind(target, chord);
     }
 
     void ShortcutManager::beginCapture(EventId eventId)
     {
         ensureLoaded();
-        _captureTarget = eventId;
+
+        _captureIgnoreMouseButtons = 0;
+        for (int index = 0; index < 5; ++index)
+        {
+            if (ImGui::IsMouseDown(static_cast<ImGuiMouseButton>(index)))
+            {
+                _captureIgnoreMouseButtons |= (1u << index);
+            }
+        }
+
+        _captureTarget.store(eventId);
     }
 
     void ShortcutManager::cancelCapture()
     {
-        _captureTarget = EventId::Unknow;
+        _captureTarget.store(EventId::Unknow);
+        _captureIgnoreMouseButtons = 0;
     }
 
     void ShortcutManager::bind(EventId eventId, const ShortcutChord& chord)
@@ -265,6 +383,7 @@ namespace EgLab::Platform
         {
             setBinding(eventId, ShortcutChord{});
             saveToIni();
+            refreshCameraBindings();
             return;
         }
 
@@ -282,6 +401,7 @@ namespace EgLab::Platform
 
         setBinding(eventId, chord);
         saveToIni();
+        refreshCameraBindings();
     }
 
     void ShortcutManager::unbind(EventId eventId)
@@ -289,6 +409,7 @@ namespace EgLab::Platform
         ensureLoaded();
         setBinding(eventId, ShortcutChord{});
         saveToIni();
+        refreshCameraBindings();
     }
 
     ShortcutChord ShortcutManager::getBinding(EventId eventId) const
@@ -328,6 +449,7 @@ namespace EgLab::Platform
         ensureLoaded();
         applyDefaultBindings();
         saveToIni();
+        refreshCameraBindings();
     }
 
     void ShortcutManager::setBinding(EventId eventId, const ShortcutChord& chord)
@@ -361,6 +483,19 @@ namespace EgLab::Platform
         case EventId::MeshDelete:
             chord.key = ImGuiKey_Delete;
             chord.mods = ImGuiMod_Ctrl;
+            break;
+        case EventId::CameraPan:
+            chord.key = ImGuiKey_MouseLeft;
+            break;
+        case EventId::CameraRotate:
+            chord.key = ImGuiKey_MouseRight;
+            break;
+        case EventId::CameraRotateLocal:
+            chord.key = ImGuiKey_MouseRight;
+            chord.mods = ImGuiMod_Ctrl;
+            break;
+        case EventId::CameraZoom:
+            chord.key = ImGuiKey_MouseMiddle;
             break;
         default:
             break;
@@ -396,5 +531,57 @@ namespace EgLab::Platform
             const Common::String key = Common::String(kIniPrefix) + Common::String(commands[i].id);
             IniManager::instance().setValue(key, getBinding(commands[i].eventId).toString());
         }
+    }
+
+    RE::CameraInputBindings ShortcutManager::cameraInputBindings() const
+    {
+        std::lock_guard<std::mutex> lock(_cameraBindingsMutex);
+        return _cameraBindings;
+    }
+
+    void ShortcutManager::refreshCameraBindings()
+    {
+        RE::CameraInputBindings bindings;
+        bindings.pan = toCameraChord(getBinding(EventId::CameraPan));
+        bindings.rotate = toCameraChord(getBinding(EventId::CameraRotate));
+        bindings.rotateLocal = toCameraChord(getBinding(EventId::CameraRotateLocal));
+        bindings.zoom = toCameraChord(getBinding(EventId::CameraZoom));
+
+        std::lock_guard<std::mutex> lock(_cameraBindingsMutex);
+        _cameraBindings = bindings;
+    }
+
+    RE::CameraInputChord ShortcutManager::toCameraChord(const ShortcutChord& chord)
+    {
+        RE::CameraInputChord result;
+        if (!chord.valid())
+        {
+            return result;
+        }
+
+        const int button = mouseButtonIndex(chord.key);
+        if (button < 0)
+        {
+            return result;
+        }
+
+        result.button = button;
+        if (chord.mods & ImGuiMod_Ctrl)
+        {
+            result.mods |= RE::CameraModifier_Ctrl;
+        }
+        if (chord.mods & ImGuiMod_Shift)
+        {
+            result.mods |= RE::CameraModifier_Shift;
+        }
+        if (chord.mods & ImGuiMod_Alt)
+        {
+            result.mods |= RE::CameraModifier_Alt;
+        }
+        if (chord.mods & ImGuiMod_Super)
+        {
+            result.mods |= RE::CameraModifier_Super;
+        }
+        return result;
     }
 } // namespace EgLab::Platform

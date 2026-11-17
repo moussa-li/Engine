@@ -55,12 +55,15 @@ namespace EgLab::ME
         {
             ElemFaceGetter getter(e);
             int nodeNumber = getter.elemFaceNodeNumber(faceIdx);
-            if (nodeNumber == 3)
+            // A face is identified by its corner nodes only. Quadratic faces (6 or 8 nodes)
+            // must ignore their midside nodes so that the two elements sharing a face still
+            // produce the same key.
+            if (nodeNumber == 3 || nodeNumber == 6)
             {
                 setNodes(getter.elemFace(faceIdx, 0), getter.elemFace(faceIdx, 1),
                          getter.elemFace(faceIdx, 2));
             }
-            else if (nodeNumber == 4)
+            else if (nodeNumber == 4 || nodeNumber == 8)
             {
                 setNodes(getter.elemFace(faceIdx, 0), getter.elemFace(faceIdx, 1),
                          getter.elemFace(faceIdx, 2), getter.elemFace(faceIdx, 3));
@@ -92,12 +95,12 @@ namespace EgLab::ME
             return _n1 != other._n1 || _n2 != other._n2 || _n3 != other._n3;
         }
 
-        IdType _n1;
-        IdType _n2;
-        IdType _n3;
+        IdType _n1{0};
+        IdType _n2{0};
+        IdType _n3{0};
 
-        IdType _elemId;
-        IdxType _faceIdx;
+        IdType _elemId{0};
+        IdxType _faceIdx{0};
     };
 
     class ExtractSurface::Impl

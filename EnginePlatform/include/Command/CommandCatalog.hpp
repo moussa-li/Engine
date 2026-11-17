@@ -42,6 +42,8 @@ namespace EgLab::Platform
         size_t paramSize{0};                   // CommandParam structure size, 0 when unused
         const ParamFieldDesc* fields{nullptr}; // Field description of the parameters
         size_t fieldCount{0};                  // Number of fields
+        bool holdInput{false};                 // Gesture consumed while held, not a one-shot command
+        bool mouseOnly{false};                 // Binding accepts mouse-button chords only
     };
 
     // Command catalog: associates each EventId with its CommandParam structure.

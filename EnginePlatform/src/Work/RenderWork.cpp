@@ -256,6 +256,23 @@ namespace EgLab::Platform
         return false;
     }
 
+    bool RenderWork::tryGetPickedMeshCenter(RE::CoordType& center) const
+    {
+        Common::SharedPtr<ME::Mesh> pickedMesh;
+        {
+            std::lock_guard<std::mutex> lock(_pickInfoSubscriptionsMutex);
+            if (!_hasPickedMesh)
+            {
+                return false;
+            }
+            pickedMesh = _pickedMesh;
+        }
+
+        // Compute on demand so the center follows the currently visible primitives.
+        std::lock_guard<std::mutex> stateLock(_renderData.stateMutex());
+        return _renderData.getMeshCenter(pickedMesh, center);
+    }
+
     void RenderWork::publishPickInfo(const RE::PrimitivePickInfo& info)
     {
         PickedMeshInfo pickedInfo;
@@ -286,9 +303,18 @@ namespace EgLab::Platform
             break;
         }
 
+        Common::SharedPtr<ME::Mesh> pickedMesh;
+        bool hasPickedMesh = false;
+        if (info.kind != RE::PrimitivePickKind::None && _meshSelector)
+        {
+            hasPickedMesh = _meshSelector->tryGetPickedMesh(pickedMesh);
+        }
+
         std::lock_guard<std::mutex> lock(_pickInfoSubscriptionsMutex);
         _lastPublishedPickInfo = pickedInfo;
         _hasPublishedPickInfo = true;
+        _pickedMesh = pickedMesh;
+        _hasPickedMesh = hasPickedMesh;
         for (const auto& subscription : _pickInfoSubscriptions)
         {
             subscription->publisher->publish(static_cast<uint32_t>(EventId::MeshPickInfo),

@@ -70,6 +70,27 @@ namespace EgLab::Platform
 
         ImGui::Separator();
 
+        // ========== Zoom Anchor ==========
+        auto controller = Context::instance().getApplication().cameraController;
+        ImGui::Text("Zoom Anchor");
+        const bool zoomAtCursor =
+            controller != nullptr &&
+            controller->getZoomAnchor() == EgLab::RE::CameraZoomAnchor::MouseCursor;
+        if (ImGui::RadioButton("Screen Center", !zoomAtCursor) && controller)
+        {
+            controller->setZoomAnchor(EgLab::RE::CameraZoomAnchor::ScreenCenter);
+            IniManager::instance().setBool("camera.zoomAtCursor", false);
+        }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Mouse Cursor", zoomAtCursor) && controller)
+        {
+            controller->setZoomAnchor(EgLab::RE::CameraZoomAnchor::MouseCursor);
+            IniManager::instance().setBool("camera.zoomAtCursor", true);
+        }
+        ImGui::TextDisabled("Local orbit (Ctrl + right drag by default) uses the picked mesh center.");
+
+        ImGui::Separator();
+
         // ========== Fit View Button ==========
         if (ImGui::Button("Fit View", ImVec2(-1, 0)))
         {
@@ -92,10 +113,15 @@ namespace EgLab::Platform
                 camera->setRotateSensitivity(1.0f);
                 camera->setZoomSensitivity(1.0f);
             }
+            if (controller)
+            {
+                controller->setZoomAnchor(EgLab::RE::CameraZoomAnchor::ScreenCenter);
+            }
             auto &ini = IniManager::instance();
             ini.setFloat("camera.moveSensitivity", 1.0f);
             ini.setFloat("camera.rotateSensitivity", 1.0f);
             ini.setFloat("camera.zoomSensitivity", 1.0f);
+            ini.setBool("camera.zoomAtCursor", false);
         }
 
         ImGui::Separator();

@@ -1,6 +1,9 @@
 #pragma once
 
+#include <atomic>
+
 #include "RenderEngine/Core/CameraController.hpp"
+#include "RenderEngine/Core/CameraInputBinding.hpp"
 
 namespace EgLab::RE
 {
@@ -22,8 +25,10 @@ namespace EgLab::RE
         /// @param action Button action, such as press or release.
         /// @param xpos Cursor x-coordinate.
         /// @param ypos Cursor y-coordinate.
+        /// @param mods Modifier keys held when the button changed state.
         /// @return true if the event was handled.
-        bool processMouseButton(int button, int action, float xpos, float ypos) override;
+        bool processMouseButton(int button, int action, float xpos, float ypos,
+                                uint32_t mods) override;
 
         /// @brief Updates the camera in response to cursor movement.
         /// @param xpos Cursor x-coordinate.
@@ -33,8 +38,25 @@ namespace EgLab::RE
 
         /// @brief Updates the camera in response to vertical scrolling.
         /// @param yoffset Vertical scroll offset.
+        /// @param xpos Cursor x-coordinate.
+        /// @param ypos Cursor y-coordinate.
         /// @return true if the event was handled.
-        bool processMouseScroll(float yoffset) override;
+        bool processMouseScroll(float yoffset, float xpos, float ypos) override;
+
+        /// @brief Sets the mouse chords that trigger each camera gesture.
+        void setInputBindings(const CameraInputBindings &bindings) override;
+
+        /// @brief Sets the window size used to map the cursor to view coordinates.
+        void setViewportSize(float width, float height) override;
+
+        /// @brief Sets the pivot source used by the local-orbit gesture.
+        void setLocalPivotProvider(CameraPivotProvider provider) override;
+
+        /// @brief Sets whether zooming anchors on the screen center or on the cursor.
+        void setZoomAnchor(CameraZoomAnchor anchor) override;
+
+        /// @brief Returns the current zoom anchor.
+        CameraZoomAnchor getZoomAnchor() const override;
 
         /// @brief Indicates whether the cursor remains enabled during orbit control.
         /// @return true because this controller keeps the cursor enabled.
@@ -56,33 +78,31 @@ namespace EgLab::RE
         void setZoomSpeed(float zoomSpeed);
 
     private:
-        void startRotate();
+        bool pan(float xoffset, float yoffset);
 
-        void endRotate();
+        bool rotate(float xoffset, float yoffset, const CoordType &pivot, bool localAxis);
 
-        void startTraslate();
-
-        void endTraslate();
-
-        void startZoom();
-
-        void endZoom();
+        bool applyZoom(float steps, float cursorX, float cursorY);
 
         void recalcuteCameraPostition();
 
     private:
-        bool _translate{false};
+        CameraInputBindings _bindings{CameraInputBindings::defaults()};
 
-        bool _rotate{false};
+        CameraAction _activeAction{CameraAction::None};
+        int _activeButton{static_cast<int>(CameraMouseButton::None)};
 
-        bool _zoom{true};
+        CoordType _activePivot;
+        bool _hasActivePivot{false};
 
-        float _lastXPos = -1;
-        float _lastYPos = -1;
+        CameraPivotProvider _pivotProvider;
 
-        int _moveButton = 0; //  current define the left mouse click
+        std::atomic<CameraZoomAnchor> _zoomAnchor{CameraZoomAnchor::ScreenCenter};
+        float _viewportWidth{0.0f};
+        float _viewportHeight{0.0f};
 
-        int _rotateButton = 1; //  current define the left mouse click
+        float _lastXPos = -1.0f;
+        float _lastYPos = -1.0f;
 
         CoordType _target = CoordType(0.0f, 0.0f, 0.0f); // look at center
         float _distance = 100.0f;                        // distance of center

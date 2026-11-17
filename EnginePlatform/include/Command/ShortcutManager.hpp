@@ -1,11 +1,14 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
+#include <mutex>
 
 #include "Command/CommandIds.hpp"
 #include "Common/HashMap.hpp"
 #include "Common/Singleton.hpp"
 #include "Common/String.hpp"
+#include "RenderEngine/Core/CameraInputBinding.hpp"
 
 namespace EgLab::Platform
 {
@@ -66,12 +69,15 @@ namespace EgLab::Platform
         void cancelCapture();
         bool isCapturing() const
         {
-            return _captureTarget != EventId::Unknow;
+            return _captureTarget.load() != EventId::Unknow;
         }
         EventId captureTarget() const
         {
-            return _captureTarget;
+            return _captureTarget.load();
         }
+
+        // Mouse chords currently bound to the camera gestures.
+        RE::CameraInputBindings cameraInputBindings() const;
 
         void resetToDefaults();
 
@@ -88,9 +94,15 @@ namespace EgLab::Platform
         void loadFromIni();
         void saveToIni() const;
         void setBinding(EventId eventId, const ShortcutChord& chord);
+        void refreshCameraBindings();
+        static RE::CameraInputChord toCameraChord(const ShortcutChord& chord);
 
         Common::HashMap<EventId, ShortcutChord> _bindings;
-        EventId _captureTarget{EventId::Unknow};
+        std::atomic<EventId> _captureTarget{EventId::Unknow};
+        uint32_t _captureIgnoreMouseButtons{0};
         bool _loaded{false};
+
+        mutable std::mutex _cameraBindingsMutex;
+        RE::CameraInputBindings _cameraBindings{};
     };
 } // namespace EgLab::Platform

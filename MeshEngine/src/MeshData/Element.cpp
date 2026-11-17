@@ -109,6 +109,12 @@ namespace EgLab::ME
 
     int getNodeNumber(ElemType type)
     {
+        // Hex20 is encoded as 0x314 (dimension 3, 20 nodes), but 20 does not fit in the low
+        // nibble, so the generic mask below would report 4 nodes.
+        if (type == ElemType::Hex20)
+        {
+            return 20;
+        }
         return (int)type & 0x0F;
     }
 

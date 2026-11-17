@@ -1,12 +1,21 @@
 #pragma once
 
+#include <cstdint>
+#include <functional>
+
 #include "Common/SharedPtr.hpp"
 #include "RenderEngine/Core/Camera.hpp"
+#include "RenderEngine/Core/CameraInputBinding.hpp"
 #include "RenderEngine/Core/Definites.hpp"
 
 namespace EgLab::RE
 {
     class Camera;
+
+    /// Source of the pivot used by the local-orbit gesture, usually the picked mesh center.
+    /// Returns false when no mesh has been picked.
+    using CameraPivotProvider = std::function<bool(CoordType &)>;
+
     /// Base class for camera input and update controllers.
     class RenderEngineAPI CameraController
     {
@@ -42,10 +51,13 @@ namespace EgLab::RE
          * @param action 1: click 0: release
          * @param xpos Cursor x-coordinate.
          * @param ypos Cursor y-coordinate.
+         * @param mods Modifier keys held when the button changed state.
          * @return true if the event was handled.
          */
-        virtual bool processMouseButton(int button, int action, float xpos, float ypos)
+        virtual bool processMouseButton(int button, int action, float xpos, float ypos,
+                                        uint32_t mods)
         {
+            (void)mods;
             return false;
         };
 
@@ -60,11 +72,46 @@ namespace EgLab::RE
 
         /// @brief Handles a mouse-wheel event.
         /// @param yoffset Vertical scroll offset.
+        /// @param xpos Cursor x-coordinate.
+        /// @param ypos Cursor y-coordinate.
         /// @return true if the event was handled.
-        virtual bool processMouseScroll(float yoffset)
+        virtual bool processMouseScroll(float yoffset, float xpos, float ypos)
         {
+            (void)xpos;
+            (void)ypos;
             return false;
         };
+
+        /// @brief Sets the mouse chords that trigger each camera gesture.
+        virtual void setInputBindings(const CameraInputBindings &bindings)
+        {
+            (void)bindings;
+        }
+
+        /// @brief Sets the window size used to map the cursor to view coordinates.
+        virtual void setViewportSize(float width, float height)
+        {
+            (void)width;
+            (void)height;
+        }
+
+        /// @brief Sets the pivot source used by the local-orbit gesture.
+        virtual void setLocalPivotProvider(CameraPivotProvider provider)
+        {
+            (void)provider;
+        }
+
+        /// @brief Sets whether zooming anchors on the screen center or on the cursor.
+        virtual void setZoomAnchor(CameraZoomAnchor anchor)
+        {
+            (void)anchor;
+        }
+
+        /// @brief Returns the current zoom anchor.
+        virtual CameraZoomAnchor getZoomAnchor() const
+        {
+            return CameraZoomAnchor::ScreenCenter;
+        }
 
         /// @brief Indicates whether the cursor should remain enabled.
         /// @return true when the cursor is enabled.

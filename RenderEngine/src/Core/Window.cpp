@@ -2,6 +2,8 @@
 
 #include <GL/glew.h>
 
+#include <atomic>
+
 #include "Common/Log.hpp"
 #include "GLFW/glfw3.h"
 #include "RenderEngine/Core/Camera.hpp"
@@ -25,6 +27,31 @@ namespace EgLab::RE
     {
         LOG(ERROR) << "GLFW Error " << error << ": " << description;
     }
+
+    namespace
+    {
+        uint32_t toCameraModifiers(int mods)
+        {
+            uint32_t result = CameraModifier_None;
+            if (mods & GLFW_MOD_CONTROL)
+            {
+                result |= CameraModifier_Ctrl;
+            }
+            if (mods & GLFW_MOD_SHIFT)
+            {
+                result |= CameraModifier_Shift;
+            }
+            if (mods & GLFW_MOD_ALT)
+            {
+                result |= CameraModifier_Alt;
+            }
+            if (mods & GLFW_MOD_SUPER)
+            {
+                result |= CameraModifier_Super;
+            }
+            return result;
+        }
+    } // namespace
 
     class Window::Impl
     {
@@ -95,11 +122,11 @@ namespace EgLab::RE
             Impl *impl = static_cast<Impl *>(glfwGetWindowUserPointer(window));
             if (impl)
             {
-                if (impl->_maskCallBack) return;
+                if (impl->isCameraInputMasked()) return;
 
                 double xpos, ypos;
                 glfwGetCursorPos(window, &xpos, &ypos);
-                impl->processMouseButton(button, action, (float)xpos, (float)ypos);
+                impl->processMouseButton(button, action, (float)xpos, (float)ypos, mods);
             }
         }
 
@@ -108,10 +135,8 @@ namespace EgLab::RE
             Impl *impl = static_cast<Impl *>(glfwGetWindowUserPointer(window));
             if (impl)
             {
-                if (impl->_maskCallBack) return;
+                if (impl->isCameraInputMasked()) return;
 
-                double xpos, ypos;
-                glfwGetCursorPos(window, &xpos, &ypos);
                 impl->processMouseMove((float)xpos, (float)ypos);
             }
         }
@@ -121,13 +146,29 @@ namespace EgLab::RE
             Impl *impl = static_cast<Impl *>(glfwGetWindowUserPointer(window));
             if (impl)
             {
-                if (impl->_maskCallBack) return;
+                if (impl->isCameraInputMasked()) return;
 
                 impl->processMouseScroll((float)yoffset);
             }
         }
 
-        void processMouseButton(int button, int action, float xpos, float ypos)
+        bool isCameraInputMasked() const
+        {
+            return _maskCallBack || _shortcutCaptureActive.load();
+        }
+
+        void updateCameraViewport()
+        {
+            if (_cameraController == nullptr || _window == nullptr) return;
+
+            int width = 0;
+            int height = 0;
+            glfwGetWindowSize(_window, &width, &height);
+            _cameraController->setViewportSize(static_cast<float>(width),
+                                               static_cast<float>(height));
+        }
+
+        void processMouseButton(int button, int action, float xpos, float ypos, int mods)
         {
             if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
             {
@@ -136,12 +177,17 @@ namespace EgLab::RE
                 _selectY = ypos;
             }
             if (_cameraController == nullptr) return;
-            _cameraController->processMouseButton(button, action, xpos, ypos);
+
+            updateCameraViewport();
+            _cameraController->processMouseButton(button, action, xpos, ypos,
+                                                  toCameraModifiers(mods));
         }
 
         void processMouseMove(float xpos, float ypos)
         {
             if (_cameraController == nullptr) return;
+
+            updateCameraViewport();
             if (_cameraController->processMouseMove(xpos, ypos)) return;
 
             _selectDirty = true;
@@ -151,8 +197,15 @@ namespace EgLab::RE
 
         void processMouseScroll(float yoffset)
         {
-            if (_cameraController == nullptr) return;
-            _cameraController->processMouseScroll(yoffset);
+            if (_cameraController == nullptr || _window == nullptr) return;
+
+            double xpos = 0.0;
+            double ypos = 0.0;
+            glfwGetCursorPos(_window, &xpos, &ypos);
+
+            updateCameraViewport();
+            _cameraController->processMouseScroll(yoffset, static_cast<float>(xpos),
+                                                  static_cast<float>(ypos));
         }
 
     public:
@@ -170,6 +223,7 @@ namespace EgLab::RE
         float lastFrame{0.0f};
         float deltaTime{0.0f};
         bool _maskCallBack{false};
+        std::atomic<bool> _shortcutCaptureActive{false};
         std::mutex _mutex;
     };
 
@@ -299,6 +353,11 @@ namespace EgLab::RE
     void Window::maskEvent(bool mask)
     {
         _impl->_maskCallBack = mask;
+    }
+
+    void Window::setShortcutCaptureActive(bool active)
+    {
+        _impl->_shortcutCaptureActive.store(active);
     }
 
     void Window::activeContext() const

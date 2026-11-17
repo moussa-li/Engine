@@ -29,7 +29,8 @@ namespace EgLab::Platform
             shortcuts.resetToDefaults();
         }
         ImGui::SameLine();
-        ImGui::TextDisabled("Click Bind, then press a key combination (Esc cancels).");
+        ImGui::TextDisabled(
+            "Click Bind, then press a key combination or mouse button (Esc cancels).");
 
         ImGui::Separator();
 
@@ -60,12 +61,18 @@ namespace EgLab::Platform
                 ImGui::SameLine();
                 ImGui::TextDisabled("(needs params)");
             }
+            if (command.holdInput)
+            {
+                ImGui::SameLine();
+                ImGui::TextDisabled("(hold mouse)");
+            }
 
             ImGui::SameLine(230.0f);
 
             const bool capturing = shortcuts.captureTarget() == command.eventId;
             const Common::String chordText =
-                capturing ? Common::String("Press keys...")
+                capturing ? Common::String(command.mouseOnly ? "Press a mouse button..."
+                                                             : "Press keys...")
                           : (shortcuts.isBound(command.eventId)
                                  ? shortcuts.getBinding(command.eventId).toString()
                                  : Common::String("<unbound>"));
@@ -102,10 +109,13 @@ namespace EgLab::Platform
                 shortcuts.unbind(command.eventId);
             }
 
-            ImGui::SameLine();
-            if (ImGui::Button("Run"))
+            if (!command.holdInput)
             {
-                CommandLauncher::instance().invoke(command.eventId);
+                ImGui::SameLine();
+                if (ImGui::Button("Run"))
+                {
+                    CommandLauncher::instance().invoke(command.eventId);
+                }
             }
 
             ImGui::PopID();

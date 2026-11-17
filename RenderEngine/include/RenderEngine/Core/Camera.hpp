@@ -103,6 +103,11 @@ namespace EgLab::RE
         {
             return _up;
         }
+        /// @brief Returns the world up direction the camera was created with.
+        CoordType getWorldUp() const
+        {
+            return _worldUp;
+        }
         /// @brief Returns the camera right direction.
         CoordType getRight() const
         {

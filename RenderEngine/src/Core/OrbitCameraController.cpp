@@ -1,10 +1,20 @@
 #include "RenderEngine/Core/OrbitCameraController.hpp"
 
+#include <cmath>
+
 #include "Common/Log.hpp"
+#include "Common/Utils.hpp"
 #include "RenderEngine/Core/Quatf.hpp"
 
 namespace EgLab::RE
 {
+    namespace
+    {
+        // Vertical drag distance, in pixels, that equals one wheel step.
+        constexpr float kZoomDragStepsPerPixel = 0.01f;
+        constexpr float kMinZoom = 1e-4f;
+    } // namespace
+
     /**
      * @brief from degress get the radians
      *
@@ -28,34 +38,41 @@ namespace EgLab::RE
     {
     }
 
-    bool OrbitCameraController::processMouseButton(int button, int action, float xpos, float ypos)
+    bool OrbitCameraController::processMouseButton(int button, int action, float xpos, float ypos,
+                                                   uint32_t mods)
     {
         if (_camera == nullptr) return false;
-        if (button == _moveButton)
+
+        if (action != 0)
         {
-            if (action)
+            if (_activeAction != CameraAction::None) return false;
+
+            const CameraAction requested = _bindings.resolve(button, mods);
+            if (requested == CameraAction::None) return false;
+
+            _activeAction = requested;
+            _activeButton = button;
+            _lastXPos = xpos;
+            _lastYPos = ypos;
+            _hasActivePivot = false;
+
+            if (requested == CameraAction::RotateLocal)
             {
-                _translate = true;
-                _lastXPos = xpos;
-                _lastYPos = ypos;
+                CoordType pivot;
+                if (_pivotProvider && _pivotProvider(pivot))
+                {
+                    _activePivot = pivot;
+                    _hasActivePivot = true;
+                }
             }
-            else
-            {
-                _translate = false;
-            }
+            return true;
         }
-        if (button == _rotateButton)
+
+        if (button == _activeButton)
         {
-            if (action)
-            {
-                _rotate = true;
-                _lastXPos = xpos;
-                _lastYPos = ypos;
-            }
-            else
-            {
-                _rotate = false;
-            }
+            _activeAction = CameraAction::None;
+            _activeButton = static_cast<int>(CameraMouseButton::None);
+            _hasActivePivot = false;
         }
         return false;
     }
@@ -64,98 +81,158 @@ namespace EgLab::RE
     {
         if (_camera == nullptr) return false;
 
-        float xoffset = xpos - _lastXPos;
-        float yoffset = ypos - _lastYPos;
+        if (_lastXPos < 0.0f || _lastYPos < 0.0f)
+        {
+            _lastXPos = xpos;
+            _lastYPos = ypos;
+            return false;
+        }
+
+        const float xoffset = xpos - _lastXPos;
+        const float yoffset = ypos - _lastYPos;
 
         bool isChanged = false;
-
-        if (_translate)
+        switch (_activeAction)
         {
-            CoordType right = _camera->getRight();
-            CoordType up = _camera->getUp();
-            CoordType pos = _camera->getPosition();
-            CoordType front = _camera->getFront();
-            CoordType target = _camera->getTarget();
-            auto zoom = _camera->getZoom();
-
-            const float panSensitivity = _panSensitivity * _camera->getMoveSensitivity();
-            pos = pos - right * (xoffset * panSensitivity) * zoom;
-            pos = pos + up * (yoffset * panSensitivity) * zoom;
-            target = target - right * (xoffset * panSensitivity) * zoom;
-            target = target + up * (yoffset * panSensitivity) * zoom;
-            _camera->setPosition(pos);
-            _camera->setTarget(target);
-
-            isChanged = true;
+        case CameraAction::Pan:
+            isChanged = pan(xoffset, yoffset);
+            break;
+        case CameraAction::Rotate:
+            isChanged = rotate(xoffset, yoffset, _camera->getTarget(), false);
+            break;
+        case CameraAction::RotateLocal:
+        {
+            const CoordType pivot = _hasActivePivot ? _activePivot : _camera->getTarget();
+            isChanged = rotate(xoffset, yoffset, pivot, _hasActivePivot);
+            break;
+        }
+        case CameraAction::Zoom:
+            isChanged = applyZoom((_lastYPos - ypos) * kZoomDragStepsPerPixel, xpos, ypos);
+            break;
+        default:
+            break;
         }
 
-        if (_rotate)
+        if (isChanged)
         {
-            auto yaw = _camera->getYaw();
-            auto pitch = _camera->getPitch();
-            const float orbitSensitivity = _orbitSensitivity * _camera->getRotateSensitivity();
-            xoffset *= orbitSensitivity;
-            yoffset *= orbitSensitivity;
-
-            auto up = _camera->getUp();
-            auto right = _camera->getRight();
-
-            auto orientation = _camera->getOrientation();
-            CoordType localUp = orientation.rotateVector(CoordType(0, 1, 0));
-            Quatf yawQuat = Quatf::fromAxisAndAngle(localUp, -xoffset);
-
-            Quatf pitchQuat = Quatf::fromAxisAndAngle(CoordType(1, 0, 0), -yoffset);
-
-            orientation = yawQuat * orientation * pitchQuat;
-            orientation.normalize(); // 必须归一化！
-            _camera->setOrientation(orientation);
-
-            CoordType newFront = orientation.rotateVector(CoordType(0, 0, -1));
-            newFront.normalize();
-            _camera->setFront(newFront);
-
-            _camera->setRigth(orientation.rotateVector(CoordType(1, 0, 0)));
-            _camera->setUp(orientation.rotateVector(CoordType(0, 1, 0)));
-
-            CoordType target = _camera->getTarget();
-            CoordType position = _camera->getPosition();
-            float distance = (target - position).length();
-            position = target - newFront * distance;
-            _camera->setPosition(position);
-            isChanged = true;
+            recalcuteCameraPostition();
         }
-
-        recalcuteCameraPostition();
 
         _lastXPos = xpos;
         _lastYPos = ypos;
         return isChanged;
     }
 
-    bool OrbitCameraController::processMouseScroll(float yoffset)
+    bool OrbitCameraController::processMouseScroll(float yoffset, float xpos, float ypos)
     {
         if (_camera == nullptr) return false;
+        return applyZoom(yoffset, xpos, ypos);
+    }
 
-        const float zoomSpeed = 1.0f + (_zoomSpeed - 1.0f) * _camera->getZoomSensitivity();
-        auto target = _camera->getTarget();
-        auto position = _camera->getPosition();
-        auto distance = (target - position).length();
-        auto newPos = position + _camera->getFront() * (yoffset * zoomSpeed);
-        // _camera->setPosition(newPos);
+    bool OrbitCameraController::pan(float xoffset, float yoffset)
+    {
+        const float panSensitivity = _panSensitivity * _camera->getMoveSensitivity();
+        const float zoom = _camera->getZoom();
 
-        auto zoom = _camera->getZoom();
-        if (yoffset > 0)
-        {
-            zoom /= zoomSpeed;
-        }
-        else if (yoffset < 0)
-        {
-            zoom *= zoomSpeed;
-        }
-
-        // zoom = std::max(0.1f, std::min(zoom, 1000.0f));
-        _camera->setZoom(zoom);
+        const CoordType delta = (_camera->getRight() * (-xoffset * panSensitivity * zoom)) +
+                                (_camera->getUp() * (yoffset * panSensitivity * zoom));
+        _camera->setPosition(_camera->getPosition() + delta);
+        _camera->setTarget(_camera->getTarget() + delta);
         return true;
+    }
+
+    bool OrbitCameraController::rotate(float xoffset, float yoffset, const CoordType &pivot,
+                                       bool localAxis)
+    {
+        const float orbitSensitivity = _orbitSensitivity * _camera->getRotateSensitivity();
+
+        CoordType yawAxis = localAxis ? _camera->getUp() : _camera->getWorldUp();
+        CoordType pitchAxis = _camera->getRight();
+        yawAxis.normalize();
+        pitchAxis.normalize();
+
+        const Quatf yawQuat = Quatf::fromAxisAndAngle(yawAxis, -xoffset * orbitSensitivity);
+        const Quatf pitchQuat = Quatf::fromAxisAndAngle(pitchAxis, -yoffset * orbitSensitivity);
+        const Quatf rotation = yawQuat * pitchQuat;
+
+        Quatf orientation = rotation * _camera->getOrientation();
+        orientation.normalize();
+        _camera->setOrientation(orientation);
+
+        const CoordType newFront = orientation.rotateVector(CoordType(0.0f, 0.0f, -1.0f));
+        _camera->setFront(newFront);
+        _camera->setRigth(orientation.rotateVector(CoordType(1.0f, 0.0f, 0.0f)));
+        _camera->setUp(orientation.rotateVector(CoordType(0.0f, 1.0f, 0.0f)));
+
+        // Orbit the eye around the pivot and leave the target untouched: for the global
+        // gesture the pivot is the target, for the local gesture it is the picked mesh center.
+        const CoordType newPosition = pivot + rotation.rotateVector(_camera->getPosition() - pivot);
+        _camera->setPosition(newPosition);
+        return true;
+    }
+
+    bool OrbitCameraController::applyZoom(float steps, float cursorX, float cursorY)
+    {
+        if (steps == 0.0f) return false;
+
+        const float oldZoom = _camera->getZoom();
+        const float zoomSpeed = 1.0f + (_zoomSpeed - 1.0f) * _camera->getZoomSensitivity();
+        if (zoomSpeed <= 0.0f) return false;
+
+        float newZoom = oldZoom * std::pow(zoomSpeed, -steps);
+        if (newZoom < kMinZoom)
+        {
+            newZoom = kMinZoom;
+        }
+        if (newZoom == oldZoom) return false;
+
+        if (_zoomAnchor.load() == CameraZoomAnchor::MouseCursor && _viewportWidth > 0.0f &&
+            _viewportHeight > 0.0f)
+        {
+            const float ndcX = (cursorX / _viewportWidth) * 2.0f - 1.0f;
+            const float ndcY = 1.0f - (cursorY / _viewportHeight) * 2.0f;
+            const float aspect = _viewportWidth / _viewportHeight;
+
+            CoordType right = _camera->getRight();
+            CoordType up = _camera->getUp();
+            right.normalize();
+            up.normalize();
+
+            // Move the view center so the world point under the cursor keeps its screen position.
+            const CoordType shift =
+                (right * (ndcX * aspect) + up * ndcY) * (oldZoom - newZoom);
+            _camera->setPosition(_camera->getPosition() + shift);
+            _camera->setTarget(_camera->getTarget() + shift);
+        }
+
+        _camera->setZoom(newZoom);
+        return true;
+    }
+
+    void OrbitCameraController::setInputBindings(const CameraInputBindings &bindings)
+    {
+        _bindings = bindings;
+    }
+
+    void OrbitCameraController::setViewportSize(float width, float height)
+    {
+        _viewportWidth = width > 0.0f ? width : 1.0f;
+        _viewportHeight = height > 0.0f ? height : 1.0f;
+    }
+
+    void OrbitCameraController::setLocalPivotProvider(CameraPivotProvider provider)
+    {
+        _pivotProvider = Common::move(provider);
+    }
+
+    void OrbitCameraController::setZoomAnchor(CameraZoomAnchor anchor)
+    {
+        _zoomAnchor.store(anchor);
+    }
+
+    CameraZoomAnchor OrbitCameraController::getZoomAnchor() const
+    {
+        return _zoomAnchor.load();
     }
 
     void OrbitCameraController::setPanSensitivity(float sensitivity)

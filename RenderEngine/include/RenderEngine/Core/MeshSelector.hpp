@@ -47,6 +47,11 @@ namespace EgLab::RE
         /// @param mesh Address of the mesh to unregister.
         void unregisterMesh(const ME::Mesh* mesh);
 
+        /// @brief Returns the mesh that owns the most recently picked primitive.
+        /// @param mesh Receives the picked mesh.
+        /// @return true when a picked mesh is available.
+        bool tryGetPickedMesh(Common::SharedPtr<ME::Mesh>& mesh) const;
+
         /// @brief Releases this selector and its registrations.
         ~MeshSelector();
 

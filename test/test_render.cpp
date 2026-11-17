@@ -10,6 +10,7 @@
 #include "RenderEngine/Core/Camera.hpp"
 #include "RenderEngine/Core/Entity.hpp"
 #include "RenderEngine/Core/MeshPrimitiveCreator.hpp"
+#include "RenderEngine/Core/MeshToTriFace.hpp"
 #include "RenderEngine/Core/OrbitCameraController.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"
 #include "RenderEngine/Core/RenderFace.hpp"
@@ -599,4 +600,119 @@ TEST_F(TestRender, ShaderLib)
 {
     EgLab::Common::SharedPtr<EgLab::RE::Shader> shader;
     EgLab::RE::ShaderLib::instance().getNodeShader(shader);
+}
+
+TEST_F(TestRender, tet10HiddenElementsRebuildBoundaryTopology)
+{
+    auto mesh = EgLab::makeTwoTet10Mesh();
+
+    EgLab::Common::SharedPtr<EgLab::RE::MeshToTriFace> translator =
+        EgLab::Common::makeShared<EgLab::RE::MeshToTriFace>();
+    translator->setMesh(mesh);
+
+    // Six quadratic boundary faces, split into four triangles each.
+    EXPECT_EQ(translator->getBoundaryFaceIdx().size(), 6u * 4u * 3u);
+    EXPECT_EQ(translator->getBoundaryFaceLocations().size(), 6u * 4u);
+
+    EgLab::Common::DynamicArray<EgLab::ME::IdType> hiddenElementIds;
+    hiddenElementIds.pushBack(1u);
+    translator->setHiddenElements(hiddenElementIds);
+
+    // Hiding element 1 reveals the shared face, leaving all four faces of element 2.
+    EXPECT_EQ(translator->getBoundaryFaceIdx().size(), 4u * 4u * 3u);
+    const auto &locations = translator->getBoundaryFaceLocations();
+    ASSERT_EQ(locations.size(), 4u * 4u);
+    for (const auto &location : locations)
+    {
+        EXPECT_EQ(location.elemId, 2u);
+    }
+}
+TEST_F(TestRender, camera_input_bindings_resolve_defaults)
+{
+    const EgLab::RE::CameraInputBindings bindings = EgLab::RE::CameraInputBindings::defaults();
+
+    EXPECT_EQ(bindings.resolve(0, EgLab::RE::CameraModifier_None),
+              EgLab::RE::CameraAction::Pan);
+    EXPECT_EQ(bindings.resolve(1, EgLab::RE::CameraModifier_None),
+              EgLab::RE::CameraAction::Rotate);
+    EXPECT_EQ(bindings.resolve(1, EgLab::RE::CameraModifier_Ctrl),
+              EgLab::RE::CameraAction::RotateLocal);
+    EXPECT_EQ(bindings.resolve(2, EgLab::RE::CameraModifier_None),
+              EgLab::RE::CameraAction::Zoom);
+    EXPECT_EQ(bindings.resolve(2, EgLab::RE::CameraModifier_Shift),
+              EgLab::RE::CameraAction::None);
+}
+
+TEST_F(TestRender, orbit_camera_local_rotation_uses_picked_mesh_center)
+{
+    auto camera = EgLab::Common::makeShared<EgLab::RE::Camera>(
+        800, 600, EgLab::RE::CoordType(0.0f, 0.0f, 10.0f));
+    EgLab::RE::OrbitCameraController controller;
+    controller.setCamera(camera);
+    controller.setInputBindings(EgLab::RE::CameraInputBindings::defaults());
+
+    const EgLab::RE::CoordType pivot(3.0f, 2.0f, 1.0f);
+    controller.setLocalPivotProvider([pivot](EgLab::RE::CoordType& center) {
+        center = pivot;
+        return true;
+    });
+
+    const float distanceBefore = (camera->getPosition() - pivot).length();
+    const EgLab::RE::CoordType targetBefore = camera->getTarget();
+    ASSERT_TRUE(controller.processMouseButton(1, 1, 400.0f, 300.0f,
+                                             EgLab::RE::CameraModifier_Ctrl));
+    ASSERT_TRUE(controller.processMouseMove(420.0f, 300.0f));
+
+    EXPECT_NEAR((camera->getPosition() - pivot).length(), distanceBefore, 0.001f);
+    EXPECT_NEAR((camera->getTarget() - targetBefore).length(), 0.0f, 0.001f);
+}
+
+TEST_F(TestRender, orbit_camera_global_rotation_keeps_target)
+{
+    auto camera = EgLab::Common::makeShared<EgLab::RE::Camera>(
+        800, 600, EgLab::RE::CoordType(0.0f, 0.0f, 10.0f));
+    EgLab::RE::OrbitCameraController controller;
+    controller.setCamera(camera);
+    controller.setInputBindings(EgLab::RE::CameraInputBindings::defaults());
+
+    const EgLab::RE::CoordType targetBefore = camera->getTarget();
+    ASSERT_TRUE(controller.processMouseButton(1, 1, 400.0f, 300.0f,
+                                             EgLab::RE::CameraModifier_None));
+    ASSERT_TRUE(controller.processMouseMove(420.0f, 300.0f));
+
+    EXPECT_NEAR((camera->getTarget() - targetBefore).length(), 0.0f, 0.001f);
+}
+
+TEST_F(TestRender, orbit_camera_zoom_anchors_at_cursor)
+{
+    auto camera = EgLab::Common::makeShared<EgLab::RE::Camera>(
+        800, 600, EgLab::RE::CoordType(0.0f, 0.0f, 10.0f));
+    EgLab::RE::OrbitCameraController controller;
+    controller.setCamera(camera);
+    controller.setViewportSize(800.0f, 600.0f);
+    controller.setZoomAnchor(EgLab::RE::CameraZoomAnchor::MouseCursor);
+
+    const EgLab::RE::CoordType targetBefore = camera->getTarget();
+    const float zoomBefore = camera->getZoom();
+    ASSERT_TRUE(controller.processMouseScroll(1.0f, 800.0f, 300.0f));
+
+    EXPECT_LT(camera->getZoom(), zoomBefore);
+    EXPECT_GT(camera->getTarget().x(), targetBefore.x());
+}
+
+TEST_F(TestRender, orbit_camera_middle_drag_zooms)
+{
+    auto camera = EgLab::Common::makeShared<EgLab::RE::Camera>(
+        800, 600, EgLab::RE::CoordType(0.0f, 0.0f, 10.0f));
+    EgLab::RE::OrbitCameraController controller;
+    controller.setCamera(camera);
+    controller.setInputBindings(EgLab::RE::CameraInputBindings::defaults());
+    controller.setViewportSize(800.0f, 600.0f);
+
+    const float zoomBefore = camera->getZoom();
+    ASSERT_TRUE(controller.processMouseButton(2, 1, 400.0f, 300.0f,
+                                             EgLab::RE::CameraModifier_None));
+    ASSERT_TRUE(controller.processMouseMove(400.0f, 250.0f));
+
+    EXPECT_LT(camera->getZoom(), zoomBefore);
 }

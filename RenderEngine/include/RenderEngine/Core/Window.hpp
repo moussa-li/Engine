@@ -40,6 +40,9 @@ namespace EgLab::RE
         /// @details Controls whether window events are masked.
         void maskEvent(bool);
 
+        /// @brief Suppresses camera input while a shortcut is being recorded.
+        void setShortcutCaptureActive(bool active);
+
         /// @brief Returns elapsed application time in seconds.
         DeltaTime getTime() const;
 

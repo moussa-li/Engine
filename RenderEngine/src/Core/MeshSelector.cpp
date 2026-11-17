@@ -162,10 +162,29 @@ namespace EgLab::RE
         _hasLastPickInfo = info.kind != PrimitivePickKind::None;
         _lastPickedMesh =
             _hasLastPickInfo && registration != nullptr ? registration->mesh.get() : nullptr;
+
         if (_pickInfoCallback)
         {
             _pickInfoCallback(info);
         }
+    }
+
+    bool MeshSelector::tryGetPickedMesh(Common::SharedPtr<ME::Mesh>& mesh) const
+    {
+        if (_lastPickedMesh == nullptr)
+        {
+            return false;
+        }
+
+        for (const auto& registration : _registrations)
+        {
+            if (registration.mesh && registration.mesh.get() == _lastPickedMesh)
+            {
+                mesh = registration.mesh;
+                return true;
+            }
+        }
+        return false;
     }
 
     const MeshSelector::MeshRegistration* MeshSelector::findRegistration(

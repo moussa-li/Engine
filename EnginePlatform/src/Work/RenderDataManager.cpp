@@ -59,7 +59,7 @@ namespace EgLab::Platform
         _camera = nullptr;
     }
 
-    std::mutex& RenderDataManager::stateMutex()
+    std::mutex& RenderDataManager::stateMutex() const
     {
         return _renderStateMutex;
     }
@@ -219,6 +219,45 @@ namespace EgLab::Platform
         {
             _camera->fitView(_scene->getBounds(), 2);
         }
+    }
+
+    bool RenderDataManager::getMeshCenter(const Common::SharedPtr<ME::Mesh>& mesh,
+                                          RE::CoordType& center) const
+    {
+        if (!mesh)
+        {
+            return false;
+        }
+
+        Common::BBox<RE::Scalar, 3> bounds;
+        for (const auto& entry : _activeMeshes)
+        {
+            if (entry.mesh != mesh)
+            {
+                continue;
+            }
+            if (entry.packet.renderNode)
+            {
+                bounds.merge(entry.packet.renderNode->getBounds());
+            }
+            if (entry.packet.renderLine)
+            {
+                bounds.merge(entry.packet.renderLine->getBounds());
+            }
+            if (entry.packet.renderFace)
+            {
+                bounds.merge(entry.packet.renderFace->getBounds());
+            }
+            break;
+        }
+
+        if (bounds.isEmpty())
+        {
+            return false;
+        }
+
+        center = (bounds.min() + bounds.max()) * 0.5f;
+        return true;
     }
 
     Common::Return RenderDataManager::applyMeshUpdate(const MeshUpdateEvent& event)

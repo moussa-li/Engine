@@ -138,6 +138,59 @@ TEST_F(TestMesh, extraceSurfaceWithHiddenElements)
     EXPECT_EQ(element2FaceCount, 4u);
 }
 
+TEST_F(TestMesh, extraceSurfaceWithHiddenElementsOnQuadraticTet10)
+{
+    const auto mesh = EgLab::makeTwoTet10Mesh();
+
+    EgLab::ME::ExtractSurface fullSurface(mesh);
+    EXPECT_EQ(fullSurface.getSurface().size(), 6u);
+
+    EgLab::Common::DynamicArray<EgLab::ME::IdType> hiddenElementIds;
+    hiddenElementIds.pushBack(1u);
+
+    EgLab::ME::ExtractSurface cutSurface(mesh);
+    cutSurface.setHiddenElementIds(hiddenElementIds);
+    const auto visibleFaces = cutSurface.getSurface();
+
+    // Hiding one tetrahedron leaves the four faces of the other one; the face it shared
+    // with the hidden element becomes a boundary face and must be rendered.
+    ASSERT_EQ(visibleFaces.size(), 4u);
+    for (const auto &visibleFace : visibleFaces)
+    {
+        EXPECT_EQ(visibleFace.first, 2u);
+    }
+}
+
+TEST_F(TestMesh, quadraticHex20Surface)
+{
+    // Hex20 is encoded as 0x314, so its node count cannot be recovered from the low nibble
+    // used by the other element types.
+    EXPECT_EQ(EgLab::ME::getNodeNumber(EgLab::ME::ElemType::Hex20), 20);
+
+    auto mesh = EgLab::Common::makeShared<EgLab::ME::Mesh>();
+    for (int index = 0; index < 20; ++index)
+    {
+        EgLab::ME::Node node;
+        node.setId(index + 1);
+        EgLab::ME::CoordType coordinate(index % 2, (index / 2) % 2, (index / 4) % 2);
+        node.setXYZ(coordinate);
+        mesh->addNode(EgLab::Common::move(node));
+    }
+
+    EgLab::ME::Elem elem;
+    elem.setId(1);
+    elem.setType(EgLab::ME::ElemType::Hex20);
+    ASSERT_EQ(elem.getNodes().size(), 20u);
+    for (int node = 0; node < 20; ++node)
+    {
+        elem.setNode(node, node + 1);
+    }
+    mesh->addElem(EgLab::Common::move(elem));
+
+    EgLab::ME::ExtractSurface extractor(mesh);
+    EXPECT_EQ(extractor.getSurface().size(), 6u);
+}
+
 TEST_F(TestMesh, extractSilhouetteEdgesFromOpenTriangle)
 {
     auto mesh = EgLab::Common::makeShared<EgLab::ME::Mesh>();

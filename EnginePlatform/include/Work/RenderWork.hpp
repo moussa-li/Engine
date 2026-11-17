@@ -85,6 +85,8 @@ namespace EgLab::Platform
         PickInfoSubscriptionId subscribePickInfo();
         void unsubscribePickInfo(PickInfoSubscriptionId subscriptionId);
         bool tryReceivePickInfo(PickInfoSubscriptionId subscriptionId, PickedMeshInfo& info);
+        // Returns the world-space center of the most recently picked mesh.
+        bool tryGetPickedMeshCenter(RE::CoordType& center) const;
 
         void fitView();
         void fitView(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
@@ -140,11 +142,13 @@ namespace EgLab::Platform
         Common::SharedPtr<EgLab::RE::Camera> _camera;
         Common::SharedPtr<EgLab::RE::MeshSelector> _meshSelector;
 
-        std::mutex _pickInfoSubscriptionsMutex;
+        mutable std::mutex _pickInfoSubscriptionsMutex;
         Common::DynamicArray<Common::UniquePtr<PickInfoSubscription>> _pickInfoSubscriptions;
         PickInfoSubscriptionId _nextPickInfoSubscriptionId{1};
         PickedMeshInfo _lastPublishedPickInfo;
         bool _hasPublishedPickInfo{false};
+        Common::SharedPtr<ME::Mesh> _pickedMesh;
+        bool _hasPickedMesh{false};
 
         std::mutex _renderEventMutex;
         Common::DynamicArray<Common::SharedPtr<RenderEvent>> _renderEventQueue;
