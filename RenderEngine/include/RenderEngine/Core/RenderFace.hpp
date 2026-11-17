@@ -42,6 +42,12 @@ namespace EgLab::RE
         /// @return Index of the picked face, or the invalid index when nothing is hit.
         virtual IdxType touch(const PickContext &context) override;
 
+        /// @brief Picking a face primitive yields face entities.
+        PickKind getPickKind() const override
+        {
+            return PickKind::Face;
+        }
+
         /// @brief Replaces the face vertex positions.
         void setNodes(Common::DynamicArray<CoordType> &&);
         /// @brief Replaces the face element indices.

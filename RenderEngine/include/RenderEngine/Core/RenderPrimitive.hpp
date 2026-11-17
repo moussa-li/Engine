@@ -6,6 +6,7 @@
 #include "Common/Matrix.hpp"
 #include "Common/SharedPtr.hpp"
 #include "RenderEngine/Core/Definites.hpp"
+#include "RenderEngine/Core/PickKind.hpp"
 #include "RenderEngine/Core/RenderEngineAPI.hpp"
 
 namespace EgLab::RE
@@ -33,6 +34,38 @@ namespace EgLab::RE
         mutable Scalar bestDepth{std::numeric_limits<Scalar>::max()};
         /// Best squared screen-space distance found so far.
         mutable Scalar bestDistanceSquared{std::numeric_limits<Scalar>::max()};
+        /// Priority of the best hit; used to prefer nodes over edges over faces.
+        mutable int bestPriority{0};
+
+        /// Compares a candidate hit with the best hit recorded so far. A per-kind depth
+        /// offset expands the near-tie window in favour of higher priorities.
+        bool acceptHit(PickKind kind, Scalar depth, Scalar distanceSquared) const
+        {
+            const Scalar biasedDepth = depth + pickDepthBias(kind);
+            const Scalar delta = biasedDepth - bestDepth;
+            if (delta > kPickDepthEpsilon)
+            {
+                return false;
+            }
+
+            if (delta >= -kPickDepthEpsilon)
+            {
+                const int priority = pickPriority(kind);
+                if (priority < bestPriority)
+                {
+                    return false;
+                }
+                if (priority == bestPriority && distanceSquared >= bestDistanceSquared)
+                {
+                    return false;
+                }
+            }
+
+            bestDepth = biasedDepth;
+            bestDistanceSquared = distanceSquared;
+            bestPriority = pickPriority(kind);
+            return true;
+        }
     };
 
     namespace PickUtils
@@ -117,5 +150,12 @@ namespace EgLab::RE
         {
             return static_cast<IdxType>(-1);
         };
+
+        /// @brief Kind of entity this primitive represents for picking.
+        /// @return The primitive's pick kind, or PickKind::None when it cannot be picked.
+        virtual PickKind getPickKind() const
+        {
+            return PickKind::None;
+        }
     };
 } // namespace EgLab::RE

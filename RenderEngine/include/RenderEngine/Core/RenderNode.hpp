@@ -49,6 +49,12 @@ namespace EgLab::RE
         /// @return Index of the picked node, or the invalid index when nothing is hit.
         virtual IdxType touch(const PickContext &context) override;
 
+        /// @brief Picking a node primitive yields node entities.
+        PickKind getPickKind() const override
+        {
+            return PickKind::Node;
+        }
+
     private:
         Common::DynamicArray<CoordType> _vertices;
         Common::Vector4f _color{0.18f, 0.24f, 0.30f, 1.0f};

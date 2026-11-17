@@ -17,6 +17,7 @@
 #include "Common/UniquePtr.hpp"
 #include "Common/Vector.hpp"
 #include "RenderEngine/Core/Definites.hpp"
+#include "RenderEngine/Core/PickManager.hpp"
 #include "RenderEngine/Core/Selector.hpp"
 #include "Work/RenderDataManager.hpp"
 #include "Work/RenderEvent.hpp"
@@ -88,6 +89,16 @@ namespace EgLab::Platform
         // Returns the world-space center of the most recently picked mesh.
         bool tryGetPickedMeshCenter(RE::CoordType& center) const;
 
+        // Pick registry shared by the renderer and the features that need picking.
+        RE::PickManager& pickManager()
+        {
+            return _pickManager;
+        }
+        const RE::PickManager& pickManager() const
+        {
+            return _pickManager;
+        }
+
         void fitView();
         void fitView(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
 
@@ -141,6 +152,7 @@ namespace EgLab::Platform
         Common::SharedPtr<EgLab::RE::Scene> _scene;
         Common::SharedPtr<EgLab::RE::Camera> _camera;
         Common::SharedPtr<EgLab::RE::MeshSelector> _meshSelector;
+        RE::PickManager _pickManager;
 
         mutable std::mutex _pickInfoSubscriptionsMutex;
         Common::DynamicArray<Common::UniquePtr<PickInfoSubscription>> _pickInfoSubscriptions;

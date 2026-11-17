@@ -1,4 +1,4 @@
-#include "Panel/MeshRenderSettingPanel.hpp"
+﻿#include "Panel/MeshRenderSettingPanel.hpp"
 
 #include <sstream>
 
@@ -31,6 +31,55 @@ namespace EgLab::Platform
         {
             RenderWork::instance().unsubscribePickInfo(_pickInfoSubscriptionId);
         }
+    }
+
+    void MeshRenderSettingPanel::syncPickRequests()
+    {
+        if (!isShow())
+        {
+            releasePickRequests();
+            return;
+        }
+
+        RE::PickManager& picks = RenderWork::instance().pickManager();
+
+        // "Element Info" covers both edges and faces, so it needs both kinds.
+        const bool wantNode = _showNodeInfo;
+        const bool wantEdge = _showElementInfo || _showElementEdgeInfo;
+        const bool wantFace = _showElementInfo || _showElementFaceInfo;
+
+        const auto sync = [&picks](RE::PickManager::PickToken& token, bool wanted,
+                                   RE::PickKind kind) {
+            if (wanted && token == RE::PickManager::kInvalidToken)
+            {
+                token = picks.acquire(kind, Common::String("MeshRenderSettingPanel"));
+            }
+            else if (!wanted && token != RE::PickManager::kInvalidToken)
+            {
+                picks.release(token);
+                token = RE::PickManager::kInvalidToken;
+            }
+        };
+
+        sync(_nodePickToken, wantNode, RE::PickKind::Node);
+        sync(_edgePickToken, wantEdge, RE::PickKind::Edge);
+        sync(_facePickToken, wantFace, RE::PickKind::Face);
+    }
+
+    void MeshRenderSettingPanel::releasePickRequests()
+    {
+        RE::PickManager& picks = RenderWork::instance().pickManager();
+        picks.release(_nodePickToken);
+        picks.release(_edgePickToken);
+        picks.release(_facePickToken);
+        _nodePickToken = RE::PickManager::kInvalidToken;
+        _edgePickToken = RE::PickManager::kInvalidToken;
+        _facePickToken = RE::PickManager::kInvalidToken;
+    }
+
+    void MeshRenderSettingPanel::abortClose()
+    {
+        releasePickRequests();
     }
 
     void MeshRenderSettingPanel::configureWindow() const
@@ -120,11 +169,18 @@ namespace EgLab::Platform
             {
                 IniManager::instance().setBool("mesh.showElementFaceInfo", _showElementFaceInfo);
             }
+
+            syncPickRequests();
         }
     }
 
     void MeshRenderSettingPanel::afterRenderFrame()
     {
+        if (!isShow())
+        {
+            releasePickRequests();
+        }
+
         const bool showNodeInfo = _showNodeInfo && _pickedInfo.kind == PickedMeshKind::Node;
         const bool showElementInfo =
             _showElementInfo && (_pickedInfo.kind == PickedMeshKind::ElementEdge ||

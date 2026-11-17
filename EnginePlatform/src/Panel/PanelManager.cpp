@@ -48,6 +48,7 @@ namespace EgLab::Platform
         _panels[HEMeshDataPanel().getPanelName()] = Common::makeShared<HEMeshDataPanel>();
         _heMeshPanel = Common::makeShared<HEMeshPanel>();
         _panels[_heMeshPanel->getPanelName()] = _heMeshPanel;
+
         _panels[MeshRenderSettingPanel().getPanelName()] =
             Common::makeShared<MeshRenderSettingPanel>();
         _panels[LightSettingPanel().getPanelName()] = Common::makeShared<LightSettingPanel>();

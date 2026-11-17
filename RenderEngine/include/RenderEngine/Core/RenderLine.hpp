@@ -39,6 +39,12 @@ namespace EgLab::RE
         /// @return Index of the picked line, or the invalid index when nothing is hit.
         virtual IdxType touch(const PickContext& context) override;
 
+        /// @brief Picking a line primitive yields edge entities.
+        PickKind getPickKind() const override
+        {
+            return PickKind::Edge;
+        }
+
         /// @brief Replaces line vertex positions with the supplied data.
         void setNodes(Common::DynamicArray<CoordType>&&);
         /// @brief Replaces line endpoint indices with the supplied data.

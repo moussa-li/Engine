@@ -1,10 +1,11 @@
-#include "test_render.h"
+﻿#include "test_render.h"
 
 #include <GLFW/glfw3.h>
 
 #include <chrono>
 
 #include "Common/StringLineIterator.hpp"
+#include "Common/String.hpp"
 #include "MeshEngine/IO/GmshImporter.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "RenderEngine/Core/Camera.hpp"
@@ -12,6 +13,7 @@
 #include "RenderEngine/Core/MeshPrimitiveCreator.hpp"
 #include "RenderEngine/Core/MeshToTriFace.hpp"
 #include "RenderEngine/Core/OrbitCameraController.hpp"
+#include "RenderEngine/Core/PickManager.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"
 #include "RenderEngine/Core/RenderFace.hpp"
 #include "RenderEngine/Core/RenderLine.hpp"
@@ -83,7 +85,7 @@ public:
         static float orbitSensitivity = 1;
         ImGui::SliderFloat("Mouse Sensitivity", &mouseSensitivity, 1.f, 5.f, "%.2f");
 
-        // 4. 显示当前值，方便调试
+        // 4. 鏄剧ず褰撳墠鍊硷紝鏂逛究璋冭瘯
         ImGui::Text("Current Sensitivity: %.2f", mouseSensitivity);
 
         ImGui::SliderFloat("Zoom Speed", &zoomSpeed, 1.1f, 5.f, "%.2f");
@@ -100,7 +102,7 @@ public:
         controller->setZoomSpeed(zoomSpeed);
         controller->setOrbitSensitivity(orbitSensitivity * 0.01f);
 
-        // 渲染 UI
+        // 娓叉煋 UI
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -715,4 +717,102 @@ TEST_F(TestRender, orbit_camera_middle_drag_zooms)
     ASSERT_TRUE(controller.processMouseMove(400.0f, 250.0f));
 
     EXPECT_LT(camera->getZoom(), zoomBefore);
+}
+
+TEST_F(TestRender, pick_manager_tracks_acquired_kinds)
+{
+    EgLab::RE::PickManager manager;
+    manager.releaseOwner(EgLab::Common::String("PickManagerTest"));
+    EXPECT_EQ(manager.activeKinds(), 0u);
+
+    const auto nodeToken =
+        manager.acquire(EgLab::RE::PickKind::Node, EgLab::Common::String("PickManagerTest"));
+    EXPECT_NE(nodeToken, EgLab::RE::PickManager::kInvalidToken);
+    EXPECT_TRUE(manager.isActive(EgLab::RE::PickKind::Node));
+    EXPECT_FALSE(manager.isActive(EgLab::RE::PickKind::Edge));
+    EXPECT_EQ(manager.activeKinds(), EgLab::RE::toPickMask(EgLab::RE::PickKind::Node));
+
+    const auto faceToken =
+        manager.acquire(EgLab::RE::PickKind::Face, EgLab::Common::String("PickManagerTest"));
+    EXPECT_EQ(manager.activeKinds(), EgLab::RE::toPickMask(EgLab::RE::PickKind::Node) |
+                                         EgLab::RE::toPickMask(EgLab::RE::PickKind::Face));
+
+    manager.release(nodeToken);
+    EXPECT_FALSE(manager.isActive(EgLab::RE::PickKind::Node));
+    EXPECT_TRUE(manager.isActive(EgLab::RE::PickKind::Face));
+
+    manager.release(faceToken);
+    EXPECT_EQ(manager.activeKinds(), 0u);
+    EXPECT_EQ(manager.acquire(EgLab::RE::PickKind::None, EgLab::Common::String("PickManagerTest")),
+              EgLab::RE::PickManager::kInvalidToken);
+}
+
+TEST_F(TestRender, pick_priority_prefers_node_then_edge_then_face)
+{
+    EgLab::RE::RenderNode node;
+    EgLab::Common::DynamicArray<EgLab::RE::CoordType> nodeVertices;
+    nodeVertices.pushBack(EgLab::RE::CoordType(0.0f, 0.0f, 0.5f));
+    node.setNodes(EgLab::Common::move(nodeVertices));
+
+    EgLab::RE::RenderLine line;
+    EgLab::Common::DynamicArray<EgLab::RE::CoordType> lineVertices;
+    lineVertices.pushBack(EgLab::RE::CoordType(-0.5f, 0.0f, 0.5f));
+    lineVertices.pushBack(EgLab::RE::CoordType(0.5f, 0.0f, 0.5f));
+    line.setNodes(EgLab::Common::move(lineVertices));
+    EgLab::Common::DynamicArray<EgLab::RE::IdxType> lineIndices;
+    lineIndices.pushBack(0);
+    lineIndices.pushBack(1);
+    line.setIndices(EgLab::Common::move(lineIndices));
+
+    EgLab::RE::RenderFace face;
+    EgLab::Common::DynamicArray<EgLab::RE::CoordType> faceVertices;
+    faceVertices.pushBack(EgLab::RE::CoordType(-0.5f, -0.5f, 0.5f));
+    faceVertices.pushBack(EgLab::RE::CoordType(0.5f, -0.5f, 0.5f));
+    faceVertices.pushBack(EgLab::RE::CoordType(0.0f, 0.5f, 0.5f));
+    face.setNodes(EgLab::Common::move(faceVertices));
+    EgLab::Common::DynamicArray<EgLab::RE::IdxType> faceIndices;
+    faceIndices.pushBack(0);
+    faceIndices.pushBack(1);
+    faceIndices.pushBack(2);
+    face.setIndices(EgLab::Common::move(faceIndices));
+
+    EXPECT_EQ(node.getPickKind(), EgLab::RE::PickKind::Node);
+    EXPECT_EQ(line.getPickKind(), EgLab::RE::PickKind::Edge);
+    EXPECT_EQ(face.getPickKind(), EgLab::RE::PickKind::Face);
+
+    const auto makeContext = []() {
+        EgLab::RE::PickContext context;
+        context.width = 200;
+        context.height = 200;
+        context.x = 100.0f;
+        context.y = 100.0f;
+        context.view = EgLab::Common::Matrix4f::Identity();
+        context.projection = EgLab::Common::Matrix4f::Identity();
+        return context;
+    };
+
+    // Face first, node second: the node wins on a coincident hit.
+    EgLab::RE::PickContext faceThenNode = makeContext();
+    EXPECT_EQ(face.touch(faceThenNode), 0u);
+    EXPECT_EQ(node.touch(faceThenNode), 0u);
+
+    // Face first, edge second: the edge wins.
+    EgLab::RE::PickContext faceThenEdge = makeContext();
+    EXPECT_EQ(face.touch(faceThenEdge), 0u);
+    EXPECT_EQ(line.touch(faceThenEdge), 0u);
+
+    // Edge first, node second: the node wins.
+    EgLab::RE::PickContext edgeThenNode = makeContext();
+    EXPECT_EQ(line.touch(edgeThenNode), 0u);
+    EXPECT_EQ(node.touch(edgeThenNode), 0u);
+
+    // A genuinely farther node still loses to a closer face.
+    EgLab::RE::RenderNode farNode;
+    EgLab::Common::DynamicArray<EgLab::RE::CoordType> farNodeVertices;
+    farNodeVertices.pushBack(EgLab::RE::CoordType(0.0f, 0.0f, 0.6f));
+    farNode.setNodes(EgLab::Common::move(farNodeVertices));
+
+    EgLab::RE::PickContext depthWins = makeContext();
+    EXPECT_EQ(face.touch(depthWins), 0u);
+    EXPECT_EQ(farNode.touch(depthWins), static_cast<EgLab::RE::IdxType>(-1));
 }

@@ -313,15 +313,12 @@ namespace EgLab::RE
             }
         }
 
-        if (touchedIndex == static_cast<IdxType>(-1) || closestDepth > context.bestDepth + 1e-6f ||
-            (std::abs(closestDepth - context.bestDepth) <= 1e-6f &&
-             context.bestDistanceSquared <= 0.0f))
+        if (touchedIndex == static_cast<IdxType>(-1) ||
+            !context.acceptHit(PickKind::Face, closestDepth, 0.0f))
         {
             return static_cast<IdxType>(-1);
         }
 
-        context.bestDepth = closestDepth;
-        context.bestDistanceSquared = 0.0f;
         return touchedIndex;
     }
 

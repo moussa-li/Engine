@@ -127,6 +127,7 @@ namespace EgLab::Platform
         {
             _meshSelector = Common::makeShared<RE::MeshSelector>();
             _renderer->setSelector(Common::SharedPtr<RE::Selector>(_meshSelector));
+            _renderer->setPickManager(&_pickManager);
             _meshSelector->registerPickInfoCallback(
                 [this](const RE::PrimitivePickInfo& info) { publishPickInfo(info); });
             _renderData.bindMeshSelector(_meshSelector);
@@ -168,6 +169,7 @@ namespace EgLab::Platform
         if (_renderer)
         {
             _renderer->setSelector(nullptr);
+            _renderer->setPickManager(nullptr);
         }
         _meshSelector = nullptr;
         _renderData.releaseResources();

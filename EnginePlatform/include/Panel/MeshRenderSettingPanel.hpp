@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Panel/IPanel.hpp"
+#include "RenderEngine/Core/PickManager.hpp"
 #include "Work/RenderWork.hpp"
 
 namespace EgLab::Platform
@@ -25,6 +26,12 @@ namespace EgLab::Platform
         void configureWindow() const override;
         void renderImpl() override;
         void afterRenderFrame() override;
+        void abortClose() override;
+
+    private:
+        // Keeps the pick acquisitions in sync with the visible tooltip options.
+        void syncPickRequests();
+        void releasePickRequests();
 
     private:
         bool _showNodeInfo{false};
@@ -38,5 +45,8 @@ namespace EgLab::Platform
         PickInfoSubscriptionId _pickInfoSubscriptionId{0};
         bool _hasPickedInfo{false};
         PickedMeshInfo _pickedInfo;
+        RE::PickManager::PickToken _nodePickToken{RE::PickManager::kInvalidToken};
+        RE::PickManager::PickToken _edgePickToken{RE::PickManager::kInvalidToken};
+        RE::PickManager::PickToken _facePickToken{RE::PickManager::kInvalidToken};
     };
 } // namespace EgLab::Platform

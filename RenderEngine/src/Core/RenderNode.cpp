@@ -163,15 +163,12 @@ namespace EgLab::RE
             }
         }
 
-        if (touchedIndex == static_cast<IdxType>(-1) || closestDepth > context.bestDepth + 1e-6f ||
-            (std::abs(closestDepth - context.bestDepth) <= 1e-6f &&
-             closestDistanceSquared >= context.bestDistanceSquared))
+        if (touchedIndex == static_cast<IdxType>(-1) ||
+            !context.acceptHit(PickKind::Node, closestDepth, closestDistanceSquared))
         {
             return static_cast<IdxType>(-1);
         }
 
-        context.bestDepth = closestDepth;
-        context.bestDistanceSquared = closestDistanceSquared;
         return touchedIndex;
     }
 } // namespace EgLab::RE

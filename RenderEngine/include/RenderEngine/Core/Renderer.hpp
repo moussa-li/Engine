@@ -18,6 +18,7 @@ namespace EgLab::RE
     class RenderConfigure;
     class RenderPrimitive;
     class Selector;
+    class PickManager;
 
     struct RenderViewport
     {
@@ -92,6 +93,10 @@ namespace EgLab::RE
         /// @brief Returns the current primitive selector.
         Common::SharedPtr<Selector> getSelector() const;
 
+        /// @brief Sets the pick manager queried while picking; the renderer does not own it.
+        /// @param pickManager Manager owned by the render work, or nullptr to disable picking.
+        void setPickManager(PickManager *pickManager);
+
         /// @brief Enables or disables rendering of nodes.
         /// @param enabled Whether node rendering is enabled.
         void setRenderNodesEnabled(bool enabled);
@@ -129,6 +134,7 @@ namespace EgLab::RE
 
         Common::UniquePtr<RenderConfigure> _configure;
         Common::SharedPtr<Selector> _selector;
+        PickManager *_pickManager{nullptr};
 
         Common::Vector4f _backGroundColor;
         mutable std::mutex _lightMutex;

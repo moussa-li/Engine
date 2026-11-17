@@ -5,6 +5,7 @@
 #include "RenderEngine/Core/Camera.hpp"
 #include "RenderEngine/Core/Entity.hpp"
 #include "RenderEngine/Core/MeshSelector.hpp"
+#include "RenderEngine/Core/PickManager.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"
 #include "RenderEngine/Core/RenderFace.hpp"
 #include "RenderEngine/Core/RenderLine.hpp"
@@ -98,7 +99,12 @@ namespace EgLab::RE
             Scalar cursorX = 0.0f;
             Scalar cursorY = 0.0f;
             const bool selected = viewport.window->trySelectedPos(cursorX, cursorY);
-            if (selected)
+
+            // Picking only runs while a feature has acquired at least one pick kind.
+            const uint32_t pickMask =
+                _pickManager != nullptr ? _pickManager->activeKinds() : 0;
+            const bool pickingEnabled = pickMask != 0;
+            if (selected || (!pickingEnabled && _pickedPrimitive != nullptr))
             {
                 _pickedPrimitive = nullptr;
                 _pickedNodeIndex = static_cast<IdxType>(-1);
@@ -151,7 +157,8 @@ namespace EgLab::RE
                     if (!deferredHighlight)
                     {
                         primitiveIt.data()->draw(shader);
-                        if (selected)
+                        if (selected && pickingEnabled &&
+                            isPickKindEnabled(pickMask, primitiveIt.data()->getPickKind()))
                         {
                             const IdxType nodeIndex = primitiveIt.data()->touch(pickContext);
                             if (nodeIndex != static_cast<IdxType>(-1))
@@ -251,6 +258,11 @@ namespace EgLab::RE
     Common::SharedPtr<Selector> Renderer::getSelector() const
     {
         return _selector;
+    }
+
+    void Renderer::setPickManager(PickManager *pickManager)
+    {
+        _pickManager = pickManager;
     }
 
     void Renderer::setRenderNodesEnabled(bool enabled)
