@@ -90,6 +90,10 @@ namespace EgLab::Platform
                 lastFrame = currentFrame;
 
                 _window->activeContext();
+
+                // Picking is part of the render loop: requests become pick events, and the
+                // handler exposes the highlight as a scene primitive drawn with the rest.
+                submitPickEvent();
                 drainRenderEvents();
                 if (!_running.load())
                 {
@@ -126,16 +130,19 @@ namespace EgLab::Platform
         if (_renderer)
         {
             _meshSelector = Common::makeShared<RE::MeshSelector>();
-            _renderer->setSelector(Common::SharedPtr<RE::Selector>(_meshSelector));
-            _renderer->setPickManager(&_pickManager);
             _meshSelector->registerPickInfoCallback(
                 [this](const RE::PrimitivePickInfo& info) { publishPickInfo(info); });
             _renderData.bindMeshSelector(_meshSelector);
+            _renderData.bindVisibilityFilter(
+                [this](const Common::SharedPtr<RE::RenderPrimitive>& primitive) {
+                    return _renderer != nullptr && _renderer->isPrimitiveVisible(primitive);
+                });
         }
         else
         {
             _meshSelector = nullptr;
             _renderData.bindMeshSelector(nullptr);
+            _renderData.bindVisibilityFilter(nullptr);
         }
     }
 
@@ -166,11 +173,6 @@ namespace EgLab::Platform
     {
         stop();
 
-        if (_renderer)
-        {
-            _renderer->setSelector(nullptr);
-            _renderer->setPickManager(nullptr);
-        }
         _meshSelector = nullptr;
         _renderData.releaseResources();
 
@@ -185,6 +187,12 @@ namespace EgLab::Platform
         _renderer = nullptr;
         _camera = nullptr;
         _window = nullptr;
+
+        {
+            std::lock_guard<std::mutex> lock(_pendingPickMutex);
+            _hasPendingPick = false;
+        }
+        _lastQueuedPickKinds = 0;
     }
 
     Common::Return RenderWork::commitPendingRenderUpdates()
@@ -324,8 +332,83 @@ namespace EgLab::Platform
         }
     }
 
-    void RenderWork::queueRenderEvent(Common::SharedPtr<RenderEvent> event)
+    void RenderWork::requestPick(float cursorX, float cursorY, uint32_t kinds)
     {
+        if (kinds == 0)
+        {
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(_pendingPickMutex);
+        _pendingPick.x = cursorX;
+        _pendingPick.y = cursorY;
+        _pendingPick.kinds = kinds;
+        _hasPendingPick = true;
+    }
+
+    void RenderWork::queuePickEvent(float framebufferX, float framebufferY, uint32_t kinds)
+    {
+        auto event = Common::makeShared<PickEvent>();
+        event->x = framebufferX;
+        event->y = framebufferY;
+        event->kinds = kinds;
+        queueRenderEvent(event);
+    }
+
+    void RenderWork::submitPickEvent()
+    {
+        if (_window == nullptr || _scene == nullptr || _camera == nullptr)
+        {
+            return;
+        }
+
+        float cursorX = 0.0f;
+        float cursorY = 0.0f;
+        const bool hasCursor = _window->trySelectedPos(cursorX, cursorY);
+
+        PendingPick pending;
+        bool hasPending = false;
+        {
+            std::lock_guard<std::mutex> lock(_pendingPickMutex);
+            if (_hasPendingPick)
+            {
+                pending = _pendingPick;
+                _hasPendingPick = false;
+                hasPending = true;
+            }
+        }
+
+        const uint32_t requestedKinds = _pickManager.activeKinds();
+        if (!hasCursor && !hasPending && requestedKinds == _lastQueuedPickKinds)
+        {
+            return;
+        }
+
+        const float windowX = hasPending ? pending.x : cursorX;
+        const float windowY = hasPending ? pending.y : cursorY;
+        const uint32_t kinds = hasPending ? pending.kinds : requestedKinds;
+
+        unsigned int framebufferWidth = 0;
+        unsigned int framebufferHeight = 0;
+        unsigned int windowWidth = 0;
+        unsigned int windowHeight = 0;
+        _window->getFramebufferSize(framebufferWidth, framebufferHeight);
+        _window->getWindowSize(windowWidth, windowHeight);
+        if (framebufferWidth == 0 || framebufferHeight == 0 || windowWidth == 0 ||
+            windowHeight == 0)
+        {
+            return;
+        }
+
+        const float scaleX = static_cast<float>(framebufferWidth) / static_cast<float>(windowWidth);
+        const float scaleY =
+            static_cast<float>(framebufferHeight) / static_cast<float>(windowHeight);
+
+        _lastQueuedPickKinds = kinds;
+        queuePickEvent(windowX * scaleX, windowY * scaleY, kinds);
+    }
+
+    void RenderWork::queueRenderEvent(Common::SharedPtr<RenderEvent> event)    {
         auto command = Common::SharedPtr<ICommand>(
             Common::makeShared<RenderEventCommand>(this, Common::move(event)));
         if (_renderEventBus.dispatch(command, true) != Common::Return::Succeed)

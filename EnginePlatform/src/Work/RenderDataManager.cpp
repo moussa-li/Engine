@@ -12,6 +12,7 @@
 #include "RenderEngine/Core/RenderFace.hpp"
 #include "RenderEngine/Core/RenderLine.hpp"
 #include "RenderEngine/Core/RenderNode.hpp"
+#include "RenderEngine/Core/RenderPickHighlight.hpp"
 #include "RenderEngine/Core/Scene.hpp"
 #include "RenderEngine/Core/ShaderLib.hpp"
 
@@ -36,8 +37,16 @@ namespace EgLab::Platform
         _meshSelector = selector;
     }
 
+    void RenderDataManager::bindVisibilityFilter(RE::ScenePicker::VisibilityFilter filter)
+    {
+        _visibilityFilter = Common::move(filter);
+    }
+
     void RenderDataManager::releaseResources()
     {
+        clearPickHighlight();
+        _visibilityFilter = nullptr;
+
         _activeMeshes.clear();
         _meshColors.clear();
         _elementVisibilityStates.clear();
@@ -260,8 +269,103 @@ namespace EgLab::Platform
         return true;
     }
 
+    void RenderDataManager::applyPick(const PickEvent& event)
+    {
+        if (!_scene || !_camera)
+        {
+            return;
+        }
+
+        if (event.kinds == 0)
+        {
+            clearPickHighlight();
+            notifyPickCleared();
+            return;
+        }
+
+        const unsigned int width = _camera->getViewportWidth();
+        const unsigned int height = _camera->getViewportHeight();
+        if (width == 0 || height == 0)
+        {
+            return;
+        }
+
+        RE::PickContext context;
+        context.x = event.x;
+        context.y = event.y;
+        context.width = width;
+        context.height = height;
+        context.view = _camera->view();
+        context.projection = _camera->perspective(_scene->getBounds());
+
+        RE::ScenePicker picker;
+        const RE::PickOutcome outcome =
+            picker.pick(_scene, context, event.kinds, _visibilityFilter);
+        if (!outcome.valid())
+        {
+            clearPickHighlight();
+            notifyPickCleared();
+            return;
+        }
+
+        Common::DynamicArray<RE::IdxType> indices;
+        if (_meshSelector)
+        {
+            indices = _meshSelector->getHighlightIndices(outcome.primitive, outcome.index);
+        }
+        else
+        {
+            indices.pushBack(outcome.index);
+        }
+
+        clearPickHighlight();
+
+        Common::SharedPtr<RE::RenderPickHighlight> highlight =
+            Common::makeShared<RE::RenderPickHighlight>();
+        highlight->setSource(outcome.primitive);
+        highlight->setSourceShader(outcome.shader);
+        highlight->setIndices(Common::move(indices));
+
+        Common::SharedPtr<RE::Shader> highlightShader;
+        RE::ShaderLib::instance().getHighlightShader(highlightShader);
+        if (highlightShader == nullptr ||
+            _scene->addPrimitive(highlightShader, highlight) != Common::Return::Succeed)
+        {
+            LOG(ERROR) << "RenderDataManager::applyPick() failed to add the pick highlight";
+            return;
+        }
+        _pickHighlightPrimitive = highlight;
+
+        if (_meshSelector)
+        {
+            _meshSelector->processPick(outcome.primitive, outcome.index);
+        }
+    }
+
+    void RenderDataManager::clearPickHighlight()
+    {
+        if (_scene && _pickHighlightPrimitive)
+        {
+            Common::SharedPtr<RE::Shader> highlightShader;
+            RE::ShaderLib::instance().getHighlightShader(highlightShader);
+            _scene->removePrimitive(highlightShader, _pickHighlightPrimitive);
+        }
+        _pickHighlightPrimitive = nullptr;
+    }
+
+    void RenderDataManager::notifyPickCleared()
+    {
+        if (_meshSelector)
+        {
+            _meshSelector->processPick(nullptr, static_cast<RE::IdxType>(-1));
+        }
+    }
+
     Common::Return RenderDataManager::applyMeshUpdate(const MeshUpdateEvent& event)
     {
+        // A replaced primitive invalidates the current pick highlight.
+        clearPickHighlight();
+
         MeshRenderEntry entry;
         entry.mesh = event.mesh;
         entry.translator = event.translator;
@@ -318,6 +422,8 @@ namespace EgLab::Platform
         {
             return;
         }
+
+        clearPickHighlight();
 
         Common::DynamicArray<MeshRenderEntry> remainingEntries;
         for (auto& entry : _activeMeshes)
@@ -834,6 +940,9 @@ namespace EgLab::Platform
         {
             return;
         }
+
+        // The rebuilt face/line primitives replace the ones a highlight may reference.
+        clearPickHighlight();
 
         MeshRenderEntry* target = nullptr;
         for (auto& entry : _activeMeshes)

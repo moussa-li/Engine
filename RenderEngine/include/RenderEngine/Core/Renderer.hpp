@@ -17,8 +17,6 @@ namespace EgLab::RE
     class Shader;
     class RenderConfigure;
     class RenderPrimitive;
-    class Selector;
-    class PickManager;
 
     struct RenderViewport
     {
@@ -53,19 +51,17 @@ namespace EgLab::RE
         void clear();
 
         /** @brief Draws the scene from the specified camera.
+         * @details The renderer only draws what the scene contains; picking and its
+         *          highlight primitives are handled outside the renderer.
          * @param scene Scene containing renderable primitives.
          * @param camera Camera used to produce the view and projection matrices.
          */
         void draw(const Common::SharedPtr<Scene> &scene,
                   const Common::SharedPtr<Camera> &camera) const;
 
-        /** @brief Retrieves the most recently picked node, if available.
-         * @param primitive Receives the picked primitive.
-         * @param nodeIndex Receives the picked node index.
-         * @return true if a node pick is available.
-         */
-        bool tryGetPickedNode(Common::SharedPtr<RenderPrimitive> &primitive,
-                              IdxType &nodeIndex) const;
+        /// @brief Reports whether a primitive is enabled by the node/edge/face render switches.
+        /// @param primitive Primitive to test.
+        bool isPrimitiveVisible(const Common::SharedPtr<RenderPrimitive> &primitive) const;
 
         /// @brief Sets the renderer background color.
         /// @param color RGBA background color.
@@ -86,16 +82,6 @@ namespace EgLab::RE
 
         /// @brief Returns the mutable render configuration.
         Common::UniquePtr<RenderConfigure> &getConfigure();
-
-        /// @brief Sets the primitive selector used for picking.
-        /// @param selector Selector implementation to use.
-        void setSelector(Common::SharedPtr<Selector> selector);
-        /// @brief Returns the current primitive selector.
-        Common::SharedPtr<Selector> getSelector() const;
-
-        /// @brief Sets the pick manager queried while picking; the renderer does not own it.
-        /// @param pickManager Manager owned by the render work, or nullptr to disable picking.
-        void setPickManager(PickManager *pickManager);
 
         /// @brief Enables or disables rendering of nodes.
         /// @param enabled Whether node rendering is enabled.
@@ -125,7 +111,6 @@ namespace EgLab::RE
                         const Common::SharedPtr<Scene> &scene) const;
         void loadLight(const Common::SharedPtr<Shader> &shader,
                        const Common::SharedPtr<Camera> &camera) const;
-        bool isPrimitiveVisible(const Common::SharedPtr<RenderPrimitive> &primitive) const;
 
     private:
         Common::DynamicArray<RenderViewport> _viewports;
@@ -133,15 +118,11 @@ namespace EgLab::RE
         Common::DynamicArray<Light *> _lights;
 
         Common::UniquePtr<RenderConfigure> _configure;
-        Common::SharedPtr<Selector> _selector;
-        PickManager *_pickManager{nullptr};
 
         Common::Vector4f _backGroundColor;
         mutable std::mutex _lightMutex;
         DirectionalLightSettings _lightSettings;
 
-        mutable Common::SharedPtr<RenderPrimitive> _pickedPrimitive{nullptr};
-        mutable IdxType _pickedNodeIndex{static_cast<IdxType>(-1)};
         bool _renderNodesEnabled{true};
         bool _renderEdgesEnabled{true};
         bool _renderFacesEnabled{true};

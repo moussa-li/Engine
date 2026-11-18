@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <mutex>
 
 #include "Common/DynamicArray.hpp"
@@ -10,6 +11,7 @@
 #include "Common/Vector.hpp"
 #include "MeshEngine/Common/Definitions.hpp"
 #include "RenderEngine/Core/Definites.hpp"
+#include "RenderEngine/Core/ScenePicker.hpp"
 #include "Work/RenderEvent.hpp"
 
 namespace EgLab::ME
@@ -42,6 +44,8 @@ namespace EgLab::Platform
         void bindScene(const Common::SharedPtr<RE::Scene>& scene);
         void bindCamera(const Common::SharedPtr<RE::Camera>& camera);
         void bindMeshSelector(const Common::SharedPtr<RE::MeshSelector>& selector);
+        // Visibility filter used while picking, typically the renderer's node/edge/face switches.
+        void bindVisibilityFilter(RE::ScenePicker::VisibilityFilter filter);
         void releaseResources();
 
         /// Mutex protecting the render data managed by this object. Handlers are
@@ -81,6 +85,9 @@ namespace EgLab::Platform
         void applyHEMeshHighlight(const HEMeshHighlightEvent& event);
         void updateViewDependentHighlights();
 
+        // ---- pick phase: query the scene and expose the highlight as a scene primitive ----
+        void applyPick(const PickEvent& event);
+
     private:
         struct MeshColor
         {
@@ -105,6 +112,8 @@ namespace EgLab::Platform
 
         Common::Return uploadRenderPacket(const MeshRenderEntry& entry);
         void updateMeshHighlight();
+        void clearPickHighlight();
+        void notifyPickCleared();
         void updateLocateHighlight();
         void updateElementsVisibility(const ElementsVisibilityEvent& event);
         void updateHEMeshHighlight(const HEMeshHighlightEvent& event);
@@ -121,6 +130,7 @@ namespace EgLab::Platform
         Common::SharedPtr<RE::Scene> _scene;
         Common::SharedPtr<RE::Camera> _camera;
         Common::SharedPtr<RE::MeshSelector> _meshSelector;
+        RE::ScenePicker::VisibilityFilter _visibilityFilter;
 
         Common::DynamicArray<MeshColor> _meshColors;
         Common::DynamicArray<MeshRenderEntry> _activeMeshes;
@@ -151,5 +161,7 @@ namespace EgLab::Platform
 
         Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _heMeshHighlightPrimitives;
         Common::SharedPtr<RE::Shader> _heMeshHighlightShader;
+
+        Common::SharedPtr<RE::RenderPrimitive> _pickHighlightPrimitive;
     };
 } // namespace EgLab::Platform

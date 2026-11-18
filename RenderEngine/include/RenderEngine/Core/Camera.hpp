@@ -141,6 +141,16 @@ namespace EgLab::RE
         {
             return _zoom;
         }
+        /// @brief Returns the viewport width the projection was built for.
+        unsigned int getViewportWidth() const
+        {
+            return _width;
+        }
+        /// @brief Returns the viewport height the projection was built for.
+        unsigned int getViewportHeight() const
+        {
+            return _height;
+        }
         /// @brief Returns the movement sensitivity multiplier.
         float getMoveSensitivity() const
         {

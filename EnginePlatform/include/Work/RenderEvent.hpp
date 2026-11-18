@@ -48,6 +48,7 @@ namespace EgLab::Platform
         Locate,
         ElementsVisibility,
         FitView,
+        Pick,
     };
 
     /// Polymorphic base for rendering change requests. Each concrete event type carries only
@@ -201,5 +202,22 @@ namespace EgLab::Platform
         }
 
         Common::SharedPtr<ME::Mesh> mesh;
+    };
+
+    /// Requests one pick query at a cursor position.
+    /// The handler inserts the resulting highlight primitive into the scene, so picking
+    /// output is rendered like any other scene content.
+    class PickEvent : public RenderEvent
+    {
+    public:
+        PickEvent() : RenderEvent(RenderEventType::Pick)
+        {
+        }
+
+        /// Cursor position in framebuffer pixels.
+        float x{0.0f};
+        float y{0.0f};
+        /// Kinds accepted by this query; 0 clears the current pick highlight.
+        uint32_t kinds{0};
     };
 } // namespace EgLab::Platform

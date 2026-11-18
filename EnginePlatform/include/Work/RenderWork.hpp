@@ -99,6 +99,10 @@ namespace EgLab::Platform
             return _pickManager;
         }
 
+        // Queues one pick query at a window-space cursor position. Used by features that need
+        // a pick even when no other feature acquired picking, such as the camera pivot.
+        void requestPick(float cursorX, float cursorY, uint32_t kinds);
+
         void fitView();
         void fitView(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
 
@@ -135,6 +139,17 @@ namespace EgLab::Platform
         void drainRenderEvents();
         void processRenderEvent(Common::SharedPtr<RenderEvent> event);
         void publishPickInfo(const RE::PrimitivePickInfo& info);
+        // Picking step of the render loop: turns cursor/feature requests into pick events.
+        void submitPickEvent();
+        void queuePickEvent(float framebufferX, float framebufferY, uint32_t kinds);
+
+    private:
+        struct PendingPick
+        {
+            float x{0.0f};
+            float y{0.0f};
+            uint32_t kinds{0};
+        };
 
     private:
         struct PickInfoSubscription
@@ -153,6 +168,10 @@ namespace EgLab::Platform
         Common::SharedPtr<EgLab::RE::Camera> _camera;
         Common::SharedPtr<EgLab::RE::MeshSelector> _meshSelector;
         RE::PickManager _pickManager;
+        std::mutex _pendingPickMutex;
+        PendingPick _pendingPick;
+        bool _hasPendingPick{false};
+        uint32_t _lastQueuedPickKinds{0};
 
         mutable std::mutex _pickInfoSubscriptionsMutex;
         Common::DynamicArray<Common::UniquePtr<PickInfoSubscription>> _pickInfoSubscriptions;

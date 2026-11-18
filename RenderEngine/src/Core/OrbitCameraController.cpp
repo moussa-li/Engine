@@ -13,6 +13,8 @@ namespace EgLab::RE
         // Vertical drag distance, in pixels, that equals one wheel step.
         constexpr float kZoomDragStepsPerPixel = 0.01f;
         constexpr float kMinZoom = 1e-4f;
+        // How long a local orbit waits for its pivot pick before falling back to the target.
+        constexpr float kLocalPivotTimeoutSeconds = 0.25f;
     } // namespace
 
     /**
@@ -31,6 +33,28 @@ namespace EgLab::RE
         if (_camera)
         {
             _camera->updateCameraTransition(deltaTime);
+        }
+
+        if (!_pendingLocalPivot)
+        {
+            return;
+        }
+
+        // The pivot pick runs on the render thread; wait a couple of frames for its result
+        // before giving up and rotating around the view target instead.
+        _pendingLocalPivotElapsed += deltaTime;
+        CoordType pivot;
+        if (_pivotProvider && _pivotProvider(pivot))
+        {
+            _activePivot = pivot;
+            _hasActivePivot = true;
+            _pendingLocalPivot = false;
+            return;
+        }
+
+        if (_pendingLocalPivotElapsed > kLocalPivotTimeoutSeconds)
+        {
+            _pendingLocalPivot = false;
         }
     }
 
@@ -55,6 +79,8 @@ namespace EgLab::RE
             _lastXPos = xpos;
             _lastYPos = ypos;
             _hasActivePivot = false;
+            _pendingLocalPivot = false;
+            _pendingLocalPivotElapsed = 0.0f;
 
             if (requested == CameraAction::RotateLocal)
             {
@@ -63,6 +89,13 @@ namespace EgLab::RE
                 {
                     _activePivot = pivot;
                     _hasActivePivot = true;
+                }
+                else if (_pivotRequester)
+                {
+                    // No feature is picking right now: request a pick at the cursor and wait
+                    // for its result before rotating around the picked mesh center.
+                    _pendingLocalPivot = true;
+                    _pivotRequester(xpos, ypos);
                 }
             }
             return true;
@@ -73,6 +106,7 @@ namespace EgLab::RE
             _activeAction = CameraAction::None;
             _activeButton = static_cast<int>(CameraMouseButton::None);
             _hasActivePivot = false;
+            _pendingLocalPivot = false;
         }
         return false;
     }
@@ -80,6 +114,13 @@ namespace EgLab::RE
     bool OrbitCameraController::processMouseMove(float xpos, float ypos)
     {
         if (_camera == nullptr) return false;
+
+        // A local orbit cannot rotate before its pivot pick resolved; keep the pending drag
+        // so the first accepted move applies the accumulated offset.
+        if (_activeAction == CameraAction::RotateLocal && !_hasActivePivot && _pendingLocalPivot)
+        {
+            return false;
+        }
 
         if (_lastXPos < 0.0f || _lastYPos < 0.0f)
         {
@@ -164,10 +205,14 @@ namespace EgLab::RE
         _camera->setRigth(orientation.rotateVector(CoordType(1.0f, 0.0f, 0.0f)));
         _camera->setUp(orientation.rotateVector(CoordType(0.0f, 1.0f, 0.0f)));
 
-        // Orbit the eye around the pivot and leave the target untouched: for the global
-        // gesture the pivot is the target, for the local gesture it is the picked mesh center.
-        const CoordType newPosition = pivot + rotation.rotateVector(_camera->getPosition() - pivot);
-        _camera->setPosition(newPosition);
+        // Orbit the eye around the pivot. The global gesture pivots around the target, while
+        // the local gesture pivots around the picked mesh center; in both cases the target is
+        // rotated rigidly with the eye so the global rotation (and pan/zoom) data that is
+        // derived from the target stays consistent afterwards.
+        const CoordType position = _camera->getPosition();
+        const CoordType target = _camera->getTarget();
+        _camera->setPosition(pivot + rotation.rotateVector(position - pivot));
+        _camera->setTarget(pivot + rotation.rotateVector(target - pivot));
         return true;
     }
 
@@ -223,6 +268,11 @@ namespace EgLab::RE
     void OrbitCameraController::setLocalPivotProvider(CameraPivotProvider provider)
     {
         _pivotProvider = Common::move(provider);
+    }
+
+    void OrbitCameraController::setLocalPivotRequester(CameraPivotRequester requester)
+    {
+        _pivotRequester = Common::move(requester);
     }
 
     void OrbitCameraController::setZoomAnchor(CameraZoomAnchor anchor)

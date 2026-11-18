@@ -408,6 +408,28 @@ namespace EgLab::Platform
         RenderDataManager& _data;
     };
 
+    class PickHandler : public IRenderEventHandler
+    {
+    public:
+        explicit PickHandler(RenderDataManager& data) : _data(data)
+        {
+        }
+
+        static Common::SharedPtr<IRenderEventHandler> create(RenderDataManager& data)
+        {
+            return Common::makeShared<PickHandler>(data);
+        }
+
+        Common::Return apply(const RenderEvent& event) override
+        {
+            _data.applyPick(static_cast<const PickEvent&>(event));
+            return Common::Return::Succeed;
+        }
+
+    private:
+        RenderDataManager& _data;
+    };
+
     using CreateFunc = Common::SharedPtr<IRenderEventHandler> (*)(RenderDataManager&);
 
     struct HandlerEntry
@@ -429,6 +451,7 @@ namespace EgLab::Platform
         {RenderEventType::Locate, &LocateHandler::create},
         {RenderEventType::ElementsVisibility, &ElementsVisibilityHandler::create},
         {RenderEventType::FitView, &FitViewHandler::create},
+        {RenderEventType::Pick, &PickHandler::create},
     };
 
     RenderEventHandlerFactory::RenderEventHandlerFactory(RenderDataManager& data) : _data(data)

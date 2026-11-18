@@ -4,8 +4,6 @@
 
 #include "RenderEngine/Core/Camera.hpp"
 #include "RenderEngine/Core/Entity.hpp"
-#include "RenderEngine/Core/MeshSelector.hpp"
-#include "RenderEngine/Core/PickManager.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"
 #include "RenderEngine/Core/RenderFace.hpp"
 #include "RenderEngine/Core/RenderLine.hpp"
@@ -96,42 +94,6 @@ namespace EgLab::RE
                        static_cast<GLsizei>(framebufferHeight));
             camera->setWH(framebufferWidth, framebufferHeight);
 
-            Scalar cursorX = 0.0f;
-            Scalar cursorY = 0.0f;
-            const bool selected = viewport.window->trySelectedPos(cursorX, cursorY);
-
-            // Picking only runs while a feature has acquired at least one pick kind.
-            const uint32_t pickMask =
-                _pickManager != nullptr ? _pickManager->activeKinds() : 0;
-            const bool pickingEnabled = pickMask != 0;
-            if (selected || (!pickingEnabled && _pickedPrimitive != nullptr))
-            {
-                _pickedPrimitive = nullptr;
-                _pickedNodeIndex = static_cast<IdxType>(-1);
-                if (_selector)
-                {
-                    _selector->processPick(nullptr, static_cast<IdxType>(-1));
-                }
-            }
-
-            unsigned int windowWidth = 0;
-            unsigned int windowHeight = 0;
-            viewport.window->getWindowSize(windowWidth, windowHeight);
-            if (windowWidth == 0 || windowHeight == 0)
-            {
-                continue;
-            }
-
-            PickContext pickContext;
-            pickContext.x = cursorX * static_cast<Scalar>(framebufferWidth) / windowWidth -
-                            static_cast<Scalar>(viewport.x);
-            pickContext.y = cursorY * static_cast<Scalar>(framebufferHeight) / windowHeight +
-                            static_cast<Scalar>(viewport.y);
-            pickContext.width = framebufferWidth;
-            pickContext.height = framebufferHeight;
-            pickContext.view = camera->view();
-            pickContext.projection = camera->perspective(scene->getBounds());
-
             Common::SharedPtr<Shader> highlightShader;
             ShaderLib::instance().getHighlightShader(highlightShader);
 
@@ -140,12 +102,14 @@ namespace EgLab::RE
                 const auto &shader = it.data().first;
                 const auto &primitives = it.data().second;
 
-                const bool deferredHighlight = shader == highlightShader;
-                if (!deferredHighlight)
+                if (shader == highlightShader)
                 {
-                    loadCamera(shader, camera, scene);
-                    loadLight(shader, camera);
+                    // Overlay primitives are drawn after the scene content below.
+                    continue;
                 }
+
+                loadCamera(shader, camera, scene);
+                loadLight(shader, camera);
 
                 for (auto primitiveIt = primitives.begin(); primitiveIt.hasNext();
                      primitiveIt.next())
@@ -154,24 +118,7 @@ namespace EgLab::RE
                     {
                         continue;
                     }
-                    if (!deferredHighlight)
-                    {
-                        primitiveIt.data()->draw(shader);
-                        if (selected && pickingEnabled &&
-                            isPickKindEnabled(pickMask, primitiveIt.data()->getPickKind()))
-                        {
-                            const IdxType nodeIndex = primitiveIt.data()->touch(pickContext);
-                            if (nodeIndex != static_cast<IdxType>(-1))
-                            {
-                                _pickedPrimitive = primitiveIt.data();
-                                _pickedNodeIndex = nodeIndex;
-                                if (_selector)
-                                {
-                                    _selector->processPick(_pickedPrimitive, _pickedNodeIndex);
-                                }
-                            }
-                        }
-                    }
+                    primitiveIt.data()->draw(shader);
                 }
             }
 
@@ -197,72 +144,12 @@ namespace EgLab::RE
                     break;
                 }
             }
-
-            if (_pickedPrimitive != nullptr && _pickedNodeIndex != static_cast<IdxType>(-1))
-            {
-                Common::DynamicArray<IdxType> highlightIndices;
-                if (_selector != nullptr)
-                {
-                    highlightIndices =
-                        _selector->getHighlightIndices(_pickedPrimitive, _pickedNodeIndex);
-                }
-                else
-                {
-                    highlightIndices.pushBack(_pickedNodeIndex);
-                }
-
-                for (auto it = renderBuckets.begin(); it.hasNext(); it.next())
-                {
-                    const auto &shader = it.data().first;
-                    const auto &primitives = it.data().second;
-                    for (auto primitiveIt = primitives.begin(); primitiveIt.hasNext();
-                         primitiveIt.next())
-                    {
-                        if (primitiveIt.data() == _pickedPrimitive &&
-                            isPrimitiveVisible(primitiveIt.data()))
-                        {
-                            for (IdxType index = 0; index < highlightIndices.size(); ++index)
-                            {
-                                primitiveIt.data()->drawHighlight(shader, highlightIndices[index]);
-                            }
-                        }
-                    }
-                }
-            }
         }
-    }
-
-    bool Renderer::tryGetPickedNode(Common::SharedPtr<RenderPrimitive> &primitive,
-                                    IdxType &nodeIndex) const
-    {
-        if (_pickedPrimitive == nullptr || _pickedNodeIndex == static_cast<IdxType>(-1))
-        {
-            return false;
-        }
-
-        primitive = _pickedPrimitive;
-        nodeIndex = _pickedNodeIndex;
-        return true;
     }
 
     Common::UniquePtr<RenderConfigure> &Renderer::getConfigure()
     {
         return _configure;
-    }
-
-    void Renderer::setSelector(Common::SharedPtr<Selector> selector)
-    {
-        _selector = Common::move(selector);
-    }
-
-    Common::SharedPtr<Selector> Renderer::getSelector() const
-    {
-        return _selector;
-    }
-
-    void Renderer::setPickManager(PickManager *pickManager)
-    {
-        _pickManager = pickManager;
     }
 
     void Renderer::setRenderNodesEnabled(bool enabled)
@@ -370,8 +257,6 @@ namespace EgLab::RE
 
     Renderer::Renderer() : _configure(Common::makeUnique<RenderConfigure>())
     {
-        auto meshSelector = Common::makeShared<MeshSelector>();
-        _selector = meshSelector;
         _backGroundColor = Common::Vector4f(1, 1, 1, 1);
     }
 
