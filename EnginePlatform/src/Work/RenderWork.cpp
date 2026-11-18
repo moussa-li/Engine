@@ -79,6 +79,7 @@ namespace EgLab::Platform
 
         _running = true;
         _thread = std::thread([this]() {
+            _renderThreadId.store(std::this_thread::get_id());
             UIWork::instance().start();
 
             while (_running.load())
@@ -167,6 +168,7 @@ namespace EgLab::Platform
         {
             _thread.join();
         }
+        _renderThreadId.store(std::thread::id());
         _renderEventBus.stop(true);
     }
 
@@ -208,6 +210,12 @@ namespace EgLab::Platform
         if (!_renderEventQueue.empty())
         {
             _renderEventsPending.store(true, std::memory_order_release);
+        }
+        // Keep producers from recording further events until the render loop has applied the
+        // pending batch. The gate is only ever closed while the loop runs: a dead render loop
+        // would never open it again and every producer would block forever.
+        if (_renderEventsPending.load(std::memory_order_acquire) && _running.load())
+        {
             _renderEventBus.setPushAllowed(false);
         }
         return Common::Return::Succeed;
@@ -499,10 +507,19 @@ namespace EgLab::Platform
         queuePickEvent(windowX * scaleX, windowY * scaleY, kinds);
     }
 
-    void RenderWork::queueRenderEvent(Common::SharedPtr<RenderEvent> event)    {
+    void RenderWork::queueRenderEvent(Common::SharedPtr<RenderEvent> event)
+    {
         auto command = Common::SharedPtr<ICommand>(
             Common::makeShared<RenderEventCommand>(this, Common::move(event)));
-        if (_renderEventBus.dispatch(command, true) != Common::Return::Succeed)
+        // The render loop is the only thread that drains the pending batch and re-opens the
+        // push gate, so it must never block on that gate: waiting here would stall the single
+        // thread able to release it and deadlock both sides. Render-thread requests are simply
+        // appended after the pending batch and applied by the next drain, which preserves the
+        // FIFO order of RenderDataManager handlers.
+        const bool isRenderThread =
+            _renderThreadId.load() == std::this_thread::get_id();
+        const bool waitForPushAllowed = !isRenderThread && _running.load();
+        if (_renderEventBus.dispatch(command, waitForPushAllowed) != Common::Return::Succeed)
         {
             LOG(WARNING)
                 << "RenderWork::queueRenderEvent() dropped event because its queue is stopped";

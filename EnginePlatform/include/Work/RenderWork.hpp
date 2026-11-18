@@ -243,6 +243,9 @@ namespace EgLab::Platform
         std::mutex _renderEventMutex;
         Common::DynamicArray<Common::SharedPtr<RenderEvent>> _renderEventQueue;
         std::atomic<bool> _renderEventsPending{false};
+        // Identity of the render loop thread: the only thread that drains the pending batch
+        // and therefore the only one allowed to release the render event push gate.
+        std::atomic<std::thread::id> _renderThreadId{};
 
         RenderDataManager _renderData;
         RenderEventHandlerFactory _handlerFactory;
