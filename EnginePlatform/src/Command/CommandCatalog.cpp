@@ -40,6 +40,13 @@ namespace EgLab::Platform
             {"ids", "Element Ids", ParamFieldType::String, 256, "1, 2, 3"},
         };
 
+        // ===== NodeVisibilityParam =====
+        const ParamFieldDesc kNodeVisibilityFields[] = {
+            {"nodeId", "Data Node Id", ParamFieldType::UInt64, 0, "Mesh data node id"},
+            {"mode", "Mode", ParamFieldType::UInt32, 0, "0=hide 1=show 2=show only 3=hide only"},
+            {"ids", "Node Ids", ParamFieldType::String, 256, "1, 2, 3"},
+        };
+
         // UpdateMesh carries a raw memory pointer (published directly by MeshEngine) and has no
         // fixed field layout, therefore it is not part of the command catalog.
         const CommandDesc kCommands[] = {
@@ -61,6 +68,9 @@ namespace EgLab::Platform
             {EventId::ElementsVisibility, "ElementsVisibility", "Elements Visibility",
              "Mesh", true, sizeof(ElementsVisibilityParam), kElementsVisibilityFields,
              sizeof(kElementsVisibilityFields) / sizeof(kElementsVisibilityFields[0])},
+            {EventId::NodeVisibility, "NodeVisibility", "Node Visibility", "Mesh", true,
+             sizeof(NodeVisibilityParam), kNodeVisibilityFields,
+             sizeof(kNodeVisibilityFields) / sizeof(kNodeVisibilityFields[0])},
             {EventId::CameraPan, "CameraPan", "Pan Camera", "Camera", false, 0, nullptr, 0, true,
              true},
             {EventId::CameraRotate, "CameraRotate", "Rotate Camera", "Camera", false, 0, nullptr,

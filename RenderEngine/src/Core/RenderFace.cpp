@@ -322,6 +322,196 @@ namespace EgLab::RE
         return touchedIndex;
     }
 
+    void RenderFace::touchRect(const RectPickContext &context,
+                               Common::DynamicArray<IdxType> &outIndices) const
+    {
+        if (context.width == 0 || context.height == 0 || _indices.size() < 3)
+        {
+            return;
+        }
+
+        context.prepare();
+
+        // Project every vertex once: neighbouring triangles share vertices, so projecting per
+        // triangle would repeat most of the work on dense meshes.
+        const size_t vertexCount = _vertices.size();
+        Common::DynamicArray<PickUtils::ScreenPoint> screenPoints;
+        Common::DynamicArray<uint8_t> valid;
+        screenPoints.resize(vertexCount);
+        valid.resize(vertexCount);
+        Scalar boundsMinX = std::numeric_limits<Scalar>::max();
+        Scalar boundsMinY = std::numeric_limits<Scalar>::max();
+        Scalar boundsMaxX = -std::numeric_limits<Scalar>::max();
+        Scalar boundsMaxY = -std::numeric_limits<Scalar>::max();
+        bool hasVisibleVertex = false;
+        for (size_t index = 0; index < vertexCount; ++index)
+        {
+            valid[index] = 0;
+            PickUtils::ScreenPoint point;
+            if (!context.project(_vertices[index], point))
+            {
+                continue;
+            }
+            screenPoints[index] = point;
+            valid[index] = 1;
+            hasVisibleVertex = true;
+            boundsMinX = point.x < boundsMinX ? point.x : boundsMinX;
+            boundsMinY = point.y < boundsMinY ? point.y : boundsMinY;
+            boundsMaxX = point.x > boundsMaxX ? point.x : boundsMaxX;
+            boundsMaxY = point.y > boundsMaxY ? point.y : boundsMaxY;
+        }
+        if (!hasVisibleVertex)
+        {
+            return;
+        }
+        if (boundsMaxX < context.minX || boundsMinX > context.maxX || boundsMaxY < context.minY ||
+            boundsMinY > context.maxY)
+        {
+            return;
+        }
+
+        const size_t triangleCount = _indices.size() / 3;
+        if (context.containsOnly && boundsMinX >= context.minX && boundsMaxX <= context.maxX &&
+            boundsMinY >= context.minY && boundsMaxY <= context.maxY)
+        {
+            // Every projected vertex is inside the rectangle, so every triangle is selected.
+            outIndices.reserve(outIndices.size() + triangleCount);
+            for (size_t triangle = 0; triangle < triangleCount; ++triangle)
+            {
+                outIndices.pushBack(static_cast<IdxType>(triangle));
+            }
+            return;
+        }
+
+        for (size_t index = 0; index + 2 < _indices.size(); index += 3)
+        {
+            const IdxType index0 = _indices[index];
+            const IdxType index1 = _indices[index + 1];
+            const IdxType index2 = _indices[index + 2];
+            if (index0 >= vertexCount || index1 >= vertexCount || index2 >= vertexCount)
+            {
+                continue;
+            }
+            if (valid[index0] == 0 || valid[index1] == 0 || valid[index2] == 0)
+            {
+                continue;
+            }
+
+            const PickUtils::ScreenPoint &point0 = screenPoints[index0];
+            const PickUtils::ScreenPoint &point1 = screenPoints[index1];
+            const PickUtils::ScreenPoint &point2 = screenPoints[index2];
+
+            // Cheap bounding-box rejection before the exact triangle tests.
+            const Scalar triangleMinX =
+                point0.x < point1.x ? (point0.x < point2.x ? point0.x : point2.x)
+                                    : (point1.x < point2.x ? point1.x : point2.x);
+            const Scalar triangleMaxX =
+                point0.x > point1.x ? (point0.x > point2.x ? point0.x : point2.x)
+                                    : (point1.x > point2.x ? point1.x : point2.x);
+            if (triangleMaxX < context.minX || triangleMinX > context.maxX)
+            {
+                continue;
+            }
+            const Scalar triangleMinY =
+                point0.y < point1.y ? (point0.y < point2.y ? point0.y : point2.y)
+                                    : (point1.y < point2.y ? point1.y : point2.y);
+            const Scalar triangleMaxY =
+                point0.y > point1.y ? (point0.y > point2.y ? point0.y : point2.y)
+                                    : (point1.y > point2.y ? point1.y : point2.y);
+            if (triangleMaxY < context.minY || triangleMinY > context.maxY)
+            {
+                continue;
+            }
+
+            bool matched = false;
+            if (context.containsOnly)
+            {
+                matched = context.contains(point0.x, point0.y) &&
+                          context.contains(point1.x, point1.y) &&
+                          context.contains(point2.x, point2.y);
+            }
+            else
+            {
+                matched = context.triangleIntersects(point0.x, point0.y, point1.x, point1.y,
+                                                     point2.x, point2.y);
+            }
+
+            if (matched)
+            {
+                outIndices.pushBack(static_cast<IdxType>(index / 3));
+            }
+        }
+    }
+
+    void RenderFace::drawHighlightBatch(Common::SharedPtr<Shader> shader,
+                                        const Common::DynamicArray<IdxType> &indices)
+    {
+        if (indices.empty() || _colorSSBO == 0)
+        {
+            return;
+        }
+
+        const size_t triangleCount = _indices.size() / 3;
+        if (triangleCount == 0)
+        {
+            return;
+        }
+
+        GLint previousDepthFunction = GL_LESS;
+        GLboolean previousDepthMask = GL_TRUE;
+        glGetIntegerv(GL_DEPTH_FUNC, &previousDepthFunction);
+        glGetBooleanv(GL_DEPTH_WRITEMASK, &previousDepthMask);
+        glDepthFunc(GL_LEQUAL);
+        glDepthMask(GL_FALSE);
+        glEnable(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(-1.0f, -1.0f);
+
+        shader->bind();
+        shader->setUniform1i("isPureColor", 1);
+        shader->setUniform4f("u_Color", Common::Vector4f(1.0f, 0.28f, 0.04f, 1.0f));
+        if (_highlightScaleEnabled)
+        {
+            shader->setUniformMat4f("scale", _highlightScaleMatrix);
+        }
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, COLOR_SSBO_BINDING, _colorSSBO);
+        _vertexArray->bind();
+        _indexBuffer->bind();
+
+        // Consecutive indices become one range draw, so selecting a whole mesh costs a single
+        // draw call instead of one per triangle.
+        size_t runStart = 0;
+        while (runStart < indices.size())
+        {
+            size_t runEnd = runStart + 1;
+            while (runEnd < indices.size() && indices[runEnd] == indices[runEnd - 1] + 1)
+            {
+                ++runEnd;
+            }
+
+            const size_t first = static_cast<size_t>(indices[runStart]);
+            if (first < triangleCount)
+            {
+                size_t count = runEnd - runStart;
+                if (first + count > triangleCount)
+                {
+                    count = triangleCount - first;
+                }
+                glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(count * 3), GL_UNSIGNED_INT,
+                               reinterpret_cast<const void *>(first * 3 * sizeof(IdxType)));
+            }
+            runStart = runEnd;
+        }
+
+        _vertexArray->unBind();
+        _indexBuffer->unBind();
+        shader->setUniform1i("isPureColor", 0);
+        shader->unBind();
+
+        glDisable(GL_POLYGON_OFFSET_FILL);
+        glDepthMask(previousDepthMask);
+        glDepthFunc(static_cast<GLenum>(previousDepthFunction));
+    }
+
     void RenderFace::setNodes(Common::DynamicArray<CoordType> &&nodes)
     {
         _vertices = Common::move(nodes);
@@ -420,7 +610,7 @@ namespace EgLab::RE
         translateBack[1][3] = -center.y();
         translateBack[2][3] = -center.z();
 
-        _highlightScaleMatrix = translateBack * scaleByFactor * translateToCenter;
+        _highlightScaleMatrix = translateToCenter * scaleByFactor * translateBack;
     }
 
     void RenderFace::uploadColors()

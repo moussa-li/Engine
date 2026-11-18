@@ -385,6 +385,94 @@ namespace EgLab::Platform
         RenderDataManager& _data;
     };
 
+    class NodeVisibilityHandler : public IRenderEventHandler
+    {
+    public:
+        explicit NodeVisibilityHandler(RenderDataManager& data) : _data(data)
+        {
+        }
+
+        static Common::SharedPtr<IRenderEventHandler> create(RenderDataManager& data)
+        {
+            return Common::makeShared<NodeVisibilityHandler>(data);
+        }
+
+        Common::Return apply(const RenderEvent& event) override
+        {
+            _data.applyNodeVisibility(static_cast<const NodeVisibilityEvent&>(event));
+            return Common::Return::Succeed;
+        }
+
+    private:
+        RenderDataManager& _data;
+    };
+
+    class BoxSelectionHandler : public IRenderEventHandler
+    {
+    public:
+        explicit BoxSelectionHandler(RenderDataManager& data) : _data(data)
+        {
+        }
+
+        static Common::SharedPtr<IRenderEventHandler> create(RenderDataManager& data)
+        {
+            return Common::makeShared<BoxSelectionHandler>(data);
+        }
+
+        Common::Return apply(const RenderEvent& event) override
+        {
+            _data.applyBoxSelection(static_cast<const BoxSelectEvent&>(event));
+            return Common::Return::Succeed;
+        }
+
+    private:
+        RenderDataManager& _data;
+    };
+
+    class PointSelectionHandler : public IRenderEventHandler
+    {
+    public:
+        explicit PointSelectionHandler(RenderDataManager& data) : _data(data)
+        {
+        }
+
+        static Common::SharedPtr<IRenderEventHandler> create(RenderDataManager& data)
+        {
+            return Common::makeShared<PointSelectionHandler>(data);
+        }
+
+        Common::Return apply(const RenderEvent& event) override
+        {
+            _data.applyPointSelection(static_cast<const PointSelectEvent&>(event));
+            return Common::Return::Succeed;
+        }
+
+    private:
+        RenderDataManager& _data;
+    };
+
+    class ClearSelectionHandler : public IRenderEventHandler
+    {
+    public:
+        explicit ClearSelectionHandler(RenderDataManager& data) : _data(data)
+        {
+        }
+
+        static Common::SharedPtr<IRenderEventHandler> create(RenderDataManager& data)
+        {
+            return Common::makeShared<ClearSelectionHandler>(data);
+        }
+
+        Common::Return apply(const RenderEvent&) override
+        {
+            _data.applyClearSelection();
+            return Common::Return::Succeed;
+        }
+
+    private:
+        RenderDataManager& _data;
+    };
+
     class FitViewHandler : public IRenderEventHandler
     {
     public:
@@ -450,6 +538,10 @@ namespace EgLab::Platform
         {RenderEventType::HEMeshHighlight, &HEMeshHighlightHandler::create},
         {RenderEventType::Locate, &LocateHandler::create},
         {RenderEventType::ElementsVisibility, &ElementsVisibilityHandler::create},
+        {RenderEventType::NodeVisibility, &NodeVisibilityHandler::create},
+        {RenderEventType::BoxSelection, &BoxSelectionHandler::create},
+        {RenderEventType::PointSelection, &PointSelectionHandler::create},
+        {RenderEventType::ClearSelection, &ClearSelectionHandler::create},
         {RenderEventType::FitView, &FitViewHandler::create},
         {RenderEventType::Pick, &PickHandler::create},
     };

@@ -22,6 +22,7 @@
 #include "Work/RenderDataManager.hpp"
 #include "Work/RenderEvent.hpp"
 #include "Work/RenderEventHandler.hpp"
+#include "Work/SelectionModel.hpp"
 
 namespace EgLab::ME
 {
@@ -41,6 +42,20 @@ namespace EgLab::RE
 namespace EgLab::Platform
 {
     using PickInfoSubscriptionId = uint64_t;
+    using SelectionChangedSubscriptionId = uint64_t;
+
+    /// Selection counts published to panels after a selection change. The payload is POD so it
+    /// can travel through Common::MemoryQueue without blocking the render thread.
+    struct SelectionChangedInfo
+    {
+        uint64_t revision{0};
+        uint64_t nodeCount{0};
+        uint64_t elementCount{0};
+    };
+
+    static_assert(std::is_trivially_copyable<SelectionChangedInfo>::value,
+                  "SelectionChangedInfo must be trivially copyable");
+
     enum class PickedMeshKind : uint32_t
     {
         None,
@@ -124,6 +139,32 @@ namespace EgLab::Platform
         void setElementsVisibility(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
                                    uint32_t mode,
                                    const Common::DynamicArray<uint32_t>& elementIds);
+        // Changes node visibility of one mesh with the same mode semantics as elements.
+        void setNodeVisibility(const Common::SharedPtr<EgLab::ME::Mesh>& mesh, uint32_t mode,
+                               const Common::DynamicArray<uint32_t>& nodeIds);
+
+        // ---- rubber-band selection -------------------------------------------------------
+        // These settings are render-thread confined: the UI panel and the render loop run on
+        // the same thread in EnginePlatform.
+        void setSelectionScope(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
+        void setSelectionContainsOnly(bool containsOnly);
+        bool isSelectionContainsOnly() const;
+        // Queues a rectangle selection. Coordinates are framebuffer pixels with a top-left
+        // origin; the render loop resolves entities and rebuilds the selection highlight.
+        void requestBoxSelection(float minX, float minY, float maxX, float maxY,
+                                 unsigned int width, unsigned int height, bool additive,
+                                 uint32_t kinds);
+        // Queues a single point selection at a framebuffer cursor position.
+        void requestPointSelection(float x, float y, unsigned int width, unsigned int height,
+                                   bool additive, uint32_t kinds);
+        void requestClearSelection();
+        void copySelectionSnapshot(SelectionSnapshot& snapshot) const;
+
+        // Selection change notifications, consumed by the ElementVisibilityPanel.
+        SelectionChangedSubscriptionId subscribeSelectionChanged();
+        void unsubscribeSelectionChanged(SelectionChangedSubscriptionId subscriptionId);
+        bool tryReceiveSelectionChanged(SelectionChangedSubscriptionId subscriptionId,
+                                        SelectionChangedInfo& info);
         void setHighlightColor(const Common::Vector4f& color);
         void setNodePointSize(float pointSize);
         void setLineWidth(float lineWidth);
@@ -142,6 +183,7 @@ namespace EgLab::Platform
         // Picking step of the render loop: turns cursor/feature requests into pick events.
         void submitPickEvent();
         void queuePickEvent(float framebufferX, float framebufferY, uint32_t kinds);
+        void publishSelectionInfoIfChanged();
 
     private:
         struct PendingPick
@@ -155,6 +197,14 @@ namespace EgLab::Platform
         struct PickInfoSubscription
         {
             PickInfoSubscriptionId id{0};
+            Common::UniquePtr<Common::MemoryQueue> queue;
+            Common::UniquePtr<Common::Publisher> publisher;
+            Common::UniquePtr<Common::Subscriber> subscriber;
+        };
+
+        struct SelectionInfoSubscription
+        {
+            SelectionChangedSubscriptionId id{0};
             Common::UniquePtr<Common::MemoryQueue> queue;
             Common::UniquePtr<Common::Publisher> publisher;
             Common::UniquePtr<Common::Subscriber> subscriber;
@@ -180,6 +230,15 @@ namespace EgLab::Platform
         bool _hasPublishedPickInfo{false};
         Common::SharedPtr<ME::Mesh> _pickedMesh;
         bool _hasPickedMesh{false};
+
+        Common::DynamicArray<Common::UniquePtr<SelectionInfoSubscription>>
+            _selectionInfoSubscriptions;
+        SelectionChangedSubscriptionId _nextSelectionInfoSubscriptionId{1};
+        SelectionChangedInfo _lastSelectionChangedInfo;
+        uint64_t _lastPublishedSelectionRevision{0};
+        bool _hasPublishedSelectionInfo{false};
+        Common::SharedPtr<ME::Mesh> _selectionScopeMesh;
+        bool _selectionContainsOnly{true};
 
         std::mutex _renderEventMutex;
         Common::DynamicArray<Common::SharedPtr<RenderEvent>> _renderEventQueue;

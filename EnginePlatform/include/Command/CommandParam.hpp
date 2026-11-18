@@ -53,13 +53,26 @@ namespace EgLab::Platform
     // Visibility: shows or hides elements of one mesh. The mode field selects the operation:
     // 0 = hide the given ids, 1 = show the given ids, 2 = show only the given ids (hide the
     // rest), 3 = hide only the given ids (show the rest). For modes 1/3 an empty id list shows
-    // all elements. elementIds is dynamically allocated and owned by the command.
+    // all elements; for mode 2 an empty id list hides every element. elementIds is dynamically
+    // allocated and owned by the command.
     struct ElementsVisibilityParam
     {
         uint64_t dataNodeId;
         uint32_t mode;
         uint32_t count;
         uint32_t* elementIds;
+    };
+
+    // Node visibility: shows or hides nodes of one mesh. The mode field follows the element
+    // visibility semantics: 0 = hide, 1 = show, 2 = show only, 3 = hide only. For modes 1/3 an
+    // empty id list shows all nodes; for mode 2 an empty id list hides every node. nodeIds is
+    // dynamically allocated and owned by the command.
+    struct NodeVisibilityParam
+    {
+        uint64_t dataNodeId;
+        uint32_t mode;
+        uint32_t count;
+        uint32_t* nodeIds;
     };
 
     static_assert(std::is_trivially_copyable<ShowPanelParam>::value,
@@ -74,5 +87,9 @@ namespace EgLab::Platform
                   "HighlightParam must be trivially copyable");
     static_assert(std::is_trivially_copyable<LocateElementsParam>::value,
                   "LocateElementsParam must be trivially copyable");
+    static_assert(std::is_trivially_copyable<ElementsVisibilityParam>::value,
+                  "ElementsVisibilityParam must be trivially copyable");
+    static_assert(std::is_trivially_copyable<NodeVisibilityParam>::value,
+                  "NodeVisibilityParam must be trivially copyable");
 
 } // namespace EgLab::Platform

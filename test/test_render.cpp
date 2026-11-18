@@ -1,4 +1,4 @@
-﻿#include "test_render.h"
+#include "test_render.h"
 
 #include <GLFW/glfw3.h>
 
@@ -85,8 +85,7 @@ public:
         static float orbitSensitivity = 1;
         ImGui::SliderFloat("Mouse Sensitivity", &mouseSensitivity, 1.f, 5.f, "%.2f");
 
-        // 4. 鏄剧ず褰撳墠鍊硷紝鏂逛究璋冭瘯
-        ImGui::Text("Current Sensitivity: %.2f", mouseSensitivity);
+        // 4. 鏄剧ず褰撳墠鍊硷紝鏂逛究璋冭�?        ImGui::Text("Current Sensitivity: %.2f", mouseSensitivity);
 
         ImGui::SliderFloat("Zoom Speed", &zoomSpeed, 1.1f, 5.f, "%.2f");
 
@@ -102,7 +101,7 @@ public:
         controller->setZoomSpeed(zoomSpeed);
         controller->setOrbitSensitivity(orbitSensitivity * 0.01f);
 
-        // 娓叉煋 UI
+        // 娓叉�?UI
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -279,8 +278,11 @@ TEST_F(TestRender, line)
     EgLab::RE::ShaderLib::instance().getNodeShader(shader);
     app.scene->addPrimitive(shader, v);
 
+    EgLab::Common::DynamicArray<EgLab::RE::CoordType> lineCoords;
+    lineCoords.pushBack(coord);
+    lineCoords.pushBack(coord1);
     auto l = EgLab::Common::makeShared<EgLab::RE::RenderLine>();
-    l->setNodes(EgLab::Common::move(coords));
+    l->setNodes(EgLab::Common::move(lineCoords));
     EgLab::Common::DynamicArray<EgLab::RE::IdxType> idxs;
     idxs.pushBack(0);
     idxs.pushBack(1);
@@ -368,6 +370,127 @@ TEST_F(TestRender, renderFaceTouch)
     EXPECT_EQ(nearerLine.touch(depthContext), 0u);
 }
 
+TEST_F(TestRender, node_touchRect_respects_hidden_nodes)
+{
+    EgLab::RE::RenderNode node;
+    EgLab::Common::DynamicArray<EgLab::RE::CoordType> vertices;
+    vertices.pushBack(EgLab::RE::CoordType(-0.5f, 0.5f, 0.0f));  // screen (25, 25)
+    vertices.pushBack(EgLab::RE::CoordType(0.5f, 0.5f, 0.0f));   // screen (75, 25)
+    vertices.pushBack(EgLab::RE::CoordType(0.5f, -0.5f, 0.0f));  // screen (75, 75)
+    node.setNodes(EgLab::Common::move(vertices));
+
+    EgLab::RE::RectPickContext context;
+    context.width = 100;
+    context.height = 100;
+    context.view = EgLab::Common::Matrix4f::Identity();
+    context.projection = EgLab::Common::Matrix4f::Identity();
+    context.minX = 0.0f;
+    context.minY = 0.0f;
+    context.maxX = 50.0f;
+    context.maxY = 50.0f;
+
+    EgLab::Common::DynamicArray<EgLab::RE::IdxType> indices;
+    node.touchRect(context, indices);
+    ASSERT_EQ(indices.size(), 1u);
+    EXPECT_EQ(indices[0], 0u);
+
+    EgLab::Common::HashSet<EgLab::RE::IdxType> hiddenNodes;
+    hiddenNodes.insert(0);
+    node.setHiddenNodes(hiddenNodes);
+
+    indices.clear();
+    node.touchRect(context, indices);
+    EXPECT_TRUE(indices.empty());
+
+    EgLab::RE::PickContext pickContext;
+    pickContext.width = 100;
+    pickContext.height = 100;
+    pickContext.x = 25.0f;
+    pickContext.y = 25.0f;
+    pickContext.view = EgLab::Common::Matrix4f::Identity();
+    pickContext.projection = EgLab::Common::Matrix4f::Identity();
+    EXPECT_EQ(node.touch(pickContext), static_cast<EgLab::RE::IdxType>(-1));
+}
+
+TEST_F(TestRender, line_touchRect_honours_contains_only)
+{
+    EgLab::RE::RenderLine line;
+    EgLab::Common::DynamicArray<EgLab::RE::CoordType> vertices;
+    vertices.pushBack(EgLab::RE::CoordType(-0.5f, 0.0f, 0.0f)); // screen (25, 50)
+    vertices.pushBack(EgLab::RE::CoordType(0.0f, 0.0f, 0.0f));  // screen (50, 50)
+    line.setNodes(EgLab::Common::move(vertices));
+    EgLab::Common::DynamicArray<EgLab::RE::IdxType> indices;
+    indices.pushBack(0);
+    indices.pushBack(1);
+    line.setIndices(EgLab::Common::move(indices));
+
+    EgLab::RE::RectPickContext context;
+    context.width = 100;
+    context.height = 100;
+    context.view = EgLab::Common::Matrix4f::Identity();
+    context.projection = EgLab::Common::Matrix4f::Identity();
+    context.minX = 30.0f;
+    context.minY = 40.0f;
+    context.maxX = 70.0f;
+    context.maxY = 60.0f;
+    context.containsOnly = false;
+
+    EgLab::Common::DynamicArray<EgLab::RE::IdxType> hits;
+    line.touchRect(context, hits);
+    ASSERT_EQ(hits.size(), 1u);
+    EXPECT_EQ(hits[0], 0u);
+
+    hits.clear();
+    context.containsOnly = true;
+    line.touchRect(context, hits);
+    EXPECT_TRUE(hits.empty());
+}
+
+TEST_F(TestRender, face_touchRect_supports_contains_and_intersect)
+{
+    EgLab::RE::RenderFace face;
+    EgLab::Common::DynamicArray<EgLab::RE::CoordType> vertices;
+    vertices.pushBack(EgLab::RE::CoordType(-0.5f, -0.5f, 0.0f)); // screen (25, 75)
+    vertices.pushBack(EgLab::RE::CoordType(0.5f, -0.5f, 0.0f));  // screen (75, 75)
+    vertices.pushBack(EgLab::RE::CoordType(0.0f, 0.5f, 0.0f));   // screen (50, 25)
+    face.setNodes(EgLab::Common::move(vertices));
+    EgLab::Common::DynamicArray<EgLab::RE::IdxType> indices;
+    indices.pushBack(0);
+    indices.pushBack(1);
+    indices.pushBack(2);
+    face.setIndices(EgLab::Common::move(indices));
+
+    EgLab::RE::RectPickContext context;
+    context.width = 100;
+    context.height = 100;
+    context.view = EgLab::Common::Matrix4f::Identity();
+    context.projection = EgLab::Common::Matrix4f::Identity();
+    context.minX = 0.0f;
+    context.minY = 0.0f;
+    context.maxX = 100.0f;
+    context.maxY = 100.0f;
+
+    EgLab::Common::DynamicArray<EgLab::RE::IdxType> hits;
+    face.touchRect(context, hits);
+    ASSERT_EQ(hits.size(), 1u);
+    EXPECT_EQ(hits[0], 0u);
+
+    // A small rectangle around the top vertex only intersects the face.
+    context.minX = 45.0f;
+    context.minY = 20.0f;
+    context.maxX = 55.0f;
+    context.maxY = 30.0f;
+    context.containsOnly = true;
+    hits.clear();
+    face.touchRect(context, hits);
+    EXPECT_TRUE(hits.empty());
+
+    context.containsOnly = false;
+    face.touchRect(context, hits);
+    ASSERT_EQ(hits.size(), 1u);
+    EXPECT_EQ(hits[0], 0u);
+}
+
 TEST_F(TestRender, face)
 {
     SimpleApp app;
@@ -392,8 +515,11 @@ TEST_F(TestRender, face)
     EgLab::RE::ShaderLib::instance().getNodeShader(shader);
     app.scene->addPrimitive(shader, v);
 
+    EgLab::Common::DynamicArray<EgLab::RE::CoordType> lineCoords;
+    lineCoords.pushBack(coord);
+    lineCoords.pushBack(coord1);
     auto l = EgLab::Common::makeShared<EgLab::RE::RenderLine>();
-    l->setNodes(EgLab::Common::move(coords));
+    l->setNodes(EgLab::Common::move(lineCoords));
     EgLab::Common::DynamicArray<EgLab::RE::IdxType> idxs;
     idxs.pushBack(0);
     idxs.pushBack(1);
@@ -855,4 +981,64 @@ TEST_F(TestRender, pick_priority_prefers_node_then_edge_then_face)
     EgLab::RE::PickContext depthWins = makeContext();
     EXPECT_EQ(face.touch(depthWins), 0u);
     EXPECT_EQ(farNode.touch(depthWins), static_cast<EgLab::RE::IdxType>(-1));
+}
+
+TEST_F(TestRender, rect_pick_projects_with_real_camera_matrices)
+{
+    EgLab::RE::Camera camera(800, 600, EgLab::RE::CoordType(0.0f, 0.0f, 1000.0f));
+
+    EgLab::RE::RenderFace face;
+    EgLab::Common::DynamicArray<EgLab::RE::CoordType> vertices;
+    vertices.pushBack(EgLab::RE::CoordType(-1.0f, -1.0f, 0.0f));
+    vertices.pushBack(EgLab::RE::CoordType(1.0f, -1.0f, 0.0f));
+    vertices.pushBack(EgLab::RE::CoordType(0.0f, 1.0f, 0.0f));
+    face.setNodes(EgLab::Common::move(vertices));
+    EgLab::Common::DynamicArray<EgLab::RE::IdxType> indices;
+    indices.pushBack(0);
+    indices.pushBack(1);
+    indices.pushBack(2);
+    face.setIndices(EgLab::Common::move(indices));
+
+    EgLab::Common::BBox<EgLab::RE::Scalar, 3> bounds = face.getBounds();
+
+    EgLab::RE::RectPickContext context;
+    context.width = 800;
+    context.height = 600;
+    context.view = camera.view();
+    context.projection = camera.perspective(bounds);
+    context.containsOnly = true;
+
+    // The whole viewport contains the triangle.
+    context.minX = 0.0f;
+    context.minY = 0.0f;
+    context.maxX = 800.0f;
+    context.maxY = 600.0f;
+    EgLab::Common::DynamicArray<EgLab::RE::IdxType> hits;
+    face.touchRect(context, hits);
+    ASSERT_EQ(hits.size(), 1u);
+    EXPECT_EQ(hits[0], 0u);
+
+    // A rectangle away from the projected triangle misses it.
+    context.minX = 0.0f;
+    context.minY = 0.0f;
+    context.maxX = 10.0f;
+    context.maxY = 10.0f;
+    hits.clear();
+    face.touchRect(context, hits);
+    EXPECT_TRUE(hits.empty());
+
+    // Point picking over the projected centre of the triangle hits the same face.
+    EgLab::RE::PickUtils::ScreenPoint center;
+    ASSERT_TRUE(context.project(EgLab::RE::CoordType(0.0f, -0.25f, 0.0f), center));
+    EXPECT_NEAR(center.x, 400.0f, 1.0f);
+    EXPECT_NEAR(center.y, 300.0f + 0.25f / camera.getZoom() * 300.0f, 1.0f);
+
+    EgLab::RE::PickContext pickContext;
+    pickContext.width = 800;
+    pickContext.height = 600;
+    pickContext.view = context.view;
+    pickContext.projection = context.projection;
+    pickContext.x = center.x;
+    pickContext.y = center.y;
+    EXPECT_EQ(face.touch(pickContext), 0u);
 }

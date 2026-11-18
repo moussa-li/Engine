@@ -21,6 +21,8 @@ namespace EgLab::Platform
         MeshPickInfo = 200004,
         LocateElements = 200005,
         ElementsVisibility = 200006,
+        NodeVisibility = 200007,
+        SelectionChanged = 200008,
         CameraPan = 300001, // Camera = 3xxxxx
         CameraRotate = 300002,
         CameraRotateLocal = 300003,

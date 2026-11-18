@@ -30,6 +30,10 @@ namespace EgLab::RE
         void bind() const;
         /// @brief Unbinds the current vertex buffer.
         void unbind() const;
+        /// @brief Replaces the contents of the buffer without changing its handle.
+        /// @param data Source data.
+        /// @param size Size of the source data in bytes.
+        void setData(const void* data, size_t size);
 
     private:
         class Impl;

@@ -111,5 +111,8 @@
         "debug": "win-clangd-debug-test"
     },
     "C_Cpp.errorSquiggles": "disabled",
-    "svn.ignoreMissingSvnWarning": true
+    "svn.ignoreMissingSvnWarning": true,
+    "chat.tools.terminal.autoApprove": {
+        "cmake": true
+    }
 }

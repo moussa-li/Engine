@@ -6,6 +6,7 @@
 #include "MeshEngine/Algorithm/ExtractSilhouette.hpp"
 #include "MeshEngine/MeshData/HEMesh.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
+#include "MeshEngine/MeshData/MeshVisibility.hpp"
 #include "RenderEngine/Core/Camera.hpp"
 #include "RenderEngine/Core/MeshPrimitiveCreator.hpp"
 #include "RenderEngine/Core/MeshSelector.hpp"
@@ -45,11 +46,16 @@ namespace EgLab::Platform
     void RenderDataManager::releaseResources()
     {
         clearPickHighlight();
+        clearSelectionHighlight();
         _visibilityFilter = nullptr;
 
         _activeMeshes.clear();
         _meshColors.clear();
         _elementVisibilityStates.clear();
+        _nodeVisibilityStates.clear();
+        _selection.clear();
+        _selectionHighlightPrimitives.clear();
+        _selectionHighlightShader = nullptr;
         _removedMeshes.clear();
         _requestedHighlightedMeshes.clear();
         _activeHighlightedMeshes.clear();
@@ -71,6 +77,16 @@ namespace EgLab::Platform
     std::mutex& RenderDataManager::stateMutex() const
     {
         return _renderStateMutex;
+    }
+
+    void RenderDataManager::getSelectionSnapshot(SelectionSnapshot& snapshot) const
+    {
+        _selection.getSnapshot(snapshot);
+    }
+
+    uint64_t RenderDataManager::getSelectionRevision() const
+    {
+        return _selection.revision();
     }
 
     bool RenderDataManager::recordMeshColor(const Common::SharedPtr<ME::Mesh>& mesh,
@@ -131,7 +147,19 @@ namespace EgLab::Platform
                 }
             }
             _elementVisibilityStates = Common::move(remainingVisibilityStates);
+
+            Common::DynamicArray<MeshNodeVisibilityState> remainingNodeStates;
+            for (const auto& state : _nodeVisibilityStates)
+            {
+                if (state.mesh != mesh)
+                {
+                    remainingNodeStates.pushBack(state);
+                }
+            }
+            _nodeVisibilityStates = Common::move(remainingNodeStates);
         }
+
+        _selection.removeMesh(mesh);
         return true;
     }
 
@@ -386,6 +414,10 @@ namespace EgLab::Platform
             {
                 updateLocateHighlight();
             }
+
+            applyNodeVisibilityToPrimitive(entry.mesh);
+            _selection.pruneMesh(entry.mesh);
+            updateSelectionHighlight();
         }
         return result;
     }
@@ -443,6 +475,21 @@ namespace EgLab::Platform
         }
         _activeMeshes = Common::move(remainingEntries);
 
+        _selection.removeMesh(mesh);
+        MeshNodeVisibilityState* nodeState = findNodeVisibilityState(mesh);
+        if (nodeState != nullptr)
+        {
+            Common::DynamicArray<MeshNodeVisibilityState> remainingNodeStates;
+            for (const auto& state : _nodeVisibilityStates)
+            {
+                if (state.mesh != mesh)
+                {
+                    remainingNodeStates.pushBack(state);
+                }
+            }
+            _nodeVisibilityStates = Common::move(remainingNodeStates);
+        }
+
         if (_locateMesh && _locateMesh == mesh)
         {
             Common::SharedPtr<RE::Shader> highlightShader;
@@ -458,6 +505,7 @@ namespace EgLab::Platform
             _locateTargetMesh = nullptr;
         }
         updateMeshHighlight();
+        updateSelectionHighlight();
     }
 
     void RenderDataManager::applyHighlight()
@@ -521,6 +569,195 @@ namespace EgLab::Platform
     void RenderDataManager::applyElementsVisibility(const ElementsVisibilityEvent& event)
     {
         updateElementsVisibility(event);
+    }
+
+    void RenderDataManager::applyNodeVisibility(const NodeVisibilityEvent& event)
+    {
+        updateNodeVisibility(event);
+    }
+
+    void RenderDataManager::applyBoxSelection(const BoxSelectEvent& event)
+    {
+        if (!_scene || !_camera)
+        {
+            return;
+        }
+
+        if (event.width == 0 || event.height == 0 || event.kinds == 0)
+        {
+            return;
+        }
+
+        RE::RectPickContext context;
+        context.minX = event.minX < event.maxX ? event.minX : event.maxX;
+        context.maxX = event.minX < event.maxX ? event.maxX : event.minX;
+        context.minY = event.minY < event.maxY ? event.minY : event.maxY;
+        context.maxY = event.minY < event.maxY ? event.maxY : event.minY;
+        context.width = event.width;
+        context.height = event.height;
+        context.view = _camera->view();
+        context.projection = _camera->perspective(_scene->getBounds());
+        context.containsOnly = event.containsOnly;
+
+        RE::ScenePicker picker;
+        const Common::DynamicArray<RE::RectPickTarget> targets =
+            picker.pickRect(_scene, context, event.kinds, _visibilityFilter);
+
+        struct MeshSelectionAccumulator
+        {
+            Common::SharedPtr<ME::Mesh> mesh;
+            Common::HashSet<ME::IdType> nodeIds;
+            Common::HashSet<ME::IdType> elementIds;
+        };
+
+        Common::DynamicArray<MeshSelectionAccumulator> accumulators;
+        for (size_t targetIndex = 0; targetIndex < targets.size(); ++targetIndex)
+        {
+            const RE::RectPickTarget& target = targets[targetIndex];
+            if (!_meshSelector)
+            {
+                continue;
+            }
+
+            RE::RectSelectionResolution resolution;
+            if (!_meshSelector->resolveRectSelection(target.primitive, target.indices,
+                                                     resolution))
+            {
+                continue;
+            }
+            if (!resolution.mesh)
+            {
+                continue;
+            }
+            if (event.scopeMesh && resolution.mesh != event.scopeMesh)
+            {
+                continue;
+            }
+
+            MeshSelectionAccumulator* accumulator = nullptr;
+            for (auto& candidate : accumulators)
+            {
+                if (candidate.mesh == resolution.mesh)
+                {
+                    accumulator = &candidate;
+                    break;
+                }
+            }
+            if (accumulator == nullptr)
+            {
+                MeshSelectionAccumulator newAccumulator;
+                newAccumulator.mesh = resolution.mesh;
+                accumulators.pushBack(Common::move(newAccumulator));
+                accumulator = &accumulators.back();
+            }
+
+            for (size_t index = 0; index < resolution.nodeIds.size(); ++index)
+            {
+                accumulator->nodeIds.insert(resolution.nodeIds[index]);
+            }
+            for (size_t index = 0; index < resolution.elementIds.size(); ++index)
+            {
+                accumulator->elementIds.insert(resolution.elementIds[index]);
+            }
+        }
+
+        if (!event.additive)
+        {
+            _selection.clear();
+        }
+
+        for (auto& accumulator : accumulators)
+        {
+            Common::DynamicArray<uint32_t> nodeIds;
+            Common::DynamicArray<uint32_t> elementIds;
+            nodeIds.reserve(accumulator.nodeIds.size());
+            elementIds.reserve(accumulator.elementIds.size());
+            for (auto it = accumulator.nodeIds.begin(); it.hasNext(); it.next())
+            {
+                nodeIds.pushBack(static_cast<uint32_t>(it.data()));
+            }
+            for (auto it = accumulator.elementIds.begin(); it.hasNext(); it.next())
+            {
+                elementIds.pushBack(static_cast<uint32_t>(it.data()));
+            }
+            _selection.addMeshSelection(accumulator.mesh, nodeIds, elementIds);
+        }
+
+        updateSelectionHighlight();
+        LOG(INFO) << "RenderDataManager::applyBoxSelection() resolved "
+                  << accumulators.size() << " mesh selection group(s), containsOnly="
+                  << (event.containsOnly ? "true" : "false");
+    }
+
+    void RenderDataManager::applyPointSelection(const PointSelectEvent& event)
+    {
+        if (!_scene || !_camera || event.width == 0 || event.height == 0 || event.kinds == 0)
+        {
+            return;
+        }
+
+        RE::PickContext context;
+        context.x = event.x;
+        context.y = event.y;
+        context.width = event.width;
+        context.height = event.height;
+        context.view = _camera->view();
+        context.projection = _camera->perspective(_scene->getBounds());
+
+        RE::ScenePicker picker;
+        const RE::PickOutcome outcome =
+            picker.pick(_scene, context, event.kinds, _visibilityFilter);
+
+        Common::SharedPtr<ME::Mesh> mesh;
+        Common::DynamicArray<uint32_t> nodeIds;
+        Common::DynamicArray<uint32_t> elementIds;
+        if (outcome.valid() && _meshSelector)
+        {
+            // Reuse the highlight expansion so a face pick selects the whole element face.
+            Common::DynamicArray<RE::IdxType> indices =
+                _meshSelector->getHighlightIndices(outcome.primitive, outcome.index);
+            RE::RectSelectionResolution resolution;
+            if (_meshSelector->resolveRectSelection(outcome.primitive, indices, resolution) &&
+                resolution.mesh &&
+                (!event.scopeMesh || resolution.mesh == event.scopeMesh))
+            {
+                mesh = resolution.mesh;
+                nodeIds.reserve(resolution.nodeIds.size());
+                elementIds.reserve(resolution.elementIds.size());
+                for (size_t index = 0; index < resolution.nodeIds.size(); ++index)
+                {
+                    nodeIds.pushBack(static_cast<uint32_t>(resolution.nodeIds[index]));
+                }
+                for (size_t index = 0; index < resolution.elementIds.size(); ++index)
+                {
+                    elementIds.pushBack(static_cast<uint32_t>(resolution.elementIds[index]));
+                }
+            }
+        }
+
+        if (!mesh)
+        {
+            // Clicking empty space resets the selection unless the click appends.
+            if (!event.additive)
+            {
+                _selection.clear();
+                updateSelectionHighlight();
+            }
+            return;
+        }
+
+        if (!event.additive)
+        {
+            _selection.clear();
+        }
+        _selection.addMeshSelection(mesh, nodeIds, elementIds);
+        updateSelectionHighlight();
+    }
+
+    void RenderDataManager::applyClearSelection()
+    {
+        _selection.clear();
+        updateSelectionHighlight();
     }
 
     void RenderDataManager::applyHEMeshHighlight(const HEMeshHighlightEvent& event)
@@ -588,7 +825,35 @@ namespace EgLab::Platform
         _scene->addPrimitive(entry.packet.faceShader, entry.packet.renderFace);
         if (entry.mesh)
         {
-            _activeMeshes.pushBack(entry);
+            // A mesh has exactly one active packet: replacing it keeps every lookup that maps a
+            // mesh to its primitives (visibility, selection highlight) pointing at live data.
+            bool replaced = false;
+            for (auto& existing : _activeMeshes)
+            {
+                if (existing.mesh != entry.mesh)
+                {
+                    continue;
+                }
+                if (existing.packet.renderNode && existing.packet.nodeShader)
+                {
+                    _scene->removePrimitive(existing.packet.nodeShader, existing.packet.renderNode);
+                }
+                if (existing.packet.renderLine && existing.packet.lineShader)
+                {
+                    _scene->removePrimitive(existing.packet.lineShader, existing.packet.renderLine);
+                }
+                if (existing.packet.renderFace && existing.packet.faceShader)
+                {
+                    _scene->removePrimitive(existing.packet.faceShader, existing.packet.renderFace);
+                }
+                existing = entry;
+                replaced = true;
+                break;
+            }
+            if (!replaced)
+            {
+                _activeMeshes.pushBack(entry);
+            }
         }
         return Common::Return::Succeed;
     }
@@ -820,6 +1085,12 @@ namespace EgLab::Platform
         {
             return;
         }
+        if (event.mode > 3)
+        {
+            LOG(WARNING) << "RenderDataManager::updateElementsVisibility() ignored invalid mode "
+                         << event.mode;
+            return;
+        }
 
         MeshElementVisibilityState* state = findElementVisibilityState(event.mesh);
         if (state == nullptr)
@@ -832,30 +1103,24 @@ namespace EgLab::Platform
 
         if (event.mode == 2)
         {
-            if (event.elementIds.empty())
+            Common::HashSet<ME::IdType> requested;
+            for (size_t index = 0; index < event.elementIds.size(); ++index)
             {
-                state->hiddenElementIds.clear();
+                requested.insert(static_cast<ME::IdType>(event.elementIds[index]));
             }
-            else
-            {
-                Common::HashSet<ME::IdType> requested;
-                for (size_t index = 0; index < event.elementIds.size(); ++index)
-                {
-                    requested.insert(static_cast<ME::IdType>(event.elementIds[index]));
-                }
 
-                Common::HashSet<ME::IdType> hidden;
-                ME::MeshIterator iterator(*event.mesh);
-                for (; iterator.hasMoreElem(); iterator.nextElem())
+            // "Show only" with an empty request means "show nothing", i.e. hide every element.
+            Common::HashSet<ME::IdType> hidden;
+            ME::MeshIterator iterator(*event.mesh);
+            for (; iterator.hasMoreElem(); iterator.nextElem())
+            {
+                const ME::IdType elementId = iterator.currentElem().getId();
+                if (requested.empty() || requested.find(elementId) == requested.end())
                 {
-                    const ME::IdType elementId = iterator.currentElem().getId();
-                    if (requested.find(elementId) == requested.end())
-                    {
-                        hidden.insert(elementId);
-                    }
+                    hidden.insert(elementId);
                 }
-                state->hiddenElementIds = hidden;
             }
+            state->hiddenElementIds = hidden;
         }
         else if (event.mode == 3)
         {
@@ -900,6 +1165,183 @@ namespace EgLab::Platform
         }
 
         rebuildMeshSurface(event.mesh, collectHiddenElementIds(*state));
+        // Hiding elements must hide their nodes too; the merged flag buffer keeps shared nodes
+        // of still-visible elements drawable.
+        applyNodeVisibilityToPrimitive(event.mesh);
+    }
+
+    void RenderDataManager::updateNodeVisibility(const NodeVisibilityEvent& event)
+    {
+        if (!event.mesh)
+        {
+            return;
+        }
+        if (event.mode > 3)
+        {
+            LOG(WARNING) << "RenderDataManager::updateNodeVisibility() ignored invalid mode "
+                         << event.mode;
+            return;
+        }
+
+        MeshNodeVisibilityState* state = findNodeVisibilityState(event.mesh);
+        if (state == nullptr)
+        {
+            MeshNodeVisibilityState newState;
+            newState.mesh = event.mesh;
+            _nodeVisibilityStates.pushBack(Common::move(newState));
+            state = &_nodeVisibilityStates.back();
+        }
+
+        if (event.mode == 2)
+        {
+            Common::HashSet<ME::IdType> requested;
+            for (size_t index = 0; index < event.nodeIds.size(); ++index)
+            {
+                requested.insert(static_cast<ME::IdType>(event.nodeIds[index]));
+            }
+
+            // "Show only" with an empty request means "show nothing", i.e. hide every node.
+            Common::HashSet<ME::IdType> hidden;
+            ME::MeshIterator iterator(*event.mesh);
+            for (; iterator.hasMoreNode(); iterator.nextNode())
+            {
+                const ME::IdType nodeId = iterator.currentNode().getId();
+                if (requested.empty() || requested.find(nodeId) == requested.end())
+                {
+                    hidden.insert(nodeId);
+                }
+            }
+            state->hiddenNodeIds = hidden;
+        }
+        else if (event.mode == 3)
+        {
+            state->hiddenNodeIds.clear();
+            for (size_t index = 0; index < event.nodeIds.size(); ++index)
+            {
+                state->hiddenNodeIds.insert(static_cast<ME::IdType>(event.nodeIds[index]));
+            }
+        }
+        else if (event.mode == 1)
+        {
+            if (event.nodeIds.empty())
+            {
+                state->hiddenNodeIds.clear();
+            }
+            else if (!state->hiddenNodeIds.empty())
+            {
+                Common::HashSet<ME::IdType> requested;
+                for (size_t index = 0; index < event.nodeIds.size(); ++index)
+                {
+                    requested.insert(static_cast<ME::IdType>(event.nodeIds[index]));
+                }
+
+                Common::HashSet<ME::IdType> remaining;
+                for (auto it = state->hiddenNodeIds.begin(); it.hasNext(); it.next())
+                {
+                    const ME::IdType hiddenId = it.data();
+                    if (requested.find(hiddenId) == requested.end())
+                    {
+                        remaining.insert(hiddenId);
+                    }
+                }
+                state->hiddenNodeIds = remaining;
+            }
+        }
+        else
+        {
+            for (size_t index = 0; index < event.nodeIds.size(); ++index)
+            {
+                state->hiddenNodeIds.insert(static_cast<ME::IdType>(event.nodeIds[index]));
+            }
+        }
+
+        applyNodeVisibilityToPrimitive(event.mesh);
+        updateSelectionHighlight();
+    }
+
+    RenderDataManager::MeshNodeVisibilityState* RenderDataManager::findNodeVisibilityState(
+        const Common::SharedPtr<ME::Mesh>& mesh)
+    {
+        if (!mesh)
+        {
+            return nullptr;
+        }
+
+        for (auto& state : _nodeVisibilityStates)
+        {
+            if (state.mesh == mesh)
+            {
+                return &state;
+            }
+        }
+        return nullptr;
+    }
+
+    void RenderDataManager::applyNodeVisibilityToPrimitive(
+        const Common::SharedPtr<ME::Mesh>& mesh)
+    {
+        MeshRenderEntry* entry = findActiveMeshEntry(mesh);
+        if (entry == nullptr)
+        {
+            return;
+        }
+
+        auto nodePrimitive = Common::dynamicSharedPtrCast<RE::RenderNode>(entry->packet.renderNode);
+        if (!nodePrimitive)
+        {
+            return;
+        }
+
+        Common::HashSet<RE::IdxType> hiddenIndices;
+        // Explicitly hidden nodes and nodes left without any visible element share one flag
+        // buffer, because hiding an element must hide its nodes as well.
+        const Common::HashSet<ME::IdType> hiddenNodeIds = collectHiddenNodeIds(mesh);
+        if (!hiddenNodeIds.empty())
+        {
+            hiddenIndices.reserve(hiddenNodeIds.size());
+        }
+
+        RE::IdxType renderIndex = 0;
+        ME::MeshIterator nodeIterator(*mesh);
+        for (; nodeIterator.hasMoreNode(); nodeIterator.nextNode(), ++renderIndex)
+        {
+            if (hiddenNodeIds.find(nodeIterator.currentNode().getId()) != hiddenNodeIds.end())
+            {
+                hiddenIndices.insert(renderIndex);
+            }
+        }
+        nodePrimitive->setHiddenNodes(hiddenIndices);
+    }
+
+    Common::HashSet<ME::IdType> RenderDataManager::collectHiddenNodeIds(
+        const Common::SharedPtr<ME::Mesh>& mesh) const
+    {
+        Common::HashSet<ME::IdType> hiddenNodeIds;
+        if (!mesh)
+        {
+            return hiddenNodeIds;
+        }
+
+        const MeshNodeVisibilityState* nodeState = findNodeVisibilityState(mesh);
+        if (nodeState != nullptr)
+        {
+            for (auto it = nodeState->hiddenNodeIds.begin(); it.hasNext(); it.next())
+            {
+                hiddenNodeIds.insert(it.data());
+            }
+        }
+
+        const MeshElementVisibilityState* elementState = findElementVisibilityState(mesh);
+        if (elementState == nullptr || elementState->hiddenElementIds.empty())
+        {
+            return hiddenNodeIds;
+        }
+
+        // Nodes still referenced by a visible element stay drawable; the remaining nodes belong
+        // only to hidden elements and disappear together with them.
+        ME::MeshVisibility::collectNodeIdsHiddenByElements(*mesh, elementState->hiddenElementIds,
+                                                           hiddenNodeIds);
+        return hiddenNodeIds;
     }
 
     RenderDataManager::MeshElementVisibilityState* RenderDataManager::findElementVisibilityState(
@@ -1010,6 +1452,181 @@ namespace EgLab::Platform
         {
             updateLocateHighlight();
         }
+
+        // The face primitive was replaced, so any selection highlight that referenced it must
+        // be rebuilt from the new primitives.
+        updateSelectionHighlight();
+    }
+
+    void RenderDataManager::updateSelectionHighlight()
+    {
+        clearSelectionHighlight();
+        if (!_scene)
+        {
+            return;
+        }
+
+        if (!_selectionHighlightShader)
+        {
+            RE::ShaderLib::instance().getHighlightShader(_selectionHighlightShader);
+        }
+        if (!_selectionHighlightShader)
+        {
+            return;
+        }
+
+        for (const auto& state : _selection.getMeshStates())
+        {
+            if (!state.mesh)
+            {
+                continue;
+            }
+
+            MeshRenderEntry* entry = findActiveMeshEntry(state.mesh);
+            if (entry == nullptr)
+            {
+                continue;
+            }
+
+            const auto addHighlight = [this](const Common::SharedPtr<RE::RenderPrimitive>& source,
+                                             const Common::SharedPtr<RE::Shader>& sourceShader,
+                                             Common::DynamicArray<RE::IdxType>&& indices) {
+                if (!source || !sourceShader || indices.empty())
+                {
+                    return;
+                }
+
+                auto highlight = Common::makeShared<RE::RenderPickHighlight>();
+                highlight->setSource(source);
+                highlight->setSourceShader(sourceShader);
+                highlight->setIndices(Common::move(indices));
+                if (_scene->addPrimitive(_selectionHighlightShader, highlight) ==
+                    Common::Return::Succeed)
+                {
+                    _selectionHighlightPrimitives.pushBack(highlight);
+                }
+            };
+
+            // Node highlights keep the original point size enlargement, which makes selected
+            // nodes visible even when faces and edges are dense.
+            if (!state.nodeIds.empty())
+            {
+                const Common::HashSet<ME::IdType> hiddenNodeIds = collectHiddenNodeIds(state.mesh);
+                Common::DynamicArray<RE::IdxType> nodeIndices;
+                nodeIndices.reserve(state.nodeIds.size());
+                RE::IdxType renderIndex = 0;
+                ME::MeshIterator nodeIterator(*state.mesh);
+                for (; nodeIterator.hasMoreNode(); nodeIterator.nextNode(), ++renderIndex)
+                {
+                    const ME::IdType nodeId = nodeIterator.currentNode().getId();
+                    if (state.nodeIds.find(nodeId) == state.nodeIds.end())
+                    {
+                        continue;
+                    }
+                    if (hiddenNodeIds.find(nodeId) != hiddenNodeIds.end())
+                    {
+                        continue;
+                    }
+                    nodeIndices.pushBack(renderIndex);
+                }
+                addHighlight(entry->packet.renderNode, entry->packet.nodeShader,
+                             Common::move(nodeIndices));
+            }
+
+            // Only explicitly selected elements are highlighted. Elements reached through a
+            // selected node stay part of the derived visibility data, not of the highlight.
+            if (!state.elementIds.empty() && entry->translator && entry->packet.renderFace)
+            {
+                const MeshElementVisibilityState* elementState =
+                    findElementVisibilityState(state.mesh);
+                const auto& locations = entry->translator->getBoundaryFaceLocations();
+                Common::DynamicArray<RE::IdxType> faceIndices;
+                faceIndices.reserve(locations.size());
+                for (size_t triangle = 0; triangle < locations.size(); ++triangle)
+                {
+                    const ME::IdType elementId = locations[triangle].elemId;
+                    if (state.elementIds.find(elementId) == state.elementIds.end())
+                    {
+                        continue;
+                    }
+                    if (elementState != nullptr && !elementState->hiddenElementIds.empty() &&
+                        elementState->hiddenElementIds.find(elementId) !=
+                            elementState->hiddenElementIds.end())
+                    {
+                        continue;
+                    }
+                    faceIndices.pushBack(static_cast<RE::IdxType>(triangle));
+                }
+                addHighlight(entry->packet.renderFace, entry->packet.faceShader,
+                             Common::move(faceIndices));
+            }
+        }
+    }
+
+    void RenderDataManager::clearSelectionHighlight()
+    {
+        if (_scene && _selectionHighlightShader)
+        {
+            for (const auto& primitive : _selectionHighlightPrimitives)
+            {
+                _scene->removePrimitive(_selectionHighlightShader, primitive);
+            }
+        }
+        _selectionHighlightPrimitives.clear();
+    }
+
+    RenderDataManager::MeshRenderEntry* RenderDataManager::findActiveMeshEntry(
+        const Common::SharedPtr<ME::Mesh>& mesh)
+    {
+        if (!mesh)
+        {
+            return nullptr;
+        }
+
+        for (auto& entry : _activeMeshes)
+        {
+            if (entry.mesh == mesh)
+            {
+                return &entry;
+            }
+        }
+        return nullptr;
+    }
+
+    const RenderDataManager::MeshNodeVisibilityState* RenderDataManager::findNodeVisibilityState(
+        const Common::SharedPtr<ME::Mesh>& mesh) const
+    {
+        if (!mesh)
+        {
+            return nullptr;
+        }
+
+        for (const auto& state : _nodeVisibilityStates)
+        {
+            if (state.mesh == mesh)
+            {
+                return &state;
+            }
+        }
+        return nullptr;
+    }
+
+    const RenderDataManager::MeshElementVisibilityState*
+    RenderDataManager::findElementVisibilityState(const Common::SharedPtr<ME::Mesh>& mesh) const
+    {
+        if (!mesh)
+        {
+            return nullptr;
+        }
+
+        for (const auto& state : _elementVisibilityStates)
+        {
+            if (state.mesh == mesh)
+            {
+                return &state;
+            }
+        }
+        return nullptr;
     }
 
     void RenderDataManager::updateViewDependentHighlights()

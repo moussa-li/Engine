@@ -73,6 +73,7 @@ namespace EgLab::Common
 
         CIterator<HashTable<T, Hash, Equal, Allocator>> find(const T &key) const
         {
+            if (this->bucketsSize() == 0) return this->end();
             size_t index = this->hasher(key) % this->bucketsSize();
             auto &bucket = this->buckets[index];
 

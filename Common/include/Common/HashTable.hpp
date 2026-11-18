@@ -476,11 +476,14 @@ namespace EgLab::Common
             const HashTable<T, Hash, Equal, Allocator> &ht)
             : _table(ht), _bucketIndex(0), _bucketIterator()
         {
-            for (auto &it : _table.buckets)
+            // The starting bucket index must be recorded together with the iterator, otherwise
+            // operator++ resumes from bucket 0 and revisits elements already yielded.
+            for (size_t index = 0; index < _table.buckets.size(); ++index)
             {
-                if (it.empty() == false)
+                if (_table.buckets[index].empty() == false)
                 {
-                    _bucketIterator = it.begin();
+                    _bucketIterator = _table.buckets[index].begin();
+                    _bucketIndex = index;
                     break;
                 }
             }

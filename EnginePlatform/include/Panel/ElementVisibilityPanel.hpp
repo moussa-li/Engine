@@ -5,6 +5,8 @@
 #include "Common/String.hpp"
 #include "DataBase/DataNode.hpp"
 #include "Panel/IPanel.hpp"
+#include "Work/RenderWork.hpp"
+#include "Work/SelectionModel.hpp"
 
 namespace EgLab::ME
 {
@@ -52,6 +54,14 @@ namespace EgLab::Platform
         void requestShowAll();
         void requestElementsVisibility(DataNodeId nodeId, uint32_t mode,
                                        const Common::String& ids);
+        void requestNodeVisibility(DataNodeId nodeId, uint32_t mode, const Common::String& ids);
+        // Refreshes the cached selection snapshot from the render-side selection model.
+        void refreshSelectionSnapshot();
+        void renderSelectionSection();
+        void applySelectionVisibility(uint32_t elementMode, uint32_t nodeMode);
+        void requestShowAllInScope();
+        bool findMeshEntry(const Common::SharedPtr<ME::Mesh>& mesh, MeshEntry& entry) const;
+        Common::SharedPtr<ME::Mesh> getMeshByEntryIndex(int entryIndex) const;
         // Rebuilds the temporary translucent quad that previews the cut plane. The previous
         // preview mesh is retired and the new one is handed to RenderWork.
         void updatePlanePreview();
@@ -75,5 +85,13 @@ namespace EgLab::Platform
         DataNodeId _boundsNodeId{0};
         Common::DynamicArray<uint32_t> _positiveElementIds;
         Common::DynamicArray<uint32_t> _negativeElementIds;
+
+        // ---- selection group ------------------------------------------------------------
+        int _selectionScopeIndex{0};
+        bool _selectionContainsOnly{true};
+        SelectionChangedSubscriptionId _selectionInfoSubscriptionId{0};
+        SelectionSnapshot _selectionSnapshot;
+        SelectionChangedInfo _selectionCounts;
+        bool _selectionSnapshotDirty{true};
     };
 } // namespace EgLab::Platform

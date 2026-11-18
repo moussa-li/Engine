@@ -47,6 +47,10 @@ namespace EgLab::Platform
         HEMeshHighlight,
         Locate,
         ElementsVisibility,
+        NodeVisibility,
+        BoxSelection,
+        PointSelection,
+        ClearSelection,
         FitView,
         Pick,
     };
@@ -192,6 +196,75 @@ namespace EgLab::Platform
         Common::SharedPtr<ME::Mesh> mesh;
         Common::DynamicArray<uint32_t> elementIds;
         uint32_t mode{0};
+    };
+
+    class NodeVisibilityEvent : public RenderEvent
+    {
+    public:
+        NodeVisibilityEvent() : RenderEvent(RenderEventType::NodeVisibility)
+        {
+        }
+
+        Common::SharedPtr<ME::Mesh> mesh;
+        Common::DynamicArray<uint32_t> nodeIds;
+        uint32_t mode{0};
+    };
+
+    /// Requests a rubber-band selection over the scene.
+    class BoxSelectEvent : public RenderEvent
+    {
+    public:
+        BoxSelectEvent() : RenderEvent(RenderEventType::BoxSelection)
+        {
+        }
+
+        /// Rectangle in framebuffer pixels; the origin is the top-left corner.
+        float minX{0.0f};
+        float minY{0.0f};
+        float maxX{0.0f};
+        float maxY{0.0f};
+        unsigned int width{0};
+        unsigned int height{0};
+        /// True selects fully contained entities, false selects intersecting entities.
+        bool containsOnly{true};
+        /// True merges the result into the existing selection.
+        bool additive{false};
+        /// Pick kinds participating in the query.
+        uint32_t kinds{0};
+        /// Optional mesh scope; null means every visible mesh.
+        Common::SharedPtr<ME::Mesh> scopeMesh;
+    };
+
+    /// Requests a single point selection at a cursor position. Used when the box tool is
+    /// active but the user clicks without dragging, so point picks join the selection set and
+    /// can be hidden or shown from the visibility panel.
+    class PointSelectEvent : public RenderEvent
+    {
+    public:
+        PointSelectEvent() : RenderEvent(RenderEventType::PointSelection)
+        {
+        }
+
+        /// Cursor position in framebuffer pixels; the origin is the top-left corner.
+        float x{0.0f};
+        float y{0.0f};
+        unsigned int width{0};
+        unsigned int height{0};
+        /// True merges the hit into the existing selection.
+        bool additive{false};
+        /// Pick kinds participating in the query.
+        uint32_t kinds{0};
+        /// Optional mesh scope; null means every visible mesh.
+        Common::SharedPtr<ME::Mesh> scopeMesh;
+    };
+
+    /// Requests resetting the current selection set.
+    class ClearSelectionEvent : public RenderEvent
+    {
+    public:
+        ClearSelectionEvent() : RenderEvent(RenderEventType::ClearSelection)
+        {
+        }
     };
 
     class FitViewEvent : public RenderEvent

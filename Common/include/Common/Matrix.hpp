@@ -47,17 +47,19 @@ namespace EgLab::Common
             static_assert(OtherCol == Row,
                           "Matrix dimension mismatch: A's columns must equal B's rows!");
 
+            // mat[row][col] holds element (row, col), matching the layout that
+            // Shader::setUniformMat4f() uploads with transpose enabled.
             Matrix<Scalar, OtherCol, Row> result;
-            for (int r = 0; r < Row; ++r)
+            for (size_t r = 0; r < Row; ++r)
             {
-                for (int c = 0; c < OtherCol; ++c)
+                for (size_t c = 0; c < OtherCol; ++c)
                 {
                     Scalar sum = static_cast<Scalar>(0);
-                    for (int k = 0; k < Col; ++k)
+                    for (size_t k = 0; k < Col; ++k)
                     {
-                        sum += _data[k][r] * other._data[c][k];
+                        sum += _data[r][k] * other._data[k][c];
                     }
-                    result._data[c][r] = sum;
+                    result._data[r][c] = sum;
                 }
             }
 

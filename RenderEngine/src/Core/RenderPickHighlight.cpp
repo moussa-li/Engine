@@ -27,11 +27,10 @@ namespace EgLab::RE
         }
 
         // The source primitive owns the highlight uniforms, so its own shader is used here.
+        // Batching keeps large selections cheap: a whole-mesh selection becomes a few draw
+        // calls instead of one per element.
         (void)shader;
-        for (size_t index = 0; index < _indices.size(); ++index)
-        {
-            _source->drawHighlight(_sourceShader, _indices[index]);
-        }
+        _source->drawHighlightBatch(_sourceShader, _indices);
     }
 
     Common::BBox<Scalar, 3> RenderPickHighlight::getBounds() const

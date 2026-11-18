@@ -9,6 +9,17 @@
 
 namespace EgLab::RE
 {
+    /// Mesh entities resolved from the hits of one primitive in a rectangle pick.
+    struct RectSelectionResolution
+    {
+        /// Mesh that owns the primitive.
+        Common::SharedPtr<ME::Mesh> mesh;
+        /// Node ids covered by the rectangle.
+        Common::DynamicArray<ME::IdType> nodeIds;
+        /// Element ids covered by the rectangle.
+        Common::DynamicArray<ME::IdType> elementIds;
+    };
+
     /// Maps primitive picking results back to entities in a MeshEngine mesh.
     class RenderEngineAPI MeshSelector : public Selector
     {
@@ -43,6 +54,15 @@ namespace EgLab::RE
                           const Common::SharedPtr<RenderPrimitive>& nodePrimitive,
                           const Common::SharedPtr<RenderPrimitive>& linePrimitive,
                           const Common::SharedPtr<RenderPrimitive>& facePrimitive);
+        /// @brief Resolves radius-free rectangle hits of one primitive into mesh entities.
+        /// @param primitive Primitive that produced the hits.
+        /// @param indices Primitive element indices reported by the rectangle pick.
+        /// @param resolution Receives the owning mesh and the resolved node/element ids.
+        /// @return true when the primitive belongs to a registered mesh.
+        bool resolveRectSelection(const Common::SharedPtr<RenderPrimitive>& primitive,
+                                  const Common::DynamicArray<IdxType>& indices,
+                                  RectSelectionResolution& resolution) const;
+
         /// @brief Removes the registration for a mesh.
         /// @param mesh Address of the mesh to unregister.
         void unregisterMesh(const ME::Mesh* mesh);

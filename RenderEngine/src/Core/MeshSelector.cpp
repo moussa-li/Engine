@@ -1,5 +1,8 @@
 #include "RenderEngine/Core/MeshSelector.hpp"
 
+#include "Common/HashSet.hpp"
+#include "MeshEngine/MeshData/Mesh.hpp"
+
 namespace EgLab::RE
 {
     void MeshSelector::registerMesh(const Common::SharedPtr<ME::Mesh>& mesh,
@@ -167,6 +170,80 @@ namespace EgLab::RE
         {
             _pickInfoCallback(info);
         }
+    }
+
+    bool MeshSelector::resolveRectSelection(const Common::SharedPtr<RenderPrimitive>& primitive,
+                                            const Common::DynamicArray<IdxType>& indices,
+                                            RectSelectionResolution& resolution) const
+    {
+        resolution.mesh = nullptr;
+        resolution.nodeIds.clear();
+        resolution.elementIds.clear();
+
+        const MeshRegistration* registration = findRegistration(primitive);
+        if (registration == nullptr || !registration->mesh)
+        {
+            return false;
+        }
+        resolution.mesh = registration->mesh;
+
+        Common::HashSet<IdxType> requestedIndices;
+        for (size_t index = 0; index < indices.size(); ++index)
+        {
+            requestedIndices.insert(indices[index]);
+        }
+        if (requestedIndices.empty())
+        {
+            return true;
+        }
+
+        if (primitive == registration->nodePrimitive)
+        {
+            IdxType renderIndex = 0;
+            ME::MeshIterator iterator(*registration->mesh);
+            for (; iterator.hasMoreNode(); iterator.nextNode(), ++renderIndex)
+            {
+                if (!requestedIndices.empty() &&
+                    requestedIndices.find(renderIndex) != requestedIndices.end())
+                {
+                    resolution.nodeIds.pushBack(iterator.currentNode().getId());
+                }
+            }
+            return true;
+        }
+
+        Common::HashSet<ME::IdType> resolvedElements;
+        if (primitive == registration->linePrimitive)
+        {
+            const auto& locations = registration->translator->getBoundaryLineLocations();
+            for (size_t index = 0; index < indices.size(); ++index)
+            {
+                const IdxType locationIndex = indices[index];
+                if (locationIndex < locations.size())
+                {
+                    resolvedElements.insert(locations[locationIndex].elemId);
+                }
+            }
+        }
+        else if (primitive == registration->facePrimitive)
+        {
+            const auto& locations = registration->translator->getBoundaryFaceLocations();
+            const size_t triangleCount = locations.size();
+            for (size_t index = 0; index < indices.size(); ++index)
+            {
+                const IdxType locationIndex = indices[index];
+                if (locationIndex < triangleCount)
+                {
+                    resolvedElements.insert(locations[locationIndex].elemId);
+                }
+            }
+        }
+
+        for (auto it = resolvedElements.begin(); it.hasNext(); it.next())
+        {
+            resolution.elementIds.pushBack(it.data());
+        }
+        return true;
     }
 
     bool MeshSelector::tryGetPickedMesh(Common::SharedPtr<ME::Mesh>& mesh) const

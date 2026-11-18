@@ -35,12 +35,24 @@ namespace EgLab::RE
         /// @param shader Shader used for highlighting.
         /// @param faceIndex Index of the face to highlight.
         virtual void drawHighlight(Common::SharedPtr<Shader> shader, IdxType faceIndex) override;
+
+        /// @brief Draws many highlighted faces with one draw call per consecutive index run.
+        /// @param shader Shader used for highlighting.
+        /// @param indices Face indices to highlight.
+        virtual void drawHighlightBatch(Common::SharedPtr<Shader> shader,
+                                        const Common::DynamicArray<IdxType> &indices) override;
         /// @brief Returns the axis-aligned bounds of the face data.
         virtual Common::BBox<Scalar, 3> getBounds() const override;
         /// @brief Tests the face data against a picking context.
         /// @param context Screen-space picking parameters and camera matrices.
         /// @return Index of the picked face, or the invalid index when nothing is hit.
         virtual IdxType touch(const PickContext &context) override;
+
+        /// @brief Collects the faces covered by a rubber-band rectangle.
+        /// @param context Screen-space rectangle and camera matrices.
+        /// @param outIndices Receives the index of every matching face.
+        virtual void touchRect(const RectPickContext &context,
+                               Common::DynamicArray<IdxType> &outIndices) const override;
 
         /// @brief Picking a face primitive yields face entities.
         PickKind getPickKind() const override

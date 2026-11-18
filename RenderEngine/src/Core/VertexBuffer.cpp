@@ -34,6 +34,14 @@ namespace EgLab::RE
             GLCall(glBindBuffer(GL_ARRAY_BUFFER, 0));
         }
 
+        void setData(const void* data, size_t size)
+        {
+            GLCall(glBindBuffer(GL_ARRAY_BUFFER, _renderId));
+            GLCall(glBufferData(GL_ARRAY_BUFFER, size, data, GL_DYNAMIC_DRAW));
+            _data = data;
+            _size = size;
+        }
+
     private:
         GLuint _renderId;
 
@@ -63,6 +71,11 @@ namespace EgLab::RE
     void VertexBuffer::unbind() const
     {
         _impl->unbind();
+    }
+
+    void VertexBuffer::setData(const void* data, size_t size)
+    {
+        _impl->setData(data, size);
     }
 
     VertexBuffer::~VertexBuffer()

@@ -21,6 +21,7 @@
 #include "Command/ImportMeshCmd.hpp"
 #include "Command/LocateElementsCmd.hpp"
 #include "Command/ElementsVisibilityCmd.hpp"
+#include "Command/NodeVisibilityCmd.hpp"
 #include "Command/UpdateMeshCmd.hpp"
 #include "Common/HashMap.hpp"
 #include "Common/Publisher.hpp"
@@ -44,6 +45,14 @@ namespace EgLab::Platform
 
         // Wire layout for the variable length ElementsVisibility payload.
         struct ElementsVisibilityWireHeader
+        {
+            uint64_t dataNodeId;
+            uint32_t mode;
+            uint32_t count;
+        };
+
+        // Wire layout for the variable length NodeVisibility payload.
+        struct NodeVisibilityWireHeader
         {
             uint64_t dataNodeId;
             uint32_t mode;
@@ -216,6 +225,7 @@ namespace EgLab::Platform
             _subscriber.subscrib((uint32_t)EventId::MeshDelete);
             _subscriber.subscrib((uint32_t)EventId::LocateElements);
             _subscriber.subscrib((uint32_t)EventId::ElementsVisibility);
+            _subscriber.subscrib((uint32_t)EventId::NodeVisibility);
             _subscriber.subscrib((uint32_t)EventId::UpdateMesh);
 
             if (_isRunning == true) return;
@@ -268,6 +278,30 @@ namespace EgLab::Platform
                                             idsByteSize);
                             }
                             command = Common::makeShared<ElementsVisibilityCmd>(param);
+                        }
+                        else if (static_cast<EventId>(eventId) == EventId::NodeVisibility)
+                        {
+                            if (dataSize < sizeof(NodeVisibilityWireHeader)) continue;
+
+                            NodeVisibilityWireHeader wire{};
+                            std::memcpy(&wire, rawPacket.data() + sizeof(dataSize), sizeof(wire));
+                            const size_t idsByteSize =
+                                static_cast<size_t>(wire.count) * sizeof(uint32_t);
+                            if (idsByteSize != dataSize - sizeof(wire)) continue;
+
+                            NodeVisibilityParam param{};
+                            param.dataNodeId = wire.dataNodeId;
+                            param.mode = wire.mode;
+                            param.count = wire.count;
+                            param.nodeIds = nullptr;
+                            if (wire.count > 0)
+                            {
+                                param.nodeIds = new uint32_t[wire.count];
+                                std::memcpy(param.nodeIds,
+                                            rawPacket.data() + sizeof(dataSize) + sizeof(wire),
+                                            idsByteSize);
+                            }
+                            command = Common::makeShared<NodeVisibilityCmd>(param);
                         }
                         else if (dataSize <= sizeof(PacketPOD::data))
                         {
@@ -354,6 +388,39 @@ namespace EgLab::Platform
                                        static_cast<uint32_t>(wirePayload.size())))
             {
                 throw std::runtime_error("Failed to publish ElementsVisibility payload.");
+            }
+            return;
+        }
+
+        if (eventId == EventId::NodeVisibility)
+        {
+            NodeVisibilityWireHeader wire{};
+            wire.dataNodeId = packet.getData<uint64_t>("nodeId");
+            wire.mode = packet.getData<uint32_t>("mode");
+            const Common::String ids = packet.getData<Common::String>("ids");
+
+            Common::DynamicArray<uint32_t> nodeIds;
+            parseIdList(ids, nodeIds);
+            wire.count = static_cast<uint32_t>(nodeIds.size());
+
+            const size_t idsByteSize = static_cast<size_t>(nodeIds.size()) * sizeof(uint32_t);
+            const uint32_t dataSize =
+                static_cast<uint32_t>(sizeof(NodeVisibilityWireHeader) + idsByteSize);
+
+            Common::DynamicArray<uint8_t> wirePayload;
+            wirePayload.resize(sizeof(dataSize) + dataSize);
+            std::memcpy(wirePayload.data(), &dataSize, sizeof(dataSize));
+            std::memcpy(wirePayload.data() + sizeof(dataSize), &wire, sizeof(wire));
+            if (!nodeIds.empty())
+            {
+                std::memcpy(wirePayload.data() + sizeof(dataSize) + sizeof(wire), nodeIds.data(),
+                            idsByteSize);
+            }
+
+            if (!_impl->_memQueue.push(static_cast<uint32_t>(eventId), wirePayload.data(),
+                                       static_cast<uint32_t>(wirePayload.size())))
+            {
+                throw std::runtime_error("Failed to publish NodeVisibility payload.");
             }
             return;
         }

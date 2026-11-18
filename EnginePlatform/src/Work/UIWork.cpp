@@ -14,7 +14,9 @@
 #include "DataBase/Context.hpp"
 #include "GLFW/glfw3.h"
 #include "Panel/PanelManager.hpp"
+#include "RenderEngine/Core/PickKind.hpp"
 #include "RenderEngine/Core/Window.hpp"
+#include "Work/RenderWork.hpp"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -115,6 +117,12 @@ namespace EgLab::Platform
     {
         if (_running == false) return;
         _running = false;
+        _boxSelectionEnabled = false;
+        _selectionDragging = false;
+        if (_window)
+        {
+            _window->setPointerInputMasked(false);
+        }
         activeContext();
         shutdownImGui();
         deactiveContext();
@@ -138,6 +146,7 @@ namespace EgLab::Platform
             activeContext();
             beginImGuiFrame();
             Context::instance().getPanelManager().loop();
+            renderBoxSelectionTool();
             _window->maskEvent(ImGui::GetIO().WantCaptureMouse);
             renderImGuiFrame();
             deactiveContext();
@@ -217,6 +226,124 @@ namespace EgLab::Platform
         ImGui_ImplGlfw_InitForOpenGL(_window->getNative(), true);
         ImGui_ImplOpenGL3_Init("#version 330");
         deactiveContext();
+    }
+
+    void UIWork::setBoxSelectionEnabled(bool enabled)
+    {
+        _boxSelectionEnabled = enabled;
+        _selectionDragging = false;
+        if (_window)
+        {
+            // Selection mode owns the left mouse button: no camera rotation starts before
+            // ImGui has had a chance to route the click to the rubber-band tool.
+            _window->setPointerInputMasked(enabled);
+        }
+    }
+
+    void UIWork::requestClearSelection()
+    {
+        _selectionDragging = false;
+        RenderWork::instance().requestClearSelection();
+    }
+
+    void UIWork::renderBoxSelectionTool()
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        // Esc only clears the selection while the viewport owns the keyboard; otherwise it
+        // keeps closing panels and cancelling shortcut capture as before.
+        if (_boxSelectionEnabled && !io.WantCaptureKeyboard && !ImGui::IsAnyItemActive() &&
+            ImGui::IsKeyPressed(ImGuiKey_Escape, false))
+        {
+            requestClearSelection();
+        }
+
+        if (!_boxSelectionEnabled)
+        {
+            _selectionDragging = false;
+            return;
+        }
+
+        ImDrawList* foreground = ImGui::GetForegroundDrawList();
+        const ImVec2 viewportPosition = ImGui::GetMainViewport()->Pos;
+        foreground->AddText(ImVec2(viewportPosition.x + 12.0f, viewportPosition.y + 36.0f),
+                            IM_COL32(120, 230, 140, 255),
+                            "BOX SELECT: drag LMB, Ctrl appends, Esc clears");
+
+        if (!_selectionDragging && ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+            !io.WantCaptureMouse)
+        {
+            _selectionDragging = true;
+            _selectionStartX = io.MousePos.x;
+            _selectionStartY = io.MousePos.y;
+            _selectionCurrentX = _selectionStartX;
+            _selectionCurrentY = _selectionStartY;
+        }
+
+        if (!_selectionDragging)
+        {
+            return;
+        }
+
+        _selectionCurrentX = io.MousePos.x;
+        _selectionCurrentY = io.MousePos.y;
+
+        const ImVec2 rectangleMin(_selectionStartX < _selectionCurrentX ? _selectionStartX
+                                                                        : _selectionCurrentX,
+                                  _selectionStartY < _selectionCurrentY ? _selectionStartY
+                                                                        : _selectionCurrentY);
+        const ImVec2 rectangleMax(_selectionStartX < _selectionCurrentX ? _selectionCurrentX
+                                                                        : _selectionStartX,
+                                  _selectionStartY < _selectionCurrentY ? _selectionCurrentY
+                                                                        : _selectionStartY);
+        ImDrawList* background = ImGui::GetBackgroundDrawList();
+        background->AddRectFilled(rectangleMin, rectangleMax, IM_COL32(70, 145, 255, 45));
+        background->AddRect(rectangleMin, rectangleMax, IM_COL32(110, 185, 255, 230), 0.0f, 0,
+                            1.5f);
+
+        if (!ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+        {
+            return;
+        }
+
+        _selectionDragging = false;
+        const bool additive = io.KeyCtrl;
+        const float width = rectangleMax.x - rectangleMin.x;
+        const float height = rectangleMax.y - rectangleMin.y;
+
+        unsigned int framebufferWidth = 0;
+        unsigned int framebufferHeight = 0;
+        unsigned int windowWidth = 0;
+        unsigned int windowHeight = 0;
+        if (_window)
+        {
+            _window->getFramebufferSize(framebufferWidth, framebufferHeight);
+            _window->getWindowSize(windowWidth, windowHeight);
+        }
+        if (framebufferWidth == 0 || framebufferHeight == 0 || windowWidth == 0 ||
+            windowHeight == 0)
+        {
+            return;
+        }
+
+        const float scaleX = static_cast<float>(framebufferWidth) / static_cast<float>(windowWidth);
+        const float scaleY =
+            static_cast<float>(framebufferHeight) / static_cast<float>(windowHeight);
+
+        if (width < 4.0f && height < 4.0f)
+        {
+            // A click without a drag is a point selection; the render side clears the
+            // selection when the click hits nothing and does not append.
+            RenderWork::instance().requestPointSelection(
+                _selectionCurrentX * scaleX, _selectionCurrentY * scaleY, framebufferWidth,
+                framebufferHeight, additive,
+                EgLab::RE::toPickMask(EgLab::RE::PickKind::All));
+            return;
+        }
+
+        RenderWork::instance().requestBoxSelection(
+            rectangleMin.x * scaleX, rectangleMin.y * scaleY, rectangleMax.x * scaleX,
+            rectangleMax.y * scaleY, framebufferWidth, framebufferHeight, additive,
+            EgLab::RE::toPickMask(EgLab::RE::PickKind::All));
     }
 
     void UIWork::beginImGuiFrame()

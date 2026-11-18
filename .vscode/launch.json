@@ -289,10 +289,10 @@
             ]
         },
         {
-            "type": "lldb",
+            "type": "cppvsdbg",
             "request": "launch",
             "name": "runPlatform",
-            "program": "${workspaceFolder}/build/win-ninja-release/bin/EnginePlatform.exe",
+            "program": "${workspaceFolder}/build/win-ninja-relwithdebinfo/bin/EnginePlatform.exe",
             "args": [],
             "cwd": "${workspaceFolder}",
             "console": "externalTerminal",

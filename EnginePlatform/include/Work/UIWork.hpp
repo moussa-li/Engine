@@ -40,10 +40,28 @@ namespace EgLab::Platform
         void beginImGuiFrame();
         void renderImGuiFrame();
 
+        // Rubber-band selection tool driven by the ribbon toolbar. The tool draws its
+        // rectangle in the ImGui background list and masks camera input while active.
+        bool isBoxSelectionEnabled() const
+        {
+            return _boxSelectionEnabled;
+        }
+        void setBoxSelectionEnabled(bool enabled);
+        void requestClearSelection();
+
+    private:
+        void renderBoxSelectionTool();
+
     private:
         std::thread _thread;
         std::atomic<bool> _running{false};
         Common::SharedPtr<EgLab::RE::Window> _window;
+        bool _boxSelectionEnabled{false};
+        bool _selectionDragging{false};
+        float _selectionStartX{0.0f};
+        float _selectionStartY{0.0f};
+        float _selectionCurrentX{0.0f};
+        float _selectionCurrentY{0.0f};
 
         friend class EgLab::Common::Singleton<UIWork>;
     };

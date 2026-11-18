@@ -9,6 +9,7 @@
 #include "Core/PidRegistry.hpp"
 #include "DataBase/Context.hpp"
 #include "ImGuiFileDialog.h"
+#include "Work/UIWork.hpp"
 
 namespace EgLab
 {
@@ -279,11 +280,29 @@ namespace EgLab::Platform
                 }
                 ImGui::EndMenu();
             }
+            if (animatedBeginMenu("Selection"))
+            {
+                bool boxSelectionEnabled = UIWork::instance().isBoxSelectionEnabled();
+                if (ImGui::MenuItem("Box Select Mode", nullptr, &boxSelectionEnabled))
+                {
+                    UIWork::instance().setBoxSelectionEnabled(boxSelectionEnabled);
+                }
+                if (ImGui::MenuItem("Clear Selection", "Esc"))
+                {
+                    UIWork::instance().requestClearSelection();
+                }
+                ImGui::EndMenu();
+            }
 
 #ifdef _WIN32
             ImGui::SameLine();
             renderProcessIdStatus();
 #endif
+            if (UIWork::instance().isBoxSelectionEnabled())
+            {
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.35f, 0.95f, 0.45f, 1.0f), "BOX SELECT MODE");
+            }
 
             ImGui::EndMainMenuBar();
         }

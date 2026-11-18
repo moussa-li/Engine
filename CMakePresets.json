@@ -104,6 +104,11 @@
             "description": "",
             "displayName": "",
             "configurePreset": "clang-debug"
+        },
+        {
+            "name": "win-ninja-relwithdebinfo",
+            "displayName": "Ninja using MSVC RelWithDebInfo",
+            "configurePreset": "win-ninja-relwithdebinfo"
         }
     ],
     "testPresets": [

@@ -55,4 +55,53 @@ namespace EgLab::RE
 
         return outcome;
     }
+
+    Common::DynamicArray<RectPickTarget> ScenePicker::pickRect(
+        const Common::SharedPtr<Scene> &scene, const RectPickContext &context,
+        uint32_t kindMask, const VisibilityFilter &isVisible) const
+    {
+        Common::DynamicArray<RectPickTarget> targets;
+        if (!scene || kindMask == 0)
+        {
+            return targets;
+        }
+
+        const RenderBuckets &buckets = scene->getRenderBuckets();
+        for (auto it = buckets.begin(); it.hasNext(); it.next())
+        {
+            const Common::SharedPtr<Shader> &shader = it.data().first;
+            const auto &primitives = it.data().second;
+
+            for (auto primitiveIt = primitives.begin(); primitiveIt.hasNext(); primitiveIt.next())
+            {
+                const Common::SharedPtr<RenderPrimitive> &primitive = primitiveIt.data();
+                if (!primitive)
+                {
+                    continue;
+                }
+                if (!isPickKindEnabled(kindMask, primitive->getPickKind()))
+                {
+                    continue;
+                }
+                if (isVisible && !isVisible(primitive))
+                {
+                    continue;
+                }
+
+                Common::DynamicArray<IdxType> indices;
+                primitive->touchRect(context, indices);
+                if (indices.empty())
+                {
+                    continue;
+                }
+
+                RectPickTarget target;
+                target.primitive = primitive;
+                target.shader = shader;
+                target.indices = Common::move(indices);
+                targets.pushBack(Common::move(target));
+            }
+        }
+        return targets;
+    }
 } // namespace EgLab::RE

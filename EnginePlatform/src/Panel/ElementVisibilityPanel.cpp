@@ -11,6 +11,7 @@
 #include "MeshEngine/Algorithm/PlaneCut.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "Work/RenderWork.hpp"
+#include "Work/UIWork.hpp"
 #include "imgui.h"
 
 namespace
@@ -123,6 +124,10 @@ namespace EgLab::Platform
 
     ElementVisibilityPanel::~ElementVisibilityPanel()
     {
+        if (_selectionInfoSubscriptionId != 0)
+        {
+            RenderWork::instance().unsubscribeSelectionChanged(_selectionInfoSubscriptionId);
+        }
     }
 
     void ElementVisibilityPanel::configureWindow() const
@@ -135,6 +140,11 @@ namespace EgLab::Platform
         const DataNodeId previousId =
             (_selectedMeshIndex >= 0 && _selectedMeshIndex < static_cast<int>(_meshEntries.size()))
                 ? _meshEntries[_selectedMeshIndex].nodeId
+                : 0;
+        const DataNodeId previousScopeId =
+            (_selectionScopeIndex > 0 &&
+             _selectionScopeIndex <= static_cast<int>(_meshEntries.size()))
+                ? _meshEntries[_selectionScopeIndex - 1].nodeId
                 : 0;
 
         _meshEntries.clear();
@@ -168,6 +178,55 @@ namespace EgLab::Platform
                 }
             }
         }
+
+        _selectionScopeIndex = 0;
+        if (previousScopeId != 0)
+        {
+            for (int index = 0; index < static_cast<int>(_meshEntries.size()); ++index)
+            {
+                if (_meshEntries[index].nodeId == previousScopeId)
+                {
+                    _selectionScopeIndex = index + 1;
+                    break;
+                }
+            }
+        }
+
+        // Keep the render-side scope in sync after mesh additions/removals.
+        RenderWork::instance().setSelectionScope(getMeshByEntryIndex(_selectionScopeIndex));
+    }
+
+    Common::SharedPtr<ME::Mesh> ElementVisibilityPanel::getMeshByEntryIndex(int entryIndex) const
+    {
+        if (entryIndex <= 0 || entryIndex > static_cast<int>(_meshEntries.size()))
+        {
+            return nullptr;
+        }
+
+        auto node = Context::instance().getDataNode(_meshEntries[entryIndex - 1].nodeId);
+        auto* meshData = dynamic_cast<MeshData*>(node.get());
+        return meshData ? meshData->getMesh() : nullptr;
+    }
+
+    bool ElementVisibilityPanel::findMeshEntry(const Common::SharedPtr<ME::Mesh>& mesh,
+                                               MeshEntry& entry) const
+    {
+        if (!mesh)
+        {
+            return false;
+        }
+
+        for (const auto& candidate : _meshEntries)
+        {
+            auto node = Context::instance().getDataNode(candidate.nodeId);
+            auto* meshData = dynamic_cast<MeshData*>(node.get());
+            if (meshData && meshData->getMesh() == mesh)
+            {
+                entry = candidate;
+                return true;
+            }
+        }
+        return false;
     }
 
     Common::SharedPtr<ME::Mesh> ElementVisibilityPanel::getSelectedMesh() const
@@ -313,6 +372,185 @@ namespace EgLab::Platform
         CommandManager::instance().call(EventId::ElementsVisibility, Common::move(packet));
     }
 
+    void ElementVisibilityPanel::requestNodeVisibility(DataNodeId nodeId, uint32_t mode,
+                                                       const Common::String& ids)
+    {
+        EventPacket packet;
+        packet.setData("nodeId", nodeId);
+        packet.setData("mode", mode);
+        packet.setData("ids", ids);
+        CommandManager::instance().call(EventId::NodeVisibility, Common::move(packet));
+    }
+
+    void ElementVisibilityPanel::refreshSelectionSnapshot()
+    {
+        SelectionChangedInfo info;
+        while (RenderWork::instance().tryReceiveSelectionChanged(_selectionInfoSubscriptionId,
+                                                                 info))
+        {
+            _selectionCounts = info;
+            _selectionSnapshotDirty = true;
+        }
+
+        if (_selectionSnapshotDirty || _selectionSnapshot.revision == 0)
+        {
+            RenderWork::instance().copySelectionSnapshot(_selectionSnapshot);
+            _selectionCounts.nodeCount = _selectionSnapshot.totalNodes;
+            _selectionCounts.elementCount = _selectionSnapshot.totalElements;
+            _selectionCounts.revision = _selectionSnapshot.revision;
+            _selectionSnapshotDirty = false;
+        }
+    }
+
+    void ElementVisibilityPanel::applySelectionVisibility(uint32_t elementMode,
+                                                          uint32_t nodeMode)
+    {
+        for (const auto& meshSelection : _selectionSnapshot.meshes)
+        {
+            MeshEntry entry;
+            if (!findMeshEntry(meshSelection.mesh, entry))
+            {
+                continue;
+            }
+
+            Common::DynamicArray<uint32_t> elementIds;
+            elementIds.reserve(meshSelection.elementIds.size() +
+                               meshSelection.associatedElementIds.size());
+            for (size_t index = 0; index < meshSelection.elementIds.size(); ++index)
+            {
+                elementIds.pushBack(meshSelection.elementIds[index]);
+            }
+            for (size_t index = 0; index < meshSelection.associatedElementIds.size(); ++index)
+            {
+                elementIds.pushBack(meshSelection.associatedElementIds[index]);
+            }
+
+            // Isolate must also hide every non-selected element, which is expressed by a
+            // mode-2 request with an empty id list.
+            if (!elementIds.empty() || elementMode == 2)
+            {
+                requestElementsVisibility(entry.nodeId, elementMode, formatElementIds(elementIds));
+            }
+
+            // Node hiding only applies to nodes no element references; referenced nodes are
+            // hidden together with their elements, so the node channel is skipped for them.
+            const auto& nodeIds =
+                nodeMode == 2 ? meshSelection.nodeIds : meshSelection.isolatedNodeIds;
+            if (!nodeIds.empty())
+            {
+                requestNodeVisibility(entry.nodeId, nodeMode, formatElementIds(nodeIds));
+            }
+        }
+    }
+
+    void ElementVisibilityPanel::requestShowAllInScope()
+    {
+        const auto showAllForEntry = [this](const MeshEntry& entry) {
+            requestElementsVisibility(entry.nodeId, 1, Common::String());
+            requestNodeVisibility(entry.nodeId, 1, Common::String());
+        };
+
+        if (_selectionScopeIndex > 0 &&
+            _selectionScopeIndex <= static_cast<int>(_meshEntries.size()))
+        {
+            showAllForEntry(_meshEntries[_selectionScopeIndex - 1]);
+            return;
+        }
+
+        for (const auto& entry : _meshEntries)
+        {
+            showAllForEntry(entry);
+        }
+    }
+
+    void ElementVisibilityPanel::renderSelectionSection()
+    {
+        ImGui::SeparatorText("Selection");
+
+        bool boxSelectionEnabled = UIWork::instance().isBoxSelectionEnabled();
+        if (ImGui::Checkbox("Box Select Mode", &boxSelectionEnabled))
+        {
+            UIWork::instance().setBoxSelectionEnabled(boxSelectionEnabled);
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("LMB drag in viewport; Ctrl appends; Esc clears");
+
+        const char* scopeLabel = "All Visible Meshes";
+        if (_selectionScopeIndex > 0 &&
+            _selectionScopeIndex <= static_cast<int>(_meshEntries.size()))
+        {
+            scopeLabel = _meshEntries[_selectionScopeIndex - 1].name.c_str();
+        }
+        if (ImGui::BeginCombo("Selection Range", scopeLabel))
+        {
+            if (ImGui::Selectable("All Visible Meshes", _selectionScopeIndex == 0))
+            {
+                _selectionScopeIndex = 0;
+                RenderWork::instance().setSelectionScope(nullptr);
+            }
+            for (int index = 0; index < static_cast<int>(_meshEntries.size()); ++index)
+            {
+                const bool selected = _selectionScopeIndex == index + 1;
+                if (ImGui::Selectable(_meshEntries[index].name.c_str(), selected))
+                {
+                    _selectionScopeIndex = index + 1;
+                    RenderWork::instance().setSelectionScope(getMeshByEntryIndex(index + 1));
+                }
+                if (selected)
+                {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        if (ImGui::Checkbox("Contains Only", &_selectionContainsOnly))
+        {
+            RenderWork::instance().setSelectionContainsOnly(_selectionContainsOnly);
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("(unchecked = intersect)");
+
+        ImGui::Text("Selected nodes: %llu", static_cast<unsigned long long>(_selectionCounts.nodeCount));
+        ImGui::Text("Selected elements: %llu",
+                    static_cast<unsigned long long>(_selectionCounts.elementCount));
+
+        const bool hasSelection = _selectionCounts.nodeCount > 0 || _selectionCounts.elementCount > 0;
+        ImGui::BeginDisabled(!hasSelection);
+        if (ImGui::Button("Hide Selected"))
+        {
+            applySelectionVisibility(0, 0);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Show Selected"))
+        {
+            applySelectionVisibility(1, 1);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Isolate Selected"))
+        {
+            applySelectionVisibility(2, 2);
+        }
+        ImGui::EndDisabled();
+
+        if (ImGui::Button("Show All"))
+        {
+            requestShowAllInScope();
+        }
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!hasSelection);
+        if (ImGui::Button("Clear Selection"))
+        {
+            RenderWork::instance().requestClearSelection();
+            _selectionSnapshot.meshes.clear();
+            _selectionSnapshot.totalNodes = 0;
+            _selectionSnapshot.totalElements = 0;
+            _selectionCounts.nodeCount = 0;
+            _selectionCounts.elementCount = 0;
+        }
+        ImGui::EndDisabled();
+    }
+
     void ElementVisibilityPanel::updatePlanePreview()
     {
         hidePlanePreview();
@@ -355,6 +593,7 @@ namespace EgLab::Platform
         if (!isShow())
         {
             hidePlanePreview();
+            RenderWork::instance().setSelectionScope(nullptr);
         }
     }
 
@@ -370,11 +609,19 @@ namespace EgLab::Platform
     void ElementVisibilityPanel::abortClose()
     {
         hidePlanePreview();
+        RenderWork::instance().setSelectionScope(nullptr);
     }
 
     void ElementVisibilityPanel::renderImpl()
     {
         refreshMeshEntries();
+
+        if (_selectionInfoSubscriptionId == 0)
+        {
+            _selectionInfoSubscriptionId = RenderWork::instance().subscribeSelectionChanged();
+        }
+        RenderWork::instance().setSelectionContainsOnly(_selectionContainsOnly);
+        refreshSelectionSnapshot();
 
         if (_meshEntries.empty())
         {
@@ -405,6 +652,8 @@ namespace EgLab::Platform
             }
             ImGui::EndCombo();
         }
+
+        renderSelectionSection();
 
         auto mesh = getSelectedMesh();
         if (!mesh)

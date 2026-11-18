@@ -13,6 +13,7 @@
 #include "RenderEngine/Core/Definites.hpp"
 #include "RenderEngine/Core/ScenePicker.hpp"
 #include "Work/RenderEvent.hpp"
+#include "Work/SelectionModel.hpp"
 
 namespace EgLab::ME
 {
@@ -82,11 +83,20 @@ namespace EgLab::Platform
         void applyFaceShrink(float shrink);
         void applyLocate();
         void applyElementsVisibility(const ElementsVisibilityEvent& event);
+        void applyNodeVisibility(const NodeVisibilityEvent& event);
+        void applyBoxSelection(const BoxSelectEvent& event);
+        void applyPointSelection(const PointSelectEvent& event);
+        void applyClearSelection();
         void applyHEMeshHighlight(const HEMeshHighlightEvent& event);
         void updateViewDependentHighlights();
 
         // ---- pick phase: query the scene and expose the highlight as a scene primitive ----
         void applyPick(const PickEvent& event);
+
+        /// @brief Copies the current selection together with aggregate counts.
+        void getSelectionSnapshot(SelectionSnapshot& snapshot) const;
+        /// @brief Returns the selection revision used to notify the UI only on changes.
+        uint64_t getSelectionRevision() const;
 
     private:
         struct MeshColor
@@ -99,6 +109,12 @@ namespace EgLab::Platform
         {
             Common::SharedPtr<ME::Mesh> mesh;
             Common::HashSet<ME::IdType> hiddenElementIds;
+        };
+
+        struct MeshNodeVisibilityState
+        {
+            Common::SharedPtr<ME::Mesh> mesh;
+            Common::HashSet<ME::IdType> hiddenNodeIds;
         };
 
         // Records which RenderPacket belongs to which mesh, together with the topology
@@ -116,13 +132,26 @@ namespace EgLab::Platform
         void notifyPickCleared();
         void updateLocateHighlight();
         void updateElementsVisibility(const ElementsVisibilityEvent& event);
+        void updateNodeVisibility(const NodeVisibilityEvent& event);
+        void applyNodeVisibilityToPrimitive(const Common::SharedPtr<ME::Mesh>& mesh);
+        // Nodes hidden either explicitly or because every element referencing them is hidden.
+        Common::HashSet<ME::IdType> collectHiddenNodeIds(
+            const Common::SharedPtr<ME::Mesh>& mesh) const;
         void updateHEMeshHighlight(const HEMeshHighlightEvent& event);
+        void updateSelectionHighlight();
+        void clearSelectionHighlight();
         MeshElementVisibilityState* findElementVisibilityState(
             const Common::SharedPtr<ME::Mesh>& mesh);
+        MeshNodeVisibilityState* findNodeVisibilityState(const Common::SharedPtr<ME::Mesh>& mesh);
+        const MeshElementVisibilityState* findElementVisibilityState(
+            const Common::SharedPtr<ME::Mesh>& mesh) const;
+        const MeshNodeVisibilityState* findNodeVisibilityState(
+            const Common::SharedPtr<ME::Mesh>& mesh) const;
         Common::DynamicArray<ME::IdType> collectHiddenElementIds(MeshElementVisibilityState& state);
         void rebuildMeshSurface(const Common::SharedPtr<ME::Mesh>& mesh,
                                 const Common::DynamicArray<ME::IdType>& hiddenElementIds);
         Common::Vector4f getMeshBaseColor(const Common::SharedPtr<ME::Mesh>& mesh) const;
+        MeshRenderEntry* findActiveMeshEntry(const Common::SharedPtr<ME::Mesh>& mesh);
 
     private:
         mutable std::mutex _renderStateMutex;
@@ -135,7 +164,13 @@ namespace EgLab::Platform
         Common::DynamicArray<MeshColor> _meshColors;
         Common::DynamicArray<MeshRenderEntry> _activeMeshes;
         Common::DynamicArray<MeshElementVisibilityState> _elementVisibilityStates;
+        Common::DynamicArray<MeshNodeVisibilityState> _nodeVisibilityStates;
         Common::DynamicArray<ME::Mesh*> _removedMeshes;
+
+        SelectionModel _selection;
+        Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>>
+            _selectionHighlightPrimitives;
+        Common::SharedPtr<RE::Shader> _selectionHighlightShader;
 
         Common::DynamicArray<Common::SharedPtr<ME::Mesh>> _requestedHighlightedMeshes;
         Common::DynamicArray<Common::SharedPtr<ME::Mesh>> _activeHighlightedMeshes;

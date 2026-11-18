@@ -157,6 +157,13 @@ namespace EgLab::RE
             return _maskCallBack || _shortcutCaptureActive.load();
         }
 
+        // While the selection tool owns the left mouse button the remaining camera controls
+        // (right/middle drag, wheel zoom) must keep working.
+        bool isLeftButtonMasked() const
+        {
+            return _pointerInputMasked.load();
+        }
+
         void updateCameraViewport()
         {
             if (_cameraController == nullptr || _window == nullptr) return;
@@ -170,6 +177,13 @@ namespace EgLab::RE
 
         void processMouseButton(int button, int action, float xpos, float ypos, int mods)
         {
+            if (button == GLFW_MOUSE_BUTTON_LEFT && isLeftButtonMasked())
+            {
+                // The rubber-band tool consumes the left button; no camera rotation and no
+                // hover pick must start from it.
+                return;
+            }
+
             if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
             {
                 _selectDirty = true;
@@ -189,6 +203,8 @@ namespace EgLab::RE
 
             updateCameraViewport();
             if (_cameraController->processMouseMove(xpos, ypos)) return;
+
+            if (isLeftButtonMasked()) return;
 
             _selectDirty = true;
             _selectX = xpos;
@@ -223,6 +239,7 @@ namespace EgLab::RE
         float lastFrame{0.0f};
         float deltaTime{0.0f};
         bool _maskCallBack{false};
+        std::atomic<bool> _pointerInputMasked{false};
         std::atomic<bool> _shortcutCaptureActive{false};
         std::mutex _mutex;
     };
@@ -358,6 +375,11 @@ namespace EgLab::RE
     void Window::setShortcutCaptureActive(bool active)
     {
         _impl->_shortcutCaptureActive.store(active);
+    }
+
+    void Window::setPointerInputMasked(bool masked)
+    {
+        _impl->_pointerInputMasked.store(masked);
     }
 
     void Window::activeContext() const

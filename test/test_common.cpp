@@ -682,6 +682,24 @@ TEST_F(TestCommon, Matrix_Identity)
     }
 }
 
+TEST_F(TestCommon, Matrix_multiplication_composes_transforms)
+{
+    EgLab::Common::Matrix4f translate = EgLab::Common::Matrix4f::Identity();
+    translate[0][3] = 2.0f;
+    EgLab::Common::Matrix4f scale = EgLab::Common::Matrix4f::Identity();
+    scale[0][0] = 3.0f;
+
+    // translate * scale keeps the translation unscaled.
+    const EgLab::Common::Matrix4f translatedThenScaled = translate * scale;
+    EXPECT_FLOAT_EQ(translatedThenScaled[0][0], 3.0f);
+    EXPECT_FLOAT_EQ(translatedThenScaled[0][3], 2.0f);
+
+    // scale * translate scales the translation instead.
+    const EgLab::Common::Matrix4f scaledThenTranslated = scale * translate;
+    EXPECT_FLOAT_EQ(scaledThenTranslated[0][0], 3.0f);
+    EXPECT_FLOAT_EQ(scaledThenTranslated[0][3], 6.0f);
+}
+
 #if 0
 #include <iostream>
 #if defined(_WIN32)

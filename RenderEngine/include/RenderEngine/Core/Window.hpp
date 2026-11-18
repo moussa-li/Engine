@@ -43,6 +43,11 @@ namespace EgLab::RE
         /// @brief Suppresses camera input while a shortcut is being recorded.
         void setShortcutCaptureActive(bool active);
 
+        /// @brief Suppresses pointer-driven camera input independently of ImGui capture.
+        /// @details Used by the rubber-band selection tool so left-drag selects instead of
+        ///          rotating the camera. Shortcut capture keeps its own independent flag.
+        void setPointerInputMasked(bool masked);
+
         /// @brief Returns elapsed application time in seconds.
         DeltaTime getTime() const;
 

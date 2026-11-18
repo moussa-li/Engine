@@ -1,6 +1,8 @@
 #pragma once
 #include "Common/DynamicArray.hpp"
+#include "Common/HashSet.hpp"
 #include "RenderEngine/Core/Definites.hpp"
+#include "RenderEngine/Core/IndexBuffer.hpp"
 #include "RenderEngine/Core/RenderEngineAPI.hpp"
 #include "RenderEngine/Core/RenderPrimitive.hpp"
 #include "RenderEngine/Core/VertexArray.hpp"
@@ -29,6 +31,12 @@ namespace EgLab::RE
         /// @param shader Shader used for highlighting.
         /// @param nodeIndex Index of the node to highlight.
         virtual void drawHighlight(Common::SharedPtr<Shader> shader, IdxType nodeIndex) override;
+
+        /// @brief Highlights many nodes with a single indexed draw call.
+        /// @param shader Shader used for highlighting.
+        /// @param indices Node indices to highlight.
+        virtual void drawHighlightBatch(Common::SharedPtr<Shader> shader,
+                                        const Common::DynamicArray<IdxType> &indices) override;
         /// @brief Returns the axis-aligned bounds of the node data.
         virtual Common::BBox<Scalar, 3> getBounds() const override;
 
@@ -49,6 +57,24 @@ namespace EgLab::RE
         /// @return Index of the picked node, or the invalid index when nothing is hit.
         virtual IdxType touch(const PickContext &context) override;
 
+        /// @brief Collects the nodes covered by a rubber-band rectangle.
+        /// @param context Screen-space rectangle and camera matrices.
+        /// @param outIndices Receives the indices of every matching node.
+        virtual void touchRect(const RectPickContext &context,
+                               Common::DynamicArray<IdxType> &outIndices) const override;
+
+        /// @brief Marks nodes as hidden without changing the vertex index mapping.
+        /// @details Hidden nodes are kept in the buffers so every external index stays valid;
+        ///          the node shader degenerates them and picking skips them.
+        /// @param hiddenNodeIndices Local node indices to hide.
+        void setHiddenNodes(const Common::HashSet<IdxType> &hiddenNodeIndices);
+
+        /// @brief Returns the number of nodes in the primitive.
+        size_t getNodeCount() const
+        {
+            return _vertices.size();
+        }
+
         /// @brief Picking a node primitive yields node entities.
         PickKind getPickKind() const override
         {
@@ -56,11 +82,21 @@ namespace EgLab::RE
         }
 
     private:
+        void rebuildHiddenFlags();
+        void uploadHiddenFlagsIfNeeded();
+
         Common::DynamicArray<CoordType> _vertices;
+        Common::DynamicArray<float> _hiddenFlags;
+        Common::HashSet<IdxType> _hiddenNodeIndices;
         Common::Vector4f _color{0.18f, 0.24f, 0.30f, 1.0f};
         float _pointSize{3.0f};
         bool _depthTestEnabled{true};
+        bool _hiddenFlagsDirty{false};
         Common::SharedPtr<VertexArray> _vertexArray;
         Common::SharedPtr<VertexBuffer> _vertexBuffer;
+        Common::SharedPtr<VertexBuffer> _hiddenVertexBuffer;
+        // Index buffer backing drawHighlightBatch(); rebuilt only when the selection changes.
+        Common::SharedPtr<IndexBuffer> _highlightIndexBuffer;
+        Common::DynamicArray<IdxType> _highlightIndices;
     };
 } // namespace EgLab::RE

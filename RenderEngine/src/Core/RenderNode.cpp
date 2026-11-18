@@ -3,6 +3,7 @@
 #include <GL/glew.h>
 
 #include "Common/Utils.hpp"
+#include "RenderEngine/Core/IndexBuffer.hpp"
 #include "RenderEngine/Core/Shader.hpp"
 #include "RenderEngine/Core/VertexArray.hpp"
 #include "RenderEngine/Core/VertexBufferLayout.hpp"
@@ -15,7 +16,53 @@ namespace EgLab::RE
 
     void RenderNode::setNodes(Common::DynamicArray<CoordType> &&nodes)
     {
-        _vertices = nodes;
+        _vertices = Common::move(nodes);
+        rebuildHiddenFlags();
+        // Cached highlight indices refer to the previous vertex layout.
+        _highlightIndexBuffer = nullptr;
+        _highlightIndices.clear();
+    }
+
+    void RenderNode::setHiddenNodes(const Common::HashSet<IdxType> &hiddenNodeIndices)
+    {
+        _hiddenNodeIndices = hiddenNodeIndices;
+        rebuildHiddenFlags();
+        _hiddenFlagsDirty = true;
+    }
+
+    void RenderNode::rebuildHiddenFlags()
+    {
+        _hiddenFlags.resize(_vertices.size());
+        for (size_t index = 0; index < _hiddenFlags.size(); ++index)
+        {
+            _hiddenFlags[index] = 0.0f;
+        }
+
+        if (_hiddenNodeIndices.empty())
+        {
+            return;
+        }
+
+        for (auto it = _hiddenNodeIndices.begin(); it.hasNext(); it.next())
+        {
+            const IdxType nodeIndex = it.data();
+            if (nodeIndex < _hiddenFlags.size())
+            {
+                _hiddenFlags[nodeIndex] = 1.0f;
+            }
+        }
+    }
+
+    void RenderNode::uploadHiddenFlagsIfNeeded()
+    {
+        if (!_hiddenFlagsDirty || !_hiddenVertexBuffer || _hiddenFlags.empty())
+        {
+            _hiddenFlagsDirty = false;
+            return;
+        }
+
+        _hiddenVertexBuffer->setData(_hiddenFlags.data(), _hiddenFlags.size() * sizeof(float));
+        _hiddenFlagsDirty = false;
     }
 
     void RenderNode::setColor(const Common::Vector4f &color)
@@ -45,14 +92,23 @@ namespace EgLab::RE
 
     void RenderNode::setup()
     {
+        rebuildHiddenFlags();
         _vertexArray = Common::makeShared<VertexArray>();
         _vertexArray->bind();
         VertexBufferLayout layout;
         _vertexBuffer = Common::makeShared<VertexBuffer>(_vertices);
         layout.pushBack<float>(3, _vertexBuffer);
+        if (!_hiddenFlags.empty())
+        {
+            _hiddenVertexBuffer =
+                Common::makeShared<VertexBuffer>(_hiddenFlags.data(),
+                                                 _hiddenFlags.size() * sizeof(float));
+            layout.pushBack<float>(1, _hiddenVertexBuffer);
+        }
 
         _vertexArray->addBuffer(layout);
         _vertexArray->unBind();
+        _hiddenFlagsDirty = false;
     }
 
     void RenderNode::draw(Common::SharedPtr<Shader> shader)
@@ -63,6 +119,7 @@ namespace EgLab::RE
             glDisable(GL_DEPTH_TEST);
         }
         glEnable(GL_PROGRAM_POINT_SIZE);
+        uploadHiddenFlagsIfNeeded();
         shader->bind();
         shader->setUniform1f("u_PointSize", _pointSize);
         shader->setUniform4f("u_Color", _color);
@@ -84,6 +141,11 @@ namespace EgLab::RE
     void RenderNode::drawHighlight(Common::SharedPtr<Shader> shader, IdxType nodeIndex)
     {
         if (nodeIndex >= _vertices.size())
+        {
+            return;
+        }
+        if (!_hiddenNodeIndices.empty() &&
+            _hiddenNodeIndices.find(nodeIndex) != _hiddenNodeIndices.end())
         {
             return;
         }
@@ -117,6 +179,12 @@ namespace EgLab::RE
 
         for (IdxType i = 0; i < _vertices.size(); ++i)
         {
+            if (!_hiddenNodeIndices.empty() &&
+                _hiddenNodeIndices.find(i) != _hiddenNodeIndices.end())
+            {
+                continue;
+            }
+
             const auto &vertex = _vertices[i];
             const Scalar eyeX = context.view[0][0] * vertex.x() + context.view[0][1] * vertex.y() +
                                 context.view[0][2] * vertex.z() + context.view[0][3];
@@ -170,5 +238,98 @@ namespace EgLab::RE
         }
 
         return touchedIndex;
+    }
+
+    void RenderNode::touchRect(const RectPickContext &context,
+                               Common::DynamicArray<IdxType> &outIndices) const
+    {
+        if (context.width == 0 || context.height == 0)
+        {
+            return;
+        }
+
+        context.prepare();
+
+        const size_t vertexCount = _vertices.size();
+        for (IdxType index = 0; index < vertexCount; ++index)
+        {
+            if (!_hiddenNodeIndices.empty() &&
+                _hiddenNodeIndices.find(index) != _hiddenNodeIndices.end())
+            {
+                continue;
+            }
+
+            PickUtils::ScreenPoint point;
+            if (!context.project(_vertices[index], point))
+            {
+                continue;
+            }
+            // A point is fully inside the rectangle exactly when it intersects it.
+            if (context.contains(point.x, point.y))
+            {
+                outIndices.pushBack(index);
+            }
+        }
+    }
+
+    void RenderNode::drawHighlightBatch(Common::SharedPtr<Shader> shader,
+                                        const Common::DynamicArray<IdxType> &indices)
+    {
+        if (indices.empty() || _vertexArray == nullptr)
+        {
+            return;
+        }
+
+        // Sparse node selections rarely form contiguous runs, so they are drawn from a reused
+        // index buffer: one draw call regardless of how scattered the selection is.
+        Common::DynamicArray<IdxType> validIndices;
+        validIndices.reserve(indices.size());
+        for (size_t index = 0; index < indices.size(); ++index)
+        {
+            if (indices[index] >= _vertices.size())
+            {
+                continue;
+            }
+            if (!_hiddenNodeIndices.empty() &&
+                _hiddenNodeIndices.find(indices[index]) != _hiddenNodeIndices.end())
+            {
+                continue;
+            }
+            validIndices.pushBack(indices[index]);
+        }
+        if (validIndices.empty())
+        {
+            _highlightIndexBuffer = nullptr;
+            _highlightIndices.clear();
+            return;
+        }
+
+        bool indicesChanged = validIndices.size() != _highlightIndices.size();
+        for (size_t index = 0; !indicesChanged && index < validIndices.size(); ++index)
+        {
+            indicesChanged = validIndices[index] != _highlightIndices[index];
+        }
+        if (indicesChanged)
+        {
+            _highlightIndexBuffer = Common::makeShared<IndexBuffer>(validIndices);
+            _highlightIndices = Common::move(validIndices);
+        }
+
+        GLint previousDepthFunction = GL_LESS;
+        glGetIntegerv(GL_DEPTH_FUNC, &previousDepthFunction);
+        glDepthFunc(GL_LEQUAL);
+
+        shader->bind();
+        shader->setUniform1f("u_PointSize", 10.0f);
+        shader->setUniform4f("u_Color", Common::Vector4f(1.0f, 0.28f, 0.04f, 1.0f));
+        _vertexArray->bind();
+        _highlightIndexBuffer->bind();
+        glDrawElements(GL_POINTS, static_cast<GLsizei>(_highlightIndexBuffer->getCount()),
+                       GL_UNSIGNED_INT, 0);
+        _vertexArray->unBind();
+        _highlightIndexBuffer->unBind();
+        shader->unBind();
+
+        glDepthFunc(static_cast<GLenum>(previousDepthFunction));
     }
 } // namespace EgLab::RE

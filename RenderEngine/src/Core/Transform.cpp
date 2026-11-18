@@ -30,7 +30,7 @@ namespace EgLab::RE
         scale[1][1] = _scale[1];
         scale[2][2] = _scale[2];
 
-        return pos * scale * getRotationMatrix();
+        return pos * getRotationMatrix() * scale;
     }
 
     Common::Matrix4f Transform::getRotationMatrix()

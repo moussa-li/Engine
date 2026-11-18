@@ -95,6 +95,7 @@ namespace EgLab::Platform
                 // handler exposes the highlight as a scene primitive drawn with the rest.
                 submitPickEvent();
                 drainRenderEvents();
+                publishSelectionInfoIfChanged();
                 if (!_running.load())
                 {
                     _window->deactiveContext();
@@ -175,6 +176,11 @@ namespace EgLab::Platform
 
         _meshSelector = nullptr;
         _renderData.releaseResources();
+
+        _selectionInfoSubscriptions.clear();
+        _lastPublishedSelectionRevision = 0;
+        _hasPublishedSelectionInfo = false;
+        _selectionScopeMesh = nullptr;
 
         {
             std::lock_guard<std::mutex> lock(_renderEventMutex);
@@ -264,6 +270,91 @@ namespace EgLab::Platform
             }
         }
         return false;
+    }
+
+    SelectionChangedSubscriptionId RenderWork::subscribeSelectionChanged()
+    {
+        const SelectionChangedSubscriptionId subscriptionId = _nextSelectionInfoSubscriptionId++;
+
+        Common::String queueName = Common::String("RenderSelectionInfo_") +
+                                   Common::ToString(reinterpret_cast<uintptr_t>(this)) +
+                                   Common::String("_") + Common::ToString(subscriptionId);
+
+        auto subscription = Common::makeUnique<SelectionInfoSubscription>();
+        subscription->id = subscriptionId;
+        subscription->queue = Common::makeUnique<Common::MemoryQueue>(queueName, true);
+        subscription->publisher = Common::makeUnique<Common::Publisher>(*subscription->queue);
+        subscription->subscriber = Common::makeUnique<Common::Subscriber>(*subscription->queue);
+        subscription->subscriber->subscrib(static_cast<uint32_t>(EventId::SelectionChanged));
+
+        if (_hasPublishedSelectionInfo)
+        {
+            subscription->publisher->publish(static_cast<uint32_t>(EventId::SelectionChanged),
+                                             _lastSelectionChangedInfo);
+        }
+        _selectionInfoSubscriptions.pushBack(Common::move(subscription));
+        return subscriptionId;
+    }
+
+    void RenderWork::unsubscribeSelectionChanged(SelectionChangedSubscriptionId subscriptionId)
+    {
+        Common::DynamicArray<Common::UniquePtr<SelectionInfoSubscription>> remaining;
+        for (auto& subscription : _selectionInfoSubscriptions)
+        {
+            if (subscription->id != subscriptionId)
+            {
+                remaining.pushBack(Common::move(subscription));
+            }
+        }
+        _selectionInfoSubscriptions.clear();
+        _selectionInfoSubscriptions = Common::move(remaining);
+    }
+
+    bool RenderWork::tryReceiveSelectionChanged(SelectionChangedSubscriptionId subscriptionId,
+                                                SelectionChangedInfo& info)
+    {
+        for (const auto& subscription : _selectionInfoSubscriptions)
+        {
+            if (subscription->id == subscriptionId)
+            {
+                uint32_t eventId = 0;
+                return subscription->subscriber->tryReceive(eventId, info);
+            }
+        }
+        return false;
+    }
+
+    void RenderWork::publishSelectionInfoIfChanged()
+    {
+        uint64_t revision = 0;
+        {
+            std::lock_guard<std::mutex> lock(_renderData.stateMutex());
+            revision = _renderData.getSelectionRevision();
+        }
+        if (revision == _lastPublishedSelectionRevision)
+        {
+            return;
+        }
+
+        SelectionSnapshot snapshot;
+        {
+            std::lock_guard<std::mutex> lock(_renderData.stateMutex());
+            _renderData.getSelectionSnapshot(snapshot);
+        }
+
+        SelectionChangedInfo info;
+        info.revision = snapshot.revision;
+        info.nodeCount = snapshot.totalNodes;
+        info.elementCount = snapshot.totalElements;
+        _lastSelectionChangedInfo = info;
+        _lastPublishedSelectionRevision = revision;
+        _hasPublishedSelectionInfo = true;
+
+        for (const auto& subscription : _selectionInfoSubscriptions)
+        {
+            subscription->publisher->publish(static_cast<uint32_t>(EventId::SelectionChanged),
+                                             info);
+        }
     }
 
     bool RenderWork::tryGetPickedMeshCenter(RE::CoordType& center) const
@@ -563,6 +654,81 @@ namespace EgLab::Platform
         event->elementIds = elementIds;
         event->mode = mode;
         queueRenderEvent(event);
+    }
+
+    void RenderWork::setNodeVisibility(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
+                                       uint32_t mode,
+                                       const Common::DynamicArray<uint32_t>& nodeIds)
+    {
+        if (!mesh)
+        {
+            LOG(WARNING) << "RenderWork::setNodeVisibility() skipped null mesh";
+            return;
+        }
+
+        auto event = Common::makeShared<NodeVisibilityEvent>();
+        event->mesh = mesh;
+        event->nodeIds = nodeIds;
+        event->mode = mode;
+        queueRenderEvent(event);
+    }
+
+    void RenderWork::setSelectionScope(const Common::SharedPtr<EgLab::ME::Mesh>& mesh)
+    {
+        _selectionScopeMesh = mesh;
+    }
+
+    void RenderWork::setSelectionContainsOnly(bool containsOnly)
+    {
+        _selectionContainsOnly = containsOnly;
+    }
+
+    bool RenderWork::isSelectionContainsOnly() const
+    {
+        return _selectionContainsOnly;
+    }
+
+    void RenderWork::requestBoxSelection(float minX, float minY, float maxX, float maxY,
+                                         unsigned int width, unsigned int height, bool additive,
+                                         uint32_t kinds)
+    {
+        auto event = Common::makeShared<BoxSelectEvent>();
+        event->minX = minX;
+        event->minY = minY;
+        event->maxX = maxX;
+        event->maxY = maxY;
+        event->width = width;
+        event->height = height;
+        event->containsOnly = _selectionContainsOnly;
+        event->additive = additive;
+        event->kinds = kinds;
+        event->scopeMesh = _selectionScopeMesh;
+        queueRenderEvent(event);
+    }
+
+    void RenderWork::requestPointSelection(float x, float y, unsigned int width,
+                                           unsigned int height, bool additive, uint32_t kinds)
+    {
+        auto event = Common::makeShared<PointSelectEvent>();
+        event->x = x;
+        event->y = y;
+        event->width = width;
+        event->height = height;
+        event->additive = additive;
+        event->kinds = kinds;
+        event->scopeMesh = _selectionScopeMesh;
+        queueRenderEvent(event);
+    }
+
+    void RenderWork::requestClearSelection()
+    {
+        queueRenderEvent(Common::makeShared<ClearSelectionEvent>());
+    }
+
+    void RenderWork::copySelectionSnapshot(SelectionSnapshot& snapshot) const
+    {
+        std::lock_guard<std::mutex> lock(_renderData.stateMutex());
+        _renderData.getSelectionSnapshot(snapshot);
     }
 
     void RenderWork::setHighlightColor(const Common::Vector4f& color)

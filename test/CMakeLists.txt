@@ -30,6 +30,9 @@ add_executable(common_test
 
 add_executable(mesh_test
     test_mesh.cpp
+    test_mesh_visibility.cpp
+    test_selection.cpp
+    ${CMAKE_SOURCE_DIR}/EnginePlatform/src/Work/SelectionModel.cpp
     test_main.cpp
 )
 
@@ -94,6 +97,7 @@ target_link_libraries(engine_tests PRIVATE
 target_include_directories(mesh_test PRIVATE
     ${CMAKE_SOURCE_DIR}/3rd/gtest/googletest/include
     ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/EnginePlatform/include
 )
 
 target_link_libraries(mesh_test PRIVATE

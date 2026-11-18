@@ -32,12 +32,24 @@ namespace EgLab::RE
         /// @param shader Shader used for highlighting.
         /// @param lineIndex Index of the line to highlight.
         virtual void drawHighlight(Common::SharedPtr<Shader> shader, IdxType lineIndex) override;
+
+        /// @brief Draws many highlighted lines with one draw call per consecutive index run.
+        /// @param shader Shader used for highlighting.
+        /// @param indices Line indices to highlight.
+        virtual void drawHighlightBatch(Common::SharedPtr<Shader> shader,
+                                        const Common::DynamicArray<IdxType> &indices) override;
         /// @brief Returns the axis-aligned bounds of the line data.
         virtual Common::BBox<Scalar, 3> getBounds() const override;
         /// @brief Tests the line data against a picking context.
         /// @param context Screen-space picking parameters and camera matrices.
         /// @return Index of the picked line, or the invalid index when nothing is hit.
         virtual IdxType touch(const PickContext& context) override;
+
+        /// @brief Collects the lines covered by a rubber-band rectangle.
+        /// @param context Screen-space rectangle and camera matrices.
+        /// @param outIndices Receives the index of every matching line.
+        virtual void touchRect(const RectPickContext& context,
+                               Common::DynamicArray<IdxType>& outIndices) const override;
 
         /// @brief Picking a line primitive yields edge entities.
         PickKind getPickKind() const override
