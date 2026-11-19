@@ -157,6 +157,30 @@ def parse_ids(text):
     return ids
 
 
+def is_number(value):
+    """判断 value 是否为数值（排除 bool）。"""
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def parse_vec3(value):
+    """把 [x,y,z] 或 "x,y,z" 解析为 (x, y, z) 三个 float；失败返回 None。"""
+    if value is None:
+        return None
+    if isinstance(value, (list, tuple)):
+        tokens = list(value)
+    elif isinstance(value, str):
+        tokens = re.split(r"[\s,;]+", value.strip().replace("，", ","))
+        tokens = [t for t in tokens if t != ""]
+    else:
+        return None
+    if len(tokens) < 3:
+        return None
+    try:
+        return float(tokens[0]), float(tokens[1]), float(tokens[2])
+    except (ValueError, TypeError):
+        return None
+
+
 def find_engine_pids():
     """枚举当前运行的 EnginePlatform.exe 进程 PID（注册表 PID 失效时的回退）。"""
     try:
@@ -302,6 +326,104 @@ class NativeCommandBridge:
         finally:
             self._release_mutex()
 
+    def _read_mesh_result(self, pid):
+        """读取 GetMeshData(200010) 的同步回传结果（EgLab MeshDataResult-<pid> 队列）。
+
+        引擎 push 到该队列的 payload 为 GetMeshDataResult（51264 字节，单槽非分片），
+        本方法消费 channelId==200010 的槽并推进 readIdx（AI 是唯一消费者）。
+        """
+        name = ("EgLab MeshDataResult-%d" % pid).encode("ascii")
+        handle = self._k.OpenFileMappingA(FILE_MAP_ALL_ACCESS, False, name)
+        if not handle:
+            return {"ok": False,
+                    "error": "无法打开网格数据结果队列（共享内存 EgLab MeshDataResult-%d）" % pid}
+        try:
+            base = self._k.MapViewOfFile(handle, FILE_MAP_ALL_ACCESS, 0, 0, SHM_SIZE)
+            if not base:
+                return {"ok": False, "error": "无法映射网格数据结果队列内存"}
+            try:
+                deadline = time.time() + 2.0
+                while True:
+                    write = self._read_u64(base + 0)
+                    read = self._read_u64(base + 64)
+                    if read < write:
+                        slot = base + CONTROL_BLOCK_SIZE + (read & RING_BUFFER_MASK) * SLOT_STRIDE
+                        state = self._read_u32(slot + 8)
+                        if state == SLOT_READY:
+                            channel = self._read_u32(slot + 12)
+                            size = self._read_u32(slot + 16)
+                            # 消费侧推进：先取数据，再置 EMPTY + readIdx++（普通写即可）
+                            data_len = min(size, COMMON_MAX_PAYLOAD)
+                            buf = ctypes.create_string_buffer(data_len)
+                            if data_len:
+                                ctypes.memmove(buf, slot + 24, data_len)
+                            self._write_u32(slot + 8, SLOT_EMPTY)
+                            self._write_u64(base + 64, read + 1)
+                            if channel != 200010:
+                                continue
+                            return self._parse_mesh_result(buf.raw[:data_len])
+                        # 状态尚未 READY（写入中），继续轮询
+                    if time.time() > deadline:
+                        return {"ok": False, "error": "GetMeshData 结果超时"}
+                    time.sleep(0.005)
+            finally:
+                self._k.UnmapViewOfFile(base)
+        finally:
+            self._k.CloseHandle(handle)
+
+    @staticmethod
+    def _parse_mesh_result(data):
+        """解析 GetMeshDataResult（64B header + 256×200B entries，小端）。"""
+        if len(data) < 64:
+            return {"ok": False, "error": "GetMeshData 结果数据不完整"}
+        magic, version, status, flags, mesh_count, total_node, total_elem, bmin_x, bmin_y, bmin_z, bmax_x, bmax_y, bmax_z = struct.unpack_from(
+            "<IIIII4xQQ3f3f", data, 0)
+        if magic != 0x4D534844:
+            return {"ok": False, "error": "GetMeshData 结果 magic 校验失败: 0x%08X" % magic}
+        if version != 1:
+            return {"ok": False, "error": "GetMeshData 结果 version 不支持: %d" % version}
+        if status != 0:
+            return {"ok": False, "error": "目标数据节点不存在或非 MeshData（status=%d）" % status}
+        count = min(mesh_count, 256)
+        meshes = []
+        for i in range(count):
+            off = 64 + i * 200
+            if off + 196 > len(data):
+                break
+            data_node_id, name = struct.unpack_from("<Q64s", data, off)
+            node_count, elem_count = struct.unpack_from("<QQ", data, off + 72)
+            bmin = struct.unpack_from("<3f", data, off + 88)
+            bmax = struct.unpack_from("<3f", data, off + 100)
+            elem_type_count = struct.unpack_from("<I", data, off + 112)[0]
+            elem_type_ids = struct.unpack_from("<10I", data, off + 116)
+            elem_type_counts = struct.unpack_from("<10I", data, off + 156)
+            meshes.append({
+                "dataNodeId": int(data_node_id),
+                "name": name.rstrip(b"\x00").decode("utf-8", errors="replace"),
+                "nodeCount": int(node_count),
+                "elemCount": int(elem_count),
+                "bboxMin": list(bmin),
+                "bboxMax": list(bmax),
+                "elemTypeCount": int(elem_type_count),
+                "elemTypes": [
+                    {"id": int(elem_type_ids[j]), "count": int(elem_type_counts[j])}
+                    for j in range(min(elem_type_count, 10))
+                ],
+            })
+        return {
+            "ok": True,
+            "result": {
+                "status": "ok",
+                "meshCount": count,
+                "truncated": bool(flags & 1),
+                "totalNodeCount": int(total_node),
+                "totalElemCount": int(total_elem),
+                "totalBBox": {"min": [bmin_x, bmin_y, bmin_z],
+                              "max": [bmax_x, bmax_y, bmax_z]},
+                "meshes": meshes,
+            },
+        }
+
     @staticmethod
     def _serialize(name, args):
         """把工具名+参数序列化为 (eventId, 载荷字节)；返回 None 表示引擎侧尚未实现。"""
@@ -310,6 +432,33 @@ class NativeCommandBridge:
         if name == "ShowPanel":
             panel = (args.get("panelName") or "").encode("utf-8")
             return 100001, struct.pack("<I", 64) + panel.ljust(64, b"\x00")[:64]
+        if name == "HidePanel":
+            panel = (args.get("panelName") or "").encode("utf-8")
+            return 100004, struct.pack("<I", 64) + panel.ljust(64, b"\x00")[:64]
+        if name == "SetCamera":
+            mode = 1 if (args.get("mode") or "orbit") == "fps" else 0
+            field_mask = 0
+            pos = parse_vec3(args.get("position"))
+            if pos is None:
+                pos = (0.0, 0.0, 0.0)
+            else:
+                field_mask |= 0x1  # bit0=position
+            tgt = parse_vec3(args.get("target"))
+            if tgt is None:
+                tgt = (0.0, 0.0, 0.0)
+            else:
+                field_mask |= 0x2  # bit1=target
+            fov_raw = args.get("fov")
+            fov = float(fov_raw) if is_number(fov_raw) else 0.0
+            if is_number(fov_raw):
+                field_mask |= 0x4  # bit2=fov
+            dur_raw = args.get("duration")
+            dur = float(dur_raw) if is_number(dur_raw) else 0.45
+            if is_number(dur_raw):
+                field_mask |= 0x8  # bit3=duration
+            return 300005, struct.pack("<I", 40) + struct.pack("<II3f3fff", mode, field_mask, *pos, *tgt, fov, dur)
+        if name == "GetMeshData":
+            return 200010, struct.pack("<I", 8) + struct.pack("<Q", int(args.get("dataNodeId") or 0))
         if name == "MeshImport":
             path = (args.get("fileDir") or "").encode("utf-8")
             return 200002, struct.pack("<I", 128) + path.ljust(128, b"\x00")[:128]
@@ -349,6 +498,8 @@ class NativeCommandBridge:
         event_id, payload = serialized
         if not self._push(event_id, payload):
             return {"ok": False, "error": "EnginePlatform 命令队列已满，请稍后重试"}
+        if name == "GetMeshData":
+            return self._read_mesh_result(pid)
         return {"ok": True,
                 "result": {"status": "dispatched", "eventId": event_id, "command": name}}
 
@@ -494,14 +645,17 @@ class StubBridge:
                 },
             }
         if name == "SetCamera":
+            pos = parse_vec3(arguments.get("position"))
+            tgt = parse_vec3(arguments.get("target"))
             return {
                 "ok": True,
                 "result": {
                     "status": "applied",
                     "mode": arguments.get("mode", "fit"),
-                    "position": arguments.get("position"),
-                    "target": arguments.get("target"),
+                    "position": list(pos) if pos is not None else arguments.get("position"),
+                    "target": list(tgt) if tgt is not None else arguments.get("target"),
                     "fov": arguments.get("fov"),
+                    "duration": arguments.get("duration"),
                 },
             }
         if name == "GetLog":
@@ -525,10 +679,43 @@ class StubBridge:
                 "ok": True,
                 "result": {"status": "deleted", "dataNodeId": arguments.get("dataNodeId", 0)},
             }
+        if name == "GetMeshData":
+            node_id = int(arguments.get("dataNodeId") or 0)
+            return {
+                "ok": True,
+                "result": {
+                    "status": "ok",
+                    "meshCount": 1,
+                    "truncated": False,
+                    "totalNodeCount": 1564,
+                    "totalElemCount": 3200,
+                    "totalBBox": {"min": [-1.0, -1.0, -1.0], "max": [1.0, 1.0, 1.0]},
+                    "meshes": [
+                        {
+                            "dataNodeId": node_id,
+                            "name": "DemoMesh_%d" % node_id,
+                            "nodeCount": 1564,
+                            "elemCount": 3200,
+                            "bboxMin": [-1.0, -1.0, -1.0],
+                            "bboxMax": [1.0, 1.0, 1.0],
+                            "elemTypeCount": 2,
+                            "elemTypes": [
+                                {"id": 4, "count": 2800},
+                                {"id": 5, "count": 400},
+                            ],
+                        }
+                    ],
+                },
+            }
         if name == "ShowPanel":
             return {
                 "ok": True,
                 "result": {"status": "queued", "panelName": arguments.get("panelName", "")},
+            }
+        if name == "HidePanel":
+            return {
+                "ok": True,
+                "result": {"status": "hidden", "panelName": arguments.get("panelName", "")},
             }
         if name == "FitView":
             return {"ok": True, "result": {"status": "applied"}}

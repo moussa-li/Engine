@@ -15,6 +15,7 @@ namespace EgLab::Platform
         ShowPanel = 100001,
         FitView = 100002,
         Highlight = 100003,
+        HidePanel = 100004,
         UpdateMesh = 200001, // Mesh = 2xxxxx
         MeshImport = 200002,
         MeshDelete = 200003,
@@ -23,10 +24,12 @@ namespace EgLab::Platform
         ElementsVisibility = 200006,
         NodeVisibility = 200007,
         SelectionChanged = 200008,
+        GetMeshData = 200010, // 200009 is reserved for CreateMesh
         CameraPan = 300001, // Camera = 3xxxxx
         CameraRotate = 300002,
         CameraRotateLocal = 300003,
         CameraZoom = 300004,
+        SetCamera = 300005,
     };
 }
 

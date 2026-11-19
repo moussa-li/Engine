@@ -15,6 +15,8 @@
 #include "Command/CommandBus.hpp"
 #include "Command/CommandQueueName.hpp"
 #include "Command/DeleteMeshCmd.hpp"
+#include "Command/FloatList.hpp"
+#include "Command/GetMeshDataCmd.hpp"
 #include "Command/HighlightCmd.hpp"
 #include "Command/ICommand.hpp"
 #include "Command/IdList.hpp"
@@ -22,6 +24,7 @@
 #include "Command/LocateElementsCmd.hpp"
 #include "Command/ElementsVisibilityCmd.hpp"
 #include "Command/NodeVisibilityCmd.hpp"
+#include "Command/SetCameraCmd.hpp"
 #include "Command/UpdateMeshCmd.hpp"
 #include "Common/HashMap.hpp"
 #include "Common/Publisher.hpp"
@@ -74,6 +77,22 @@ namespace EgLab::Platform
 
     private:
         ShowPanelParam _params;
+    };
+
+    class HidePanelCommand : public ICommand
+    {
+    public:
+        explicit HidePanelCommand(const HidePanelParam& params) : _params(params)
+        {
+        }
+
+        Common::Return exec() override
+        {
+            return Context::instance().getPanelManager().queueHidePanel(_params.panelName);
+        }
+
+    private:
+        HidePanelParam _params;
     };
 
     class FitViewCommand : public ICommand
@@ -129,6 +148,24 @@ namespace EgLab::Platform
                 return Common::makeShared<ShowPanelCommand>(param);
             };
 
+            _creator[EventId::HidePanel] = [](const PacketPOD& pod) {
+                HidePanelParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<HidePanelCommand>(param);
+            };
+
+            _creator[EventId::SetCamera] = [](const PacketPOD& pod) {
+                SetCameraParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<SetCameraCmd>(param);
+            };
+
+            _creator[EventId::GetMeshData] = [](const PacketPOD& pod) {
+                GetMeshDataParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<GetMeshDataCmd>(param);
+            };
+
             _creator[EventId::FitView] = [](const PacketPOD&) {
                 return Common::makeShared<FitViewCommand>();
             };
@@ -182,6 +219,76 @@ namespace EgLab::Platform
                 return pod;
             };
 
+            _packetCreator[EventId::HidePanel] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                HidePanelParam param{};
+                const Common::String panelName = packet.getData<Common::String>("panelName");
+                const size_t copySize = std::min(panelName.size(), sizeof(param.panelName) - 1);
+                std::memcpy(param.panelName, panelName.c_str(), copySize);
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
+            _packetCreator[EventId::SetCamera] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                SetCameraParam param{};
+                param.mode = static_cast<uint32_t>(CameraMode::Orbit);
+                if (packet.contains("mode"))
+                {
+                    const Common::String mode = packet.getData<Common::String>("mode");
+                    if (mode == Common::String("fps"))
+                    {
+                        param.mode = static_cast<uint32_t>(CameraMode::Fps);
+                    }
+                }
+
+                if (packet.contains("position"))
+                {
+                    float position[3]{};
+                    parseFloat3(packet.getData<Common::String>("position"), position);
+                    param.position[0] = position[0];
+                    param.position[1] = position[1];
+                    param.position[2] = position[2];
+                    param.fieldMask |= CAMERA_FIELD_POSITION;
+                }
+
+                if (packet.contains("target"))
+                {
+                    float target[3]{};
+                    parseFloat3(packet.getData<Common::String>("target"), target);
+                    param.target[0] = target[0];
+                    param.target[1] = target[1];
+                    param.target[2] = target[2];
+                    param.fieldMask |= CAMERA_FIELD_TARGET;
+                }
+
+                if (packet.contains("fov"))
+                {
+                    param.fov = packet.getData<float>("fov");
+                    param.fieldMask |= CAMERA_FIELD_FOV;
+                }
+
+                param.duration = 0.45f;
+                if (packet.contains("duration"))
+                {
+                    param.duration = packet.getData<float>("duration");
+                    param.fieldMask |= CAMERA_FIELD_DURATION;
+                }
+
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
+            _packetCreator[EventId::GetMeshData] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                GetMeshDataParam param{packet.getData<uint64_t>("dataNodeId")};
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
             _packetCreator[EventId::FitView] = [](const EventPacket&) { return PacketPOD{}; };
 
             _packetCreator[EventId::MeshDelete] = [](const EventPacket& packet) {
@@ -219,8 +326,11 @@ namespace EgLab::Platform
         void startListen()
         {
             _subscriber.subscrib(static_cast<uint32_t>(EventId::ShowPanel));
+            _subscriber.subscrib(static_cast<uint32_t>(EventId::HidePanel));
             _subscriber.subscrib(static_cast<uint32_t>(EventId::FitView));
             _subscriber.subscrib(static_cast<uint32_t>(EventId::Highlight));
+            _subscriber.subscrib(static_cast<uint32_t>(EventId::SetCamera));
+            _subscriber.subscrib(static_cast<uint32_t>(EventId::GetMeshData));
             _subscriber.subscrib((uint32_t)EventId::MeshImport);
             _subscriber.subscrib((uint32_t)EventId::MeshDelete);
             _subscriber.subscrib((uint32_t)EventId::LocateElements);

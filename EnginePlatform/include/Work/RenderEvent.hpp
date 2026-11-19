@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include "Command/CommandParam.hpp"
 #include "Common/DynamicArray.hpp"
 #include "Common/SharedPtr.hpp"
 #include "Common/Vector.hpp"
@@ -53,6 +54,7 @@ namespace EgLab::Platform
         ClearSelection,
         FitView,
         Pick,
+        SetCamera,
     };
 
     /// Polymorphic base for rendering change requests. Each concrete event type carries only
@@ -292,5 +294,15 @@ namespace EgLab::Platform
         float y{0.0f};
         /// Kinds accepted by this query; 0 clears the current pick highlight.
         uint32_t kinds{0};
+    };
+
+    class SetCameraEvent : public RenderEvent
+    {
+    public:
+        SetCameraEvent() : RenderEvent(RenderEventType::SetCamera)
+        {
+        }
+
+        SetCameraParam param;
     };
 } // namespace EgLab::Platform

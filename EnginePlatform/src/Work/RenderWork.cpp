@@ -599,6 +599,13 @@ namespace EgLab::Platform
         queueRenderEvent(event);
     }
 
+    void RenderWork::setCamera(const SetCameraParam& params)
+    {
+        auto event = Common::makeShared<SetCameraEvent>();
+        event->param = params;
+        queueRenderEvent(event);
+    }
+
     void RenderWork::onUpdateMesh(const UpdateMeshParam& params)
     {
         if (params.data == nullptr || params.dataSize == 0)

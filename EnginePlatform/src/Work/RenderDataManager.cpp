@@ -215,6 +215,39 @@ namespace EgLab::Platform
         _locateElementIds = elementIds;
     }
 
+    void RenderDataManager::setCamera(const SetCameraEvent& event)
+    {
+        if (!_camera)
+        {
+            return;
+        }
+
+        const SetCameraParam& param = event.param;
+        RE::CoordType position = _camera->getPosition();
+        RE::CoordType target = _camera->getTarget();
+        float fov = _camera->getZoom();
+        float duration = 0.45f;
+
+        if ((param.fieldMask & CAMERA_FIELD_POSITION) != 0)
+        {
+            position = RE::CoordType(param.position[0], param.position[1], param.position[2]);
+        }
+        if ((param.fieldMask & CAMERA_FIELD_TARGET) != 0)
+        {
+            target = RE::CoordType(param.target[0], param.target[1], param.target[2]);
+        }
+        if ((param.fieldMask & CAMERA_FIELD_FOV) != 0)
+        {
+            fov = param.fov;
+        }
+        if ((param.fieldMask & CAMERA_FIELD_DURATION) != 0)
+        {
+            duration = param.duration;
+        }
+
+        _camera->setCamera(position, target, fov, duration);
+    }
+
     void RenderDataManager::fitView(const Common::SharedPtr<ME::Mesh>& mesh)
     {
         if (!_camera)

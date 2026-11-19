@@ -14,6 +14,11 @@ namespace EgLab::Platform
         char panelName[64];
     };
 
+    struct HidePanelParam
+    {
+        char panelName[64];
+    };
+
     struct ImportMeshParam
     {
         char fileDir[128];
@@ -28,6 +33,33 @@ namespace EgLab::Platform
     struct DeleteMeshParam
     {
         uint64_t dataNodeId;
+    };
+
+    struct GetMeshDataParam
+    {
+        uint64_t dataNodeId; // 0 = 整个场景汇总
+    };
+
+    // ===== SetCamera =====
+    enum class CameraMode : uint32_t
+    {
+        Orbit = 0,
+        Fps = 1,
+    };
+
+    constexpr uint32_t CAMERA_FIELD_POSITION = 1u << 0;
+    constexpr uint32_t CAMERA_FIELD_TARGET = 1u << 1;
+    constexpr uint32_t CAMERA_FIELD_FOV = 1u << 2;
+    constexpr uint32_t CAMERA_FIELD_DURATION = 1u << 3;
+
+    struct SetCameraParam
+    {
+        uint32_t mode;      // CameraMode::Orbit/Fps
+        uint32_t fieldMask; // CAMERA_FIELD_* 位标志
+        float position[3];
+        float target[3];
+        float fov;      // 垂直视场角(度) → RE::Camera::setZoom(fov)
+        float duration; // 秒，<=0 立即生效，缺省 0.45f
     };
 
     // Maximum number of meshes that can be highlighted by a single Highlight command.
@@ -77,6 +109,15 @@ namespace EgLab::Platform
 
     static_assert(std::is_trivially_copyable<ShowPanelParam>::value,
                   "ShowPanelParam must be trivially copyable");
+    static_assert(std::is_trivially_copyable<HidePanelParam>::value,
+                  "HidePanelParam must be trivially copyable");
+    static_assert(sizeof(HidePanelParam) == 64, "HidePanelParam must be exactly 64 bytes");
+    static_assert(std::is_trivially_copyable<SetCameraParam>::value,
+                  "SetCameraParam must be trivially copyable");
+    static_assert(sizeof(SetCameraParam) == 40, "SetCameraParam must be exactly 40 bytes");
+    static_assert(std::is_trivially_copyable<GetMeshDataParam>::value,
+                  "GetMeshDataParam must be trivially copyable");
+    static_assert(sizeof(GetMeshDataParam) == 8, "GetMeshDataParam must be exactly 8 bytes");
     static_assert(std::is_trivially_copyable<ImportMeshParam>::value,
                   "ImportMeshParam must be trivially copyable");
     static_assert(std::is_trivially_copyable<UpdateMeshParam>::value,

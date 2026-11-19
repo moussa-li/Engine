@@ -120,6 +120,7 @@ namespace EgLab::Platform
 
         void fitView();
         void fitView(const Common::SharedPtr<EgLab::ME::Mesh>& mesh);
+        void setCamera(const SetCameraParam& params);
 
         // RenderWork is a dedicated render event listener.
         void subscribe(EventId eventId);

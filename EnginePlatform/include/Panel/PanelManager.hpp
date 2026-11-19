@@ -35,6 +35,7 @@ namespace EgLab::Platform
 
         Common::Return showPanel(const Common::String&);
         Common::Return queueShowPanel(const Common::String&);
+        Common::Return queueHidePanel(const Common::String&);
         Common::Return hidePanel(const Common::String&);
         void openHEMeshPanel(const Common::SharedPtr<ME::Mesh>& mesh,
                              const Common::String& meshName);

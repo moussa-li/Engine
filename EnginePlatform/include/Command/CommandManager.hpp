@@ -94,6 +94,11 @@ namespace EgLab::Platform
             return _buffer;
         }
 
+        bool contains(const Common::String& key) const
+        {
+            return _indexMap.find(key) != _indexMap.end();
+        }
+
     private:
         void writeData(const Common::String& key, const void* data, size_t size)
         {

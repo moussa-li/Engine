@@ -38,6 +38,7 @@ namespace EgLab::Platform
           _subscriber(_requestQueue)
     {
         _subscriber.subscrib(static_cast<uint32_t>(EventId::ShowPanel));
+        _subscriber.subscrib(static_cast<uint32_t>(EventId::HidePanel));
         _panels[MeshImportPanel().getPanelName()] = Common::makeShared<MeshImportPanel>();
         _panels[CameraSettingPanel().getPanelName()] = Common::makeShared<CameraSettingPanel>();
         _panels[BackGroundSettingPanel().getPanelName()] =
@@ -85,6 +86,16 @@ namespace EgLab::Platform
                    : Common::Return::Failed;
     }
 
+    Common::Return PanelManager::queueHidePanel(const Common::String& name)
+    {
+        HidePanelParam param{};
+        const size_t copySize = std::min(name.size(), sizeof(param.panelName) - 1);
+        std::memcpy(param.panelName, name.c_str(), copySize);
+        return _publisher.publish(static_cast<uint32_t>(EventId::HidePanel), param)
+                   ? Common::Return::Succeed
+                   : Common::Return::Failed;
+    }
+
     Common::Return PanelManager::hidePanel(const Common::String& name)
     {
         auto it = _panels.find(name);
@@ -109,7 +120,16 @@ namespace EgLab::Platform
         ShowPanelParam showRequest{};
         while (_subscriber.tryReceive(eventId, showRequest))
         {
-            showPanel(Common::String(showRequest.panelName));
+            if (eventId == static_cast<uint32_t>(EventId::ShowPanel))
+            {
+                showPanel(Common::String(showRequest.panelName));
+            }
+            else if (eventId == static_cast<uint32_t>(EventId::HidePanel))
+            {
+                HidePanelParam hideRequest{};
+                std::memcpy(&hideRequest, &showRequest, sizeof(hideRequest));
+                hidePanel(Common::String(hideRequest.panelName));
+            }
         }
 
         // 取出消息中心回调中的消息并分发给消息面板。

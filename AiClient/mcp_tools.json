@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "EgLab Embedded MCP Server - Tool Schemas",
   "description": "EnginePlatform 内嵌 MCP Server 暴露给 AI Agent 的引擎工具层。每个工具通过 mapsTo 关联到 command_schemas.json 中注册的 Command（eventId 与 CommandIds.hpp 的 EventId 一一对应）；parameters 为标准 JSON Schema (draft-07)，可直接作为 DeepSeek/OpenAI function-calling 的 tools 定义。",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "tools": [
     {
       "name": "CreateMesh",
@@ -45,6 +45,43 @@
       }
     },
     {
+      "name": "HidePanel",
+      "category": "Panel",
+      "command": "HidePanel",
+      "eventId": 100004,
+      "mapsTo": [
+        { "command": "HidePanel", "eventId": 100004, "mode": null }
+      ],
+      "summary": "关闭 / 隐藏指定 UI 面板",
+      "description": "隐藏并关闭指定的界面面板。面板名称枚举与 ShowPanel 完全一致。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "panelName": {
+            "type": "string",
+            "description": "要隐藏的面板名称，必须为枚举中的某一个值。",
+            "enum": [
+              "MeshImport",
+              "CameraSetting",
+              "BackGroundSetting",
+              "DataTree",
+              "ElementVisibility",
+              "HEMesh",
+              "HEMeshInspector",
+              "MeshRenderSettings",
+              "LightSetting",
+              "ShortcutSetting",
+              "CommandParamWizard",
+              "MessageLog",
+              "MessageToast"
+            ]
+          }
+        },
+        "required": ["panelName"],
+        "additionalProperties": false
+      }
+    },
+    {
       "name": "SetCamera",
       "category": "Camera",
       "command": "SetCamera",
@@ -64,27 +101,54 @@
             "enum": ["fit", "orbit", "fps"]
           },
           "position": {
-            "type": "array",
-            "description": "相机位置 [x, y, z]（世界坐标）。",
-            "items": { "type": "number" },
-            "minItems": 3,
-            "maxItems": 3
+            "type": "string",
+            "description": "相机位置 x,y,z 逗号分隔（世界坐标），例如 \"5, 2, 8\"。",
+            "pattern": "^\\s*-?\\d+(\\.\\d+)?(\\s*[,;\\s]\\s*-?\\d+(\\.\\d+)?){2}\\s*$"
           },
           "target": {
-            "type": "array",
-            "description": "观察目标点 [x, y, z]（世界坐标）。",
-            "items": { "type": "number" },
-            "minItems": 3,
-            "maxItems": 3
+            "type": "string",
+            "description": "观察目标点 x,y,z 逗号分隔（世界坐标），例如 \"0, 0, 0\"。",
+            "pattern": "^\\s*-?\\d+(\\.\\d+)?(\\s*[,;\\s]\\s*-?\\d+(\\.\\d+)?){2}\\s*$"
           },
           "fov": {
             "type": "number",
             "description": "垂直视场角（度）。",
             "minimum": 10,
             "maximum": 170
+          },
+          "duration": {
+            "type": "number",
+            "description": "相机过渡秒数（可选），缺省 0.45。",
+            "minimum": 0,
+            "maximum": 60
           }
         },
         "required": ["mode"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "GetMeshData",
+      "category": "Mesh",
+      "command": "GetMeshData",
+      "eventId": 200010,
+      "mapsTo": [
+        { "command": "GetMeshData", "eventId": 200010, "mode": null,
+          "note": "同步回传：引擎写入 EgLab MeshDataResult-<pid> 队列，channel=200010" }
+      ],
+      "summary": "获取网格数据统计信息（同步返回）",
+      "description": "同步返回网格统计信息（节点数/单元数/包围盒/单元类型统计）。dataNodeId=0 表示整个场景汇总；否则为单个网格数据节点 ID。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dataNodeId": {
+            "type": "integer",
+            "description": "网格数据节点 ID。0 = 整个场景汇总；否则为单个网格数据节点 ID。",
+            "minimum": 0,
+            "maximum": 18446744073709551615
+          }
+        },
+        "required": ["dataNodeId"],
         "additionalProperties": false
       }
     },

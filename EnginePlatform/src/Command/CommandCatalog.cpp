@@ -10,6 +10,22 @@ namespace EgLab::Platform
              "MeshImport / CameraSetting / DataTree ..."},
         };
 
+        // ===== HidePanelParam =====
+        const ParamFieldDesc kHidePanelFields[] = {
+            {"panelName", "Panel Name", ParamFieldType::String, sizeof(HidePanelParam::panelName),
+             "MeshImport / CameraSetting / DataTree ..."},
+        };
+
+        // ===== SetCameraParam =====
+        const ParamFieldDesc kSetCameraFields[] = {
+            {"mode", "Camera Mode", ParamFieldType::UInt32, 0, "0=orbit 1=fps"},
+        };
+
+        // ===== GetMeshDataParam =====
+        const ParamFieldDesc kGetMeshDataFields[] = {
+            {"dataNodeId", "Data Node Id", ParamFieldType::UInt64, 0, "0 = whole scene summary"},
+        };
+
         // ===== ImportMeshParam =====
         const ParamFieldDesc kImportMeshFields[] = {
             {"fileDir", "Mesh File", ParamFieldType::String, sizeof(ImportMeshParam::fileDir),
@@ -53,12 +69,17 @@ namespace EgLab::Platform
             {EventId::FitView, "FitView", "Fit View", "View", false, 0, nullptr, 0},
             {EventId::ShowPanel, "ShowPanel", "Show Panel", "Panel", true, sizeof(ShowPanelParam),
              kShowPanelFields, sizeof(kShowPanelFields) / sizeof(kShowPanelFields[0])},
+            {EventId::HidePanel, "HidePanel", "Hide Panel", "Panel", true, sizeof(HidePanelParam),
+             kHidePanelFields, sizeof(kHidePanelFields) / sizeof(kHidePanelFields[0])},
             {EventId::MeshImport, "MeshImport", "Import Mesh", "Mesh", true,
              sizeof(ImportMeshParam), kImportMeshFields,
              sizeof(kImportMeshFields) / sizeof(kImportMeshFields[0])},
             {EventId::MeshDelete, "MeshDelete", "Delete Mesh", "Mesh", true,
              sizeof(DeleteMeshParam), kDeleteMeshFields,
              sizeof(kDeleteMeshFields) / sizeof(kDeleteMeshFields[0])},
+            {EventId::GetMeshData, "GetMeshData", "Get Mesh Data", "Mesh", true,
+             sizeof(GetMeshDataParam), kGetMeshDataFields,
+             sizeof(kGetMeshDataFields) / sizeof(kGetMeshDataFields[0])},
             {EventId::Highlight, "Highlight", "Highlight Meshes", "View", true,
              sizeof(HighlightParam), kHighlightFields,
              sizeof(kHighlightFields) / sizeof(kHighlightFields[0])},
@@ -79,6 +100,9 @@ namespace EgLab::Platform
              "Camera", false, 0, nullptr, 0, true, true},
             {EventId::CameraZoom, "CameraZoom", "Zoom Camera", "Camera", false, 0, nullptr, 0,
              true, true},
+            {EventId::SetCamera, "SetCamera", "Set Camera", "Camera", true,
+             sizeof(SetCameraParam), kSetCameraFields,
+             sizeof(kSetCameraFields) / sizeof(kSetCameraFields[0])},
         };
 
         constexpr size_t kCommandCount = sizeof(kCommands) / sizeof(kCommands[0]);

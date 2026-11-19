@@ -496,6 +496,28 @@ namespace EgLab::Platform
         RenderDataManager& _data;
     };
 
+    class SetCameraHandler : public IRenderEventHandler
+    {
+    public:
+        explicit SetCameraHandler(RenderDataManager& data) : _data(data)
+        {
+        }
+
+        static Common::SharedPtr<IRenderEventHandler> create(RenderDataManager& data)
+        {
+            return Common::makeShared<SetCameraHandler>(data);
+        }
+
+        Common::Return record(const RenderEvent& event) override
+        {
+            _data.setCamera(static_cast<const SetCameraEvent&>(event));
+            return Common::Return::Succeed;
+        }
+
+    private:
+        RenderDataManager& _data;
+    };
+
     class PickHandler : public IRenderEventHandler
     {
     public:
@@ -544,6 +566,7 @@ namespace EgLab::Platform
         {RenderEventType::ClearSelection, &ClearSelectionHandler::create},
         {RenderEventType::FitView, &FitViewHandler::create},
         {RenderEventType::Pick, &PickHandler::create},
+        {RenderEventType::SetCamera, &SetCameraHandler::create},
     };
 
     RenderEventHandlerFactory::RenderEventHandlerFactory(RenderDataManager& data) : _data(data)

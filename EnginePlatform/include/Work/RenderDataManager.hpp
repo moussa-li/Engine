@@ -66,6 +66,7 @@ namespace EgLab::Platform
         void setFaceShrink(float shrink);
         void setLocateState(const Common::SharedPtr<ME::Mesh>& mesh,
                             const Common::DynamicArray<uint32_t>& elementIds);
+        void setCamera(const SetCameraEvent& event);
         void fitView(const Common::SharedPtr<ME::Mesh>& mesh);
 
         /// Returns the bounding-box center of the mesh's visible primitives, the same

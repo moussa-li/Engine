@@ -12,4 +12,10 @@ namespace EgLab::Platform
         const std::string name = "Command Memory-" + std::to_string(processId);
         return Common::String(name.c_str());
     }
+
+    inline Common::String meshDataResultMemoryName(uint32_t processId)
+    {
+        const std::string name = "EgLab MeshDataResult-" + std::to_string(processId);
+        return Common::String(name.c_str());
+    }
 } // namespace EgLab::Platform
