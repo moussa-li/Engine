@@ -326,23 +326,23 @@ class NativeCommandBridge:
         finally:
             self._release_mutex()
 
-    def _read_mesh_result(self, pid):
-        """读取 GetMeshData(200010) 的同步回传结果（EgLab MeshDataResult-<pid> 队列）。
+    def _read_result(self, pid, event_id, timeout=2.0):
+        """读取同步查询回传结果（EgLab MeshDataResult-<pid> 队列）。
 
-        引擎 push 到该队列的 payload 为 GetMeshDataResult（51264 字节，单槽非分片），
-        本方法消费 channelId==200010 的槽并推进 readIdx（AI 是唯一消费者）。
+        引擎把查询结果 push 到该队列，channelId = 对应命令的 eventId。本方法轮询消费：
+        跳过与 event_id 不匹配的槽（消费并丢弃），直到取到目标槽或超时。
+        返回 (bytes|None, error_str|None)。
         """
         name = ("EgLab MeshDataResult-%d" % pid).encode("ascii")
         handle = self._k.OpenFileMappingA(FILE_MAP_ALL_ACCESS, False, name)
         if not handle:
-            return {"ok": False,
-                    "error": "无法打开网格数据结果队列（共享内存 EgLab MeshDataResult-%d）" % pid}
+            return None, "无法打开网格数据结果队列（共享内存 EgLab MeshDataResult-%d）" % pid
         try:
             base = self._k.MapViewOfFile(handle, FILE_MAP_ALL_ACCESS, 0, 0, SHM_SIZE)
             if not base:
-                return {"ok": False, "error": "无法映射网格数据结果队列内存"}
+                return None, "无法映射网格数据结果队列内存"
             try:
-                deadline = time.time() + 2.0
+                deadline = time.time() + timeout
                 while True:
                     write = self._read_u64(base + 0)
                     read = self._read_u64(base + 64)
@@ -359,12 +359,11 @@ class NativeCommandBridge:
                                 ctypes.memmove(buf, slot + 24, data_len)
                             self._write_u32(slot + 8, SLOT_EMPTY)
                             self._write_u64(base + 64, read + 1)
-                            if channel != 200010:
-                                continue
-                            return self._parse_mesh_result(buf.raw[:data_len])
-                        # 状态尚未 READY（写入中），继续轮询
+                            if channel == event_id:
+                                return bytes(buf.raw[:data_len]), None
+                            continue
                     if time.time() > deadline:
-                        return {"ok": False, "error": "GetMeshData 结果超时"}
+                        return None, "查询结果超时（eventId=%d）" % event_id
                     time.sleep(0.005)
             finally:
                 self._k.UnmapViewOfFile(base)
@@ -425,6 +424,106 @@ class NativeCommandBridge:
         }
 
     @staticmethod
+    def _parse_query_header(data):
+        """解析精确查询结果公共头（32B：magic/version/status/total/offset/returned/2×reserved）。"""
+        if len(data) < 32:
+            return None, {"ok": False, "error": "查询结果数据不完整"}
+        magic, version, status, total, offset, returned, _, _ = struct.unpack_from("<IIIIIIII", data, 0)
+        if magic != 0x4D534844:
+            return None, {"ok": False, "error": "查询结果 magic 校验失败: 0x%08X" % magic}
+        if version != 1:
+            return None, {"ok": False, "error": "查询结果 version 不支持: %d" % version}
+        if status != 0:
+            return None, {"ok": False,
+                          "error": "网格不存在或非 MeshData（status=%d）" % status}
+        header = {"status": "ok", "total": int(total), "offset": int(offset),
+                  "returned": int(returned)}
+        return header, None
+
+    @staticmethod
+    def _parse_list_data_tree(data):
+        header, err = NativeCommandBridge._parse_query_header(data)
+        if err:
+            return err
+        entries = []
+        for i in range(header["returned"]):
+            off = 32 + i * 96
+            if off + 96 > len(data):
+                break
+            node_id, name = struct.unpack_from("<Q64s", data, off)
+            kind, _, node_count, elem_count = struct.unpack_from("<IIQQ", data, off + 72)
+            entries.append({
+                "dataNodeId": int(node_id),
+                "name": name.rstrip(b"\x00").decode("utf-8", errors="replace"),
+                "kind": int(kind),  # 1=MeshData, 0=其它 DataNode
+                "nodeCount": int(node_count),
+                "elemCount": int(elem_count),
+            })
+        return {"ok": True, "result": dict(header, nodes=entries)}
+
+    @staticmethod
+    def _parse_mesh_ids(data):
+        header, err = NativeCommandBridge._parse_query_header(data)
+        if err:
+            return err
+        ids = []
+        for i in range(header["returned"]):
+            off = 32 + i * 4
+            if off + 4 > len(data):
+                break
+            ids.append(int(struct.unpack_from("<I", data, off)[0]))
+        return {"ok": True, "result": dict(header, ids=ids)}
+
+    @staticmethod
+    def _parse_nodes_xyz(data):
+        header, err = NativeCommandBridge._parse_query_header(data)
+        if err:
+            return err
+        nodes = []
+        for i in range(header["returned"]):
+            off = 32 + i * 16
+            if off + 16 > len(data):
+                break
+            node_id, x, y, z = struct.unpack_from("<I3f", data, off)
+            nodes.append({"id": int(node_id), "xyz": [round(float(x), 6),
+                                                       round(float(y), 6),
+                                                       round(float(z), 6)]})
+        return {"ok": True, "result": dict(header, nodes=nodes)}
+
+    @staticmethod
+    def _parse_elements_topo(data):
+        header, err = NativeCommandBridge._parse_query_header(data)
+        if err:
+            return err
+        elements = []
+        for i in range(header["returned"]):
+            off = 32 + i * 92
+            if off + 92 > len(data):
+                break
+            elem_id, elem_type, node_count = struct.unpack_from("<III", data, off)
+            node_ids = struct.unpack_from("<20I", data, off + 12)
+            elements.append({
+                "id": int(elem_id),
+                "type": int(elem_type),
+                "nodeCount": int(node_count),
+                "nodeIds": [int(n) for n in node_ids[:node_count]],
+            })
+        return {"ok": True, "result": dict(header, elements=elements)}
+
+    @staticmethod
+    def _parse_query_result(event_id, data):
+        parser = {
+            200011: NativeCommandBridge._parse_list_data_tree,
+            200012: NativeCommandBridge._parse_mesh_ids,
+            200013: NativeCommandBridge._parse_mesh_ids,
+            200014: NativeCommandBridge._parse_nodes_xyz,
+            200015: NativeCommandBridge._parse_elements_topo,
+        }.get(event_id)
+        if parser is None:
+            return {"ok": False, "error": "未知查询结果 eventId: %d" % event_id}
+        return parser(data)
+
+    @staticmethod
     def _serialize(name, args):
         """把工具名+参数序列化为 (eventId, 载荷字节)；返回 None 表示引擎侧尚未实现。"""
         if name == "FitView":
@@ -459,6 +558,26 @@ class NativeCommandBridge:
             return 300005, struct.pack("<I", 40) + struct.pack("<II3f3fff", mode, field_mask, *pos, *tgt, fov, dur)
         if name == "GetMeshData":
             return 200010, struct.pack("<I", 8) + struct.pack("<Q", int(args.get("dataNodeId") or 0))
+        if name == "ListDataTreeNodes":
+            offset = int(args.get("offset") or 0)
+            limit = int(args.get("limit") or 0)
+            return 200011, struct.pack("<I", 8) + struct.pack("<II", offset, limit)
+        if name in ("GetMeshNodes", "GetMeshElements"):
+            node = int(args.get("dataNodeId") or 0)
+            mesh_name = (args.get("name") or "").encode("utf-8")
+            offset = int(args.get("offset") or 0)
+            limit = int(args.get("limit") or 0)
+            event_id = 200012 if name == "GetMeshNodes" else 200013
+            body = struct.pack("<Q64sII", node, mesh_name.ljust(64, b"\x00")[:64], offset, limit)
+            return event_id, struct.pack("<I", 80) + body
+        if name in ("GetNodesXYZ", "GetElementsTopology"):
+            node = int(args.get("dataNodeId") or 0)
+            mesh_name = (args.get("name") or "").encode("utf-8")
+            ids = parse_ids(args.get("ids"))[:256]
+            event_id = 200014 if name == "GetNodesXYZ" else 200015
+            body = struct.pack("<Q64sII", node, mesh_name.ljust(64, b"\x00")[:64], len(ids), 0)
+            body += struct.pack("<256I", *(ids + [0] * (256 - len(ids))))
+            return event_id, struct.pack("<I", 1104) + body
         if name == "MeshImport":
             path = (args.get("fileDir") or "").encode("utf-8")
             return 200002, struct.pack("<I", 128) + path.ljust(128, b"\x00")[:128]
@@ -498,8 +617,15 @@ class NativeCommandBridge:
         event_id, payload = serialized
         if not self._push(event_id, payload):
             return {"ok": False, "error": "EnginePlatform 命令队列已满，请稍后重试"}
-        if name == "GetMeshData":
-            return self._read_mesh_result(pid)
+        query_commands = {"GetMeshData", "ListDataTreeNodes", "GetMeshNodes",
+                          "GetMeshElements", "GetNodesXYZ", "GetElementsTopology"}
+        if name in query_commands:
+            data, err = self._read_result(pid, event_id)
+            if err:
+                return {"ok": False, "error": err}
+            if name == "GetMeshData":
+                return self._parse_mesh_result(data)
+            return self._parse_query_result(event_id, data)
         return {"ok": True,
                 "result": {"status": "dispatched", "eventId": event_id, "command": name}}
 
@@ -706,6 +832,54 @@ class StubBridge:
                         }
                     ],
                 },
+            }
+        if name == "ListDataTreeNodes":
+            node_id = int(arguments.get("dataNodeId") or 1000)
+            return {
+                "ok": True,
+                "result": {
+                    "status": "ok",
+                    "total": 1,
+                    "offset": 0,
+                    "returned": 1,
+                    "nodes": [
+                        {"dataNodeId": node_id, "name": "DemoMesh_%d" % node_id,
+                         "kind": 1, "nodeCount": 1564, "elemCount": 3200},
+                    ],
+                },
+            }
+        if name == "GetMeshNodes":
+            return {
+                "ok": True,
+                "result": {"status": "ok", "total": 1564, "offset": 0, "returned": 8,
+                           "ids": [1, 2, 3, 4, 5, 6, 7, 8]},
+            }
+        if name == "GetMeshElements":
+            return {
+                "ok": True,
+                "result": {"status": "ok", "total": 3200, "offset": 0, "returned": 4,
+                           "ids": [1, 2, 3, 4]},
+            }
+        if name == "GetNodesXYZ":
+            ids = parse_ids(arguments.get("ids"))[:3]
+            return {
+                "ok": True,
+                "result": {"status": "ok", "total": len(ids), "offset": 0,
+                           "returned": len(ids),
+                           "nodes": [{"id": i, "xyz": [round(4112.0 + i * 0.001, 6),
+                                                        round(-468.0, 6),
+                                                        round(322.0 + i * 0.1, 6)]}
+                                     for i in ids]},
+            }
+        if name == "GetElementsTopology":
+            ids = parse_ids(arguments.get("ids"))[:3]
+            return {
+                "ok": True,
+                "result": {"status": "ok", "total": len(ids), "offset": 0,
+                           "returned": len(ids),
+                           "elements": [{"id": i, "type": 0x204, "nodeCount": 4,
+                                         "nodeIds": [i, i + 1, i + 2, i + 3]}
+                                        for i in ids]},
             }
         if name == "ShowPanel":
             return {

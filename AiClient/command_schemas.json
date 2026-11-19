@@ -282,6 +282,160 @@
       }
     },
     {
+      "name": "ListDataTreeNodes",
+      "eventId": 200011,
+      "category": "Mesh",
+      "summary": "列出数据树中所有数据节点的 id 与名称（含网格统计）",
+      "description": "返回数据树（DataTree）中全部数据节点的清单：数据节点 ID、名称、类型（kind=1 表示网格 MeshData）、以及网格的节点数/单元数。这是「按名称或 id 查询网格」的第一步：先调用本命令拿到网格的 id/name，再用 GetMeshData / GetMeshNodes / GetMeshElements / GetNodesXYZ / GetElementsTopology 深入查询。offset/limit 用于分页，缺省返回第一页（最多 256 条）。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "description": "起始偏移（从第几条开始），缺省 0。",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "description": "返回条数上限，缺省按默认页大小（最多 256）。",
+            "minimum": 0,
+            "maximum": 256
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "GetMeshNodes",
+      "eventId": 200012,
+      "category": "Mesh",
+      "summary": "获取网格的节点 id 列表（分页）",
+      "description": "返回指定网格的所有节点 id。网格用 dataNodeId（数据节点 ID）或 name（网格名称）定位，二者给其一即可（优先 dataNodeId）。节点数量可能很大，用 offset/limit 分页，每页最多 4096 个。返回 total 为节点总数，returned 为本页数量。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dataNodeId": {
+            "type": "integer",
+            "description": "网格数据节点 ID。0 表示按 name 查找。",
+            "minimum": 0,
+            "maximum": 18446744073709551615
+          },
+          "name": {
+            "type": "string",
+            "description": "网格名称（dataNodeId=0 时使用），先通过 ListDataTreeNodes 获取。",
+            "maxLength": 63
+          },
+          "offset": {
+            "type": "integer",
+            "description": "分页起始偏移，缺省 0。",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "description": "每页返回数量上限，缺省 4096。",
+            "minimum": 0,
+            "maximum": 4096
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "GetMeshElements",
+      "eventId": 200013,
+      "category": "Mesh",
+      "summary": "获取网格的单元 id 列表（分页）",
+      "description": "返回指定网格的所有单元 id。网格用 dataNodeId（数据节点 ID）或 name（网格名称）定位，二者给其一即可（优先 dataNodeId）。单元数量可能很大，用 offset/limit 分页，每页最多 4096 个。返回 total 为单元总数，returned 为本页数量。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dataNodeId": {
+            "type": "integer",
+            "description": "网格数据节点 ID。0 表示按 name 查找。",
+            "minimum": 0,
+            "maximum": 18446744073709551615
+          },
+          "name": {
+            "type": "string",
+            "description": "网格名称（dataNodeId=0 时使用），先通过 ListDataTreeNodes 获取。",
+            "maxLength": 63
+          },
+          "offset": {
+            "type": "integer",
+            "description": "分页起始偏移，缺省 0。",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "description": "每页返回数量上限，缺省 4096。",
+            "minimum": 0,
+            "maximum": 4096
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "GetNodesXYZ",
+      "eventId": 200014,
+      "category": "Mesh",
+      "summary": "按节点 id 查询坐标（xyz）",
+      "description": "返回指定网格中一批节点的坐标（x/y/z）。网格用 dataNodeId 或 name 定位；ids 为要查询的节点 id 列表（逗号/空格分隔，最多 256 个）。返回结果中每个节点包含 id 与 xyz；不存在的节点 id 会被跳过。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dataNodeId": {
+            "type": "integer",
+            "description": "网格数据节点 ID。0 表示按 name 查找。",
+            "minimum": 0,
+            "maximum": 18446744073709551615
+          },
+          "name": {
+            "type": "string",
+            "description": "网格名称（dataNodeId=0 时使用）。",
+            "maxLength": 63
+          },
+          "ids": {
+            "type": "string",
+            "description": "要查询坐标的节点 id 列表，逗号/空格/分号分隔，例如 \"1, 2, 3\"，最多 256 个。",
+            "pattern": "^\\s*\\d+(\\s*[,;\\s]\\s*\\d+)*\\s*$"
+          }
+        },
+        "required": ["ids"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "GetElementsTopology",
+      "eventId": 200015,
+      "category": "Mesh",
+      "summary": "按单元 id 查询拓扑（类型 + 组成节点 id）",
+      "description": "返回指定网格中一批单元的拓扑信息：单元类型（type，如 Tri3=0x203、Quad4=0x204、Tet4=0x304、Hex8=0x308）与组成该单元的节点 id 列表。网格用 dataNodeId 或 name 定位；ids 为要查询的单元 id 列表（逗号/空格分隔，最多 256 个）。不存在的单元 id 会被跳过。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dataNodeId": {
+            "type": "integer",
+            "description": "网格数据节点 ID。0 表示按 name 查找。",
+            "minimum": 0,
+            "maximum": 18446744073709551615
+          },
+          "name": {
+            "type": "string",
+            "description": "网格名称（dataNodeId=0 时使用）。",
+            "maxLength": 63
+          },
+          "ids": {
+            "type": "string",
+            "description": "要查询拓扑的单元 id 列表，逗号/空格/分号分隔，例如 \"1, 2, 3\"，最多 256 个。",
+            "pattern": "^\\s*\\d+(\\s*[,;\\s]\\s*\\d+)*\\s*$"
+          }
+        },
+        "required": ["ids"],
+        "additionalProperties": false
+      }
+    },
+    {
       "name": "SetCamera",
       "eventId": 300005,
       "category": "Camera",

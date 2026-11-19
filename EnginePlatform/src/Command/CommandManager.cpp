@@ -24,6 +24,7 @@
 #include "Command/LocateElementsCmd.hpp"
 #include "Command/ElementsVisibilityCmd.hpp"
 #include "Command/NodeVisibilityCmd.hpp"
+#include "Command/MeshQueryCmd.hpp"
 #include "Command/SetCameraCmd.hpp"
 #include "Command/UpdateMeshCmd.hpp"
 #include "Common/HashMap.hpp"
@@ -166,6 +167,36 @@ namespace EgLab::Platform
                 return Common::makeShared<GetMeshDataCmd>(param);
             };
 
+            _creator[EventId::ListDataTreeNodes] = [](const PacketPOD& pod) {
+                ListDataTreeParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<ListDataTreeNodesCmd>(param);
+            };
+
+            _creator[EventId::GetMeshNodes] = [](const PacketPOD& pod) {
+                MeshQueryParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<GetMeshNodesCmd>(param);
+            };
+
+            _creator[EventId::GetMeshElements] = [](const PacketPOD& pod) {
+                MeshQueryParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<GetMeshElementsCmd>(param);
+            };
+
+            _creator[EventId::GetNodesXYZ] = [](const PacketPOD& pod) {
+                MeshNodesQueryParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<GetNodesXYZCmd>(param);
+            };
+
+            _creator[EventId::GetElementsTopology] = [](const PacketPOD& pod) {
+                MeshElementsQueryParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<GetElementsTopologyCmd>(param);
+            };
+
             _creator[EventId::FitView] = [](const PacketPOD&) {
                 return Common::makeShared<FitViewCommand>();
             };
@@ -289,6 +320,95 @@ namespace EgLab::Platform
                 return pod;
             };
 
+            _packetCreator[EventId::ListDataTreeNodes] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                ListDataTreeParam param{};
+                if (packet.contains("offset"))
+                {
+                    param.offset = packet.getData<uint32_t>("offset");
+                }
+                if (packet.contains("limit"))
+                {
+                    param.limit = packet.getData<uint32_t>("limit");
+                }
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
+            const auto meshQueryPacketCreator = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                MeshQueryParam param{};
+                if (packet.contains("dataNodeId"))
+                {
+                    param.dataNodeId = packet.getData<uint64_t>("dataNodeId");
+                }
+                if (packet.contains("name"))
+                {
+                    const Common::String name = packet.getData<Common::String>("name");
+                    const size_t copySize = std::min(name.size(), sizeof(param.name) - 1);
+                    std::memcpy(param.name, name.c_str(), copySize);
+                    param.name[copySize] = '\0';
+                }
+                if (packet.contains("offset"))
+                {
+                    param.offset = packet.getData<uint32_t>("offset");
+                }
+                if (packet.contains("limit"))
+                {
+                    param.limit = packet.getData<uint32_t>("limit");
+                }
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+            _packetCreator[EventId::GetMeshNodes] = meshQueryPacketCreator;
+            _packetCreator[EventId::GetMeshElements] = meshQueryPacketCreator;
+
+            _packetCreator[EventId::GetNodesXYZ] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                MeshNodesQueryParam param{};
+                if (packet.contains("dataNodeId"))
+                {
+                    param.dataNodeId = packet.getData<uint64_t>("dataNodeId");
+                }
+                if (packet.contains("name"))
+                {
+                    const Common::String name = packet.getData<Common::String>("name");
+                    const size_t copySize = std::min(name.size(), sizeof(param.name) - 1);
+                    std::memcpy(param.name, name.c_str(), copySize);
+                    param.name[copySize] = '\0';
+                }
+                const Common::String ids = packet.getData<Common::String>("ids");
+                param.count =
+                    static_cast<uint32_t>(parseIdList(ids, param.nodeIds, MAX_QUERY_IDS));
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
+            _packetCreator[EventId::GetElementsTopology] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                MeshElementsQueryParam param{};
+                if (packet.contains("dataNodeId"))
+                {
+                    param.dataNodeId = packet.getData<uint64_t>("dataNodeId");
+                }
+                if (packet.contains("name"))
+                {
+                    const Common::String name = packet.getData<Common::String>("name");
+                    const size_t copySize = std::min(name.size(), sizeof(param.name) - 1);
+                    std::memcpy(param.name, name.c_str(), copySize);
+                    param.name[copySize] = '\0';
+                }
+                const Common::String ids = packet.getData<Common::String>("ids");
+                param.count =
+                    static_cast<uint32_t>(parseIdList(ids, param.elemIds, MAX_QUERY_IDS));
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
             _packetCreator[EventId::FitView] = [](const EventPacket&) { return PacketPOD{}; };
 
             _packetCreator[EventId::MeshDelete] = [](const EventPacket& packet) {
@@ -331,6 +451,11 @@ namespace EgLab::Platform
             _subscriber.subscrib(static_cast<uint32_t>(EventId::Highlight));
             _subscriber.subscrib(static_cast<uint32_t>(EventId::SetCamera));
             _subscriber.subscrib(static_cast<uint32_t>(EventId::GetMeshData));
+            _subscriber.subscrib(static_cast<uint32_t>(EventId::ListDataTreeNodes));
+            _subscriber.subscrib(static_cast<uint32_t>(EventId::GetMeshNodes));
+            _subscriber.subscrib(static_cast<uint32_t>(EventId::GetMeshElements));
+            _subscriber.subscrib(static_cast<uint32_t>(EventId::GetNodesXYZ));
+            _subscriber.subscrib(static_cast<uint32_t>(EventId::GetElementsTopology));
             _subscriber.subscrib((uint32_t)EventId::MeshImport);
             _subscriber.subscrib((uint32_t)EventId::MeshDelete);
             _subscriber.subscrib((uint32_t)EventId::LocateElements);

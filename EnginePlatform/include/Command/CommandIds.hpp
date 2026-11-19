@@ -25,6 +25,11 @@ namespace EgLab::Platform
         NodeVisibility = 200007,
         SelectionChanged = 200008,
         GetMeshData = 200010, // 200009 is reserved for CreateMesh
+        ListDataTreeNodes = 200011, // 数据树节点清单（id + 名称 + 类型）
+        GetMeshNodes = 200012,      // 网格节点 id 列表（分页）
+        GetMeshElements = 200013,   // 网格单元 id 列表（分页）
+        GetNodesXYZ = 200014,       // 按节点 id 查询坐标
+        GetElementsTopology = 200015, // 按单元 id 查询拓扑（类型 + 节点 id）
         CameraPan = 300001, // Camera = 3xxxxx
         CameraRotate = 300002,
         CameraRotateLocal = 300003,

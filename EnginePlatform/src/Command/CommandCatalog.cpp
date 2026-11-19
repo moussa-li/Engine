@@ -26,6 +26,27 @@ namespace EgLab::Platform
             {"dataNodeId", "Data Node Id", ParamFieldType::UInt64, 0, "0 = whole scene summary"},
         };
 
+        // ===== ListDataTreeParam =====
+        const ParamFieldDesc kListDataTreeFields[] = {
+            {"offset", "Offset", ParamFieldType::UInt32, 0, "0"},
+            {"limit", "Limit", ParamFieldType::UInt32, 0, "0 = default page size"},
+        };
+
+        // ===== MeshQueryParam（GetMeshNodes / GetMeshElements 共用） =====
+        const ParamFieldDesc kMeshQueryFields[] = {
+            {"dataNodeId", "Data Node Id", ParamFieldType::UInt64, 0, "0 = resolve by name"},
+            {"name", "Mesh Name", ParamFieldType::String, 64, "Mesh name when dataNodeId=0"},
+            {"offset", "Offset", ParamFieldType::UInt32, 0, "0"},
+            {"limit", "Limit", ParamFieldType::UInt32, 0, "0 = default page size"},
+        };
+
+        // ===== MeshNodesQueryParam / MeshElementsQueryParam（按 ID 查询） =====
+        const ParamFieldDesc kMeshIdsQueryFields[] = {
+            {"dataNodeId", "Data Node Id", ParamFieldType::UInt64, 0, "0 = resolve by name"},
+            {"name", "Mesh Name", ParamFieldType::String, 64, "Mesh name when dataNodeId=0"},
+            {"ids", "Ids", ParamFieldType::String, 256, "1, 2, 3"},
+        };
+
         // ===== ImportMeshParam =====
         const ParamFieldDesc kImportMeshFields[] = {
             {"fileDir", "Mesh File", ParamFieldType::String, sizeof(ImportMeshParam::fileDir),
@@ -80,6 +101,21 @@ namespace EgLab::Platform
             {EventId::GetMeshData, "GetMeshData", "Get Mesh Data", "Mesh", true,
              sizeof(GetMeshDataParam), kGetMeshDataFields,
              sizeof(kGetMeshDataFields) / sizeof(kGetMeshDataFields[0])},
+            {EventId::ListDataTreeNodes, "ListDataTreeNodes", "List Data Tree Nodes", "Mesh", true,
+             sizeof(ListDataTreeParam), kListDataTreeFields,
+             sizeof(kListDataTreeFields) / sizeof(kListDataTreeFields[0])},
+            {EventId::GetMeshNodes, "GetMeshNodes", "Get Mesh Nodes", "Mesh", true,
+             sizeof(MeshQueryParam), kMeshQueryFields,
+             sizeof(kMeshQueryFields) / sizeof(kMeshQueryFields[0])},
+            {EventId::GetMeshElements, "GetMeshElements", "Get Mesh Elements", "Mesh", true,
+             sizeof(MeshQueryParam), kMeshQueryFields,
+             sizeof(kMeshQueryFields) / sizeof(kMeshQueryFields[0])},
+            {EventId::GetNodesXYZ, "GetNodesXYZ", "Get Nodes XYZ", "Mesh", true,
+             sizeof(MeshNodesQueryParam), kMeshIdsQueryFields,
+             sizeof(kMeshIdsQueryFields) / sizeof(kMeshIdsQueryFields[0])},
+            {EventId::GetElementsTopology, "GetElementsTopology", "Get Elements Topology", "Mesh",
+             true, sizeof(MeshElementsQueryParam), kMeshIdsQueryFields,
+             sizeof(kMeshIdsQueryFields) / sizeof(kMeshIdsQueryFields[0])},
             {EventId::Highlight, "Highlight", "Highlight Meshes", "View", true,
              sizeof(HighlightParam), kHighlightFields,
              sizeof(kHighlightFields) / sizeof(kHighlightFields[0])},
