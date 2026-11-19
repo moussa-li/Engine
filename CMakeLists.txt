@@ -20,6 +20,7 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(BUILD_TESTS "build tests" ON)
+option(BUILD_AI_CLIENT "Build the EgLab AI dialog Electron client (requires Node.js/npm)" ON)
 option(BUILD_COMMON_SHARED "Build Common as a shared library (OFF builds a static library)" OFF)
 option(BUILD_RENDER_SHARED "Build RenderEngine as a shared library (OFF builds a static library)" OFF)
 option(BUILD_DOC "generate the documentation with doxygen" OFF)
@@ -81,6 +82,10 @@ add_subdirectory(Common)
 add_subdirectory(RenderEngine)
 add_subdirectory(MeshEngine)
 add_subdirectory(EnginePlatform)
+
+if(BUILD_AI_CLIENT)
+    add_subdirectory(AiClient)
+endif()
 
 install(TARGETS EnginePlatform
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

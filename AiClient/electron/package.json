@@ -1,0 +1,50 @@
+{
+  "name": "eglab-ai-dialog",
+  "version": "0.1.0",
+  "description": "EgLab AI 对话客户端（Electron）—— 独立可执行程序，控制 EnginePlatform",
+  "author": "EgLab",
+  "license": "MIT",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "fetch-python": "node scripts/fetch-python.js",
+    "predist": "npm run fetch-python",
+    "predist:dir": "npm run fetch-python",
+    "predist:portable": "npm run fetch-python",
+    "dist": "electron-builder --win",
+    "dist:dir": "electron-builder --dir",
+    "dist:portable": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.eglab.aidialog",
+    "productName": "EgLabAIDialog",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js"
+    ],
+    "extraResources": [
+      { "from": "../agent_server.py", "to": "AiClient/agent_server.py" },
+      { "from": "../mcp_tools.json", "to": "AiClient/mcp_tools.json" },
+      { "from": "../command_schemas.json", "to": "AiClient/command_schemas.json" },
+      { "from": "../ui", "to": "AiClient/ui" },
+      { "from": "python", "to": "Python" }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

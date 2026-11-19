@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EgLab Embedded MCP Server - Tool Schemas",
+  "description": "EnginePlatform 内嵌 MCP Server 暴露给 AI Agent 的引擎工具层。每个工具通过 mapsTo 关联到 command_schemas.json 中注册的 Command（eventId 与 CommandIds.hpp 的 EventId 一一对应）；parameters 为标准 JSON Schema (draft-07)，可直接作为 DeepSeek/OpenAI function-calling 的 tools 定义。",
+  "version": "1.1.0",
+  "tools": [
+    {
+      "name": "CreateMesh",
+      "category": "Mesh",
+      "command": "CreateMesh",
+      "eventId": 200009,
+      "mapsTo": [
+        { "command": "CreateMesh", "eventId": 200009, "mode": null }
+      ],
+      "summary": "在场景中创建网格几何体",
+      "description": "在引擎场景中创建一个新的网格几何体并返回其数据节点 ID。支持基础几何类型（立方体、球、圆柱、圆锥、平面、圆环）。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "geometryType": {
+            "type": "string",
+            "description": "几何体类型。",
+            "enum": ["box", "sphere", "cylinder", "cone", "plane", "torus"]
+          },
+          "name": {
+            "type": "string",
+            "description": "网格名称（可选），用于在数据树中标识该网格。",
+            "maxLength": 64
+          },
+          "size": {
+            "type": "number",
+            "description": "几何体整体尺寸（世界单位），默认 1.0。",
+            "minimum": 0.0001,
+            "maximum": 10000
+          },
+          "subdivisions": {
+            "type": "integer",
+            "description": "几何体细分段数（可选），数值越大网格越精细。",
+            "minimum": 1,
+            "maximum": 256
+          }
+        },
+        "required": ["geometryType"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "SetCamera",
+      "category": "Camera",
+      "command": "SetCamera",
+      "eventId": 300005,
+      "mapsTo": [
+        { "command": "FitView", "eventId": 100002, "mode": "fit" },
+        { "command": "SetCamera", "eventId": 300005, "mode": "orbit|fps" }
+      ],
+      "summary": "设置相机视角",
+      "description": "设置场景相机。mode=fit 时复用 FitView(100002) 适配整个场景（无需其他参数）；mode=orbit/fps 时使用 SetCamera(300005) 并可指定 position（相机位置）、target（观察目标）与 fov（垂直视场角）。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "description": "相机模式：fit=适配整个场景，orbit=环绕观察，fps=第一人称。",
+            "enum": ["fit", "orbit", "fps"]
+          },
+          "position": {
+            "type": "array",
+            "description": "相机位置 [x, y, z]（世界坐标）。",
+            "items": { "type": "number" },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "target": {
+            "type": "array",
+            "description": "观察目标点 [x, y, z]（世界坐标）。",
+            "items": { "type": "number" },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "fov": {
+            "type": "number",
+            "description": "垂直视场角（度）。",
+            "minimum": 10,
+            "maximum": 170
+          }
+        },
+        "required": ["mode"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "GetLog",
+      "category": "Diagnostics",
+      "command": null,
+      "eventId": null,
+      "mapsTo": [
+        { "command": null, "eventId": null, "mode": null,
+          "note": "由 Common::LogRingBuffer 同步查询，不经 fire-and-forget Command 总线" }
+      ],
+      "summary": "查询引擎运行日志",
+      "description": "查询引擎最近产生的运行日志，可按级别过滤或按关键词搜索。不经 Command 总线，而是同步读取 Common::LogRingBuffer（MessageCenter::emit 与 Common::Log 统一汇入）。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "description": "返回的日志条数，默认 50。",
+            "minimum": 1,
+            "maximum": 500
+          },
+          "level": {
+            "type": "string",
+            "description": "日志级别过滤：all=全部，debug/info/warning/error=仅该级别及以上。",
+            "enum": ["all", "debug", "info", "warning", "error"]
+          },
+          "filter": {
+            "type": "string",
+            "description": "按关键词过滤日志内容（可选）。",
+            "maxLength": 128
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  ]
+}

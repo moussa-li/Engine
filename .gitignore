@@ -419,3 +419,9 @@ latex/Makefile
 latex/md__r_e_a_d_m_e.tex
 latex/refman.tex
 EgPlatform.ini
+
+# EgLab AI 对话客户端（Electron）构建产物与依赖
+AiClient/electron/dist/
+AiClient/electron/node_modules/
+AiClient/electron/python/
+AiClient/electron/python-embed.zip

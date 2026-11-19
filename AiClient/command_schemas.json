@@ -1,0 +1,293 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EgLab CommandManager - AI Tool Schemas (Command as Tool)",
+  "description": "为 CommandManager 中可被 AI 通过自然语言调用的核心 Command 提供的标准化 JSON Schema。每个 Command 的 parameters 即标准 JSON Schema (draft-07)，可直接作为 DeepSeek/OpenAI function-calling 的 tools 定义。eventId 与 CommandIds.hpp 中 EventId 枚举一一对应。上层 MCP 工具（mcp_tools.json）通过 mapsTo 关联到本文件的 Command。",
+  "version": "1.1.0",
+  "commands": [
+    {
+      "name": "ShowPanel",
+      "eventId": 100001,
+      "category": "Panel",
+      "summary": "打开 / 切换到指定 UI 面板",
+      "description": "显示并切换到指定的界面面板。面板是渲染、相机、网格数据、设置等能力的入口，打开面板相当于进行视图/工作区切换。常用面板：MeshImport（网格导入）、CameraSetting（相机设置）、DataTree（数据树）、MeshRenderSettings（网格渲染设置）、LightSetting（光照设置）。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "panelName": {
+            "type": "string",
+            "description": "要显示的面板名称，必须为枚举中的某一个值。",
+            "enum": [
+              "MeshImport",
+              "CameraSetting",
+              "BackGroundSetting",
+              "DataTree",
+              "ElementVisibility",
+              "HEMesh",
+              "HEMeshInspector",
+              "MeshRenderSettings",
+              "LightSetting",
+              "ShortcutSetting",
+              "CommandParamWizard",
+              "MessageLog",
+              "MessageToast"
+            ]
+          }
+        },
+        "required": ["panelName"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "FitView",
+      "eventId": 100002,
+      "category": "View",
+      "summary": "适应视图（相机适配到场景包围盒）",
+      "description": "将相机视图适配到当前场景中全部网格的整体包围盒，相当于“居中并缩放以显示全部网格”。无需任何参数。",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "Highlight",
+      "eventId": 100003,
+      "category": "View",
+      "summary": "高亮一组网格",
+      "description": "用给定的一组网格数据节点 ID 替换当前高亮集合，在视口中高亮这些网格。ID 列表会被解析为最多 64 个数据节点。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "string",
+            "description": "网格数据节点 ID 列表，用逗号、空格或分号分隔的无符号整数，例如 \"1, 2, 3\"。",
+            "pattern": "^\\s*\\d+(\\s*[,;\\s]\\s*\\d+)*\\s*$"
+          }
+        },
+        "required": ["ids"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "MeshImport",
+      "eventId": 200002,
+      "category": "Mesh",
+      "summary": "从文件导入网格",
+      "description": "从磁盘导入一个网格文件（如 .obj、.stl、.fbx）到场景中，作为新的网格数据节点。这是网格数据进入场景的入口。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fileDir": {
+            "type": "string",
+            "description": "网格文件的绝对路径，例如 \"C:/path/to/model.obj\"。最大长度 127 字符。",
+            "maxLength": 127
+          }
+        },
+        "required": ["fileDir"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "MeshDelete",
+      "eventId": 200003,
+      "category": "Mesh",
+      "summary": "按数据节点 ID 删除网格",
+      "description": "按网格数据节点 ID 删除场景中对应的网格。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dataNodeId": {
+            "type": "integer",
+            "description": "要删除的网格数据节点 ID（64 位无符号整数）。",
+            "minimum": 0,
+            "maximum": 18446744073709551615
+          }
+        },
+        "required": ["dataNodeId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "LocateElements",
+      "eventId": 200005,
+      "category": "Mesh",
+      "summary": "定位并高亮指定单元",
+      "description": "在一个网格上定位并高亮指定的单元（面/体），同时把该网格的其它面渲染为透明，便于检查指定单元。ID 列表会被解析为最多 512 个单元。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "integer",
+            "description": "网格数据节点 ID（64 位无符号整数）。",
+            "minimum": 0,
+            "maximum": 18446744073709551615
+          },
+          "ids": {
+            "type": "string",
+            "description": "要定位的单元 ID 列表，用逗号、空格或分号分隔的无符号整数，例如 \"1, 2, 3\"。",
+            "pattern": "^\\s*\\d+(\\s*[,;\\s]\\s*\\d+)*\\s*$"
+          }
+        },
+        "required": ["nodeId", "ids"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "ElementsVisibility",
+      "eventId": 200006,
+      "category": "Mesh",
+      "summary": "显示 / 隐藏网格单元",
+      "description": "显示或隐藏一个网格中指定的单元。mode 语义：0=隐藏给定 ID，1=显示给定 ID，2=只显示给定 ID（隐藏其余），3=只隐藏给定 ID（显示其余）。对体网格会重算边界曲面，使内部新暴露的面成为新的边界面。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "integer",
+            "description": "网格数据节点 ID（64 位无符号整数）。",
+            "minimum": 0,
+            "maximum": 18446744073709551615
+          },
+          "mode": {
+            "type": "integer",
+            "description": "可见性操作模式：0=隐藏给定 ID，1=显示给定 ID，2=只显示给定 ID，3=只隐藏给定 ID。",
+            "enum": [0, 1, 2, 3]
+          },
+          "ids": {
+            "type": "string",
+            "description": "目标单元 ID 列表，用逗号、空格或分号分隔的无符号整数，例如 \"1, 2, 3\"。mode 1/3 时空列表表示全部；mode 2 时空列表表示全部隐藏。",
+            "pattern": "^\\s*\\d+(\\s*[,;\\s]\\s*\\d+)*\\s*$"
+          }
+        },
+        "required": ["nodeId", "mode", "ids"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "NodeVisibility",
+      "eventId": 200007,
+      "category": "Mesh",
+      "summary": "显示 / 隐藏网格节点",
+      "description": "显示或隐藏一个网格中指定的节点。mode 语义同单元可见性：0=隐藏，1=显示，2=只显示，3=只隐藏。隐藏的节点在节点着色器中退化，拾取与选择高亮索引保持不变。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "integer",
+            "description": "网格数据节点 ID（64 位无符号整数）。",
+            "minimum": 0,
+            "maximum": 18446744073709551615
+          },
+          "mode": {
+            "type": "integer",
+            "description": "可见性操作模式：0=隐藏，1=显示，2=只显示，3=只隐藏。",
+            "enum": [0, 1, 2, 3]
+          },
+          "ids": {
+            "type": "string",
+            "description": "目标节点 ID 列表，用逗号、空格或分号分隔的无符号整数，例如 \"1, 2, 3\"。mode 1/3 时空列表表示全部；mode 2 时空列表表示全部隐藏。",
+            "pattern": "^\\s*\\d+(\\s*[,;\\s]\\s*\\d+)*\\s*$"
+          }
+        },
+        "required": ["nodeId", "mode", "ids"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "CreateMesh",
+      "eventId": 200009,
+      "category": "Mesh",
+      "summary": "创建网格几何体",
+      "description": "在场景中创建一个新的网格几何体（立方体、球、圆柱、圆锥、平面、圆环）并返回其数据节点 ID，委托 MeshEngine 生成几何体。对应上层 MCP 工具 CreateMesh。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "geometryType": {
+            "type": "string",
+            "description": "几何体类型。",
+            "enum": ["box", "sphere", "cylinder", "cone", "plane", "torus"]
+          },
+          "name": {
+            "type": "string",
+            "description": "网格名称（可选），用于在数据树中标识该网格。",
+            "maxLength": 64
+          },
+          "size": {
+            "type": "number",
+            "description": "几何体整体尺寸（世界单位），默认 1.0。",
+            "minimum": 0.0001,
+            "maximum": 10000
+          },
+          "subdivisions": {
+            "type": "integer",
+            "description": "几何体细分段数（可选），数值越大网格越精细。",
+            "minimum": 1,
+            "maximum": 256
+          }
+        },
+        "required": ["geometryType"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "SetCamera",
+      "eventId": 300005,
+      "category": "Camera",
+      "summary": "设置相机视角（orbit/fps）",
+      "description": "将相机设置为环绕（orbit）或第一人称（fps）视角，可指定位置、观察目标与视场角。上层 MCP 工具 SetCamera 在 mode=fit 时由调度器转投 FitView(100002)，本命令实际处理 orbit/fps。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "description": "相机模式：orbit=环绕观察，fps=第一人称。",
+            "enum": ["orbit", "fps"]
+          },
+          "position": {
+            "type": "array",
+            "description": "相机位置 [x, y, z]（世界坐标）。",
+            "items": { "type": "number" },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "target": {
+            "type": "array",
+            "description": "观察目标点 [x, y, z]（世界坐标）。",
+            "items": { "type": "number" },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "fov": {
+            "type": "number",
+            "description": "垂直视场角（度）。",
+            "minimum": 10,
+            "maximum": 170
+          }
+        },
+        "required": ["mode"],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "excluded": [
+    {
+      "name": "UpdateMesh",
+      "eventId": 200001,
+      "reason": "携带由 MeshEngine 直接发布的原始内存载荷，无固定字段布局，不适合作为 AI 可调用的离散参数命令。"
+    },
+    {
+      "name": "MeshPickInfo",
+      "eventId": 200004,
+      "reason": "拾取信息事件（引擎对外通知），未在 CommandManager 中注册为可调用命令。"
+    },
+    {
+      "name": "SelectionChanged",
+      "eventId": 200008,
+      "reason": "选择变化通知事件，非可调用命令。"
+    },
+    {
+      "name": "CameraPan / CameraRotate / CameraRotateLocal / CameraZoom",
+      "eventId": "300001-300004",
+      "reason": "相机交互命令为鼠标手势命令（holdInput/mouseOnly），依赖连续鼠标输入而非离散参数，不适合自然语言一次性调用。"
+    }
+  ]
+}
