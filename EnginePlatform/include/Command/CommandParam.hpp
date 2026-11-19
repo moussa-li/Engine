@@ -41,49 +41,39 @@ namespace EgLab::Platform
     };
 
     // ===== 网格数据精确查询（按 node id / elem id 粒度） =====
-    // 单次按 ID 查询的最大数量（GetNodesXYZ / GetElementsTopology）。
-    constexpr size_t MAX_QUERY_IDS = 256;
-    // 单页返回的最大 ID 数量（GetMeshNodes / GetMeshElements / ListDataTreeNodes）。
-    constexpr size_t MAX_QUERY_PAGE_IDS = 4096;
-    // 单个单元的最多节点数（Hex20 = 20）。
+    // 单个单元的最多节点数（Hex20 = 20，这是单元类型的物理上限，不是请求数量限制）。
     constexpr size_t MAX_ELEM_NODE_COUNT = 20;
-    // 单次查询网格名称的最大长度（含结尾 '\0'）。
+    // 查询时网格名称的最大长度（含结尾 '\0'）。
     constexpr size_t MESH_QUERY_NAME_CAPACITY = 64;
 
-    // 数据树节点清单（不分页时 offset/limit 传 0，服务端按默认页大小返回）。
-    struct ListDataTreeParam
-    {
-        uint32_t offset;
-        uint32_t limit; // 0 = 默认页大小（上限 MAX_QUERY_PAGE_IDS）
-    };
-
     // 统一的网格定位：dataNodeId=0 时按 name 查找，二者都为空则输入非法。
+    // 不设分页/数量上限：一次调用返回全部结果。
     struct MeshQueryParam
     {
         uint64_t dataNodeId; // 0 = 按 name 查找
         char name[MESH_QUERY_NAME_CAPACITY];
-        uint32_t offset;
-        uint32_t limit; // 0 = 默认页大小（上限 MAX_QUERY_PAGE_IDS）
     };
 
     // GetNodesXYZ：给定网格 + 一批节点 id，返回每个节点的 xyz。
+    // nodeIds 由命令动态分配并持有，count 为其数量；无数量上限。
     struct MeshNodesQueryParam
     {
         uint64_t dataNodeId; // 0 = 按 name 查找
         char name[MESH_QUERY_NAME_CAPACITY];
         uint32_t count;
-        uint32_t reserved; // 显式补齐：使结构体 8 字节对齐（总长 1104）
-        uint32_t nodeIds[MAX_QUERY_IDS];
+        uint32_t reserved;
+        uint32_t* nodeIds;
     };
 
     // GetElementsTopology：给定网格 + 一批单元 id，返回每个单元的类型与拓扑节点。
+    // elemIds 由命令动态分配并持有，count 为其数量；无数量上限。
     struct MeshElementsQueryParam
     {
         uint64_t dataNodeId; // 0 = 按 name 查找
         char name[MESH_QUERY_NAME_CAPACITY];
         uint32_t count;
-        uint32_t reserved; // 显式补齐：使结构体 8 字节对齐（总长 1104）
-        uint32_t elemIds[MAX_QUERY_IDS];
+        uint32_t reserved;
+        uint32_t* elemIds;
     };
 
     // ===== SetCamera =====
@@ -178,19 +168,12 @@ namespace EgLab::Platform
                   "ElementsVisibilityParam must be trivially copyable");
     static_assert(std::is_trivially_copyable<NodeVisibilityParam>::value,
                   "NodeVisibilityParam must be trivially copyable");
-    static_assert(std::is_trivially_copyable<ListDataTreeParam>::value,
-                  "ListDataTreeParam must be trivially copyable");
-    static_assert(sizeof(ListDataTreeParam) == 8, "ListDataTreeParam must be exactly 8 bytes");
     static_assert(std::is_trivially_copyable<MeshQueryParam>::value,
                   "MeshQueryParam must be trivially copyable");
-    static_assert(sizeof(MeshQueryParam) == 80, "MeshQueryParam must be exactly 80 bytes");
+    static_assert(sizeof(MeshQueryParam) == 72, "MeshQueryParam must be exactly 72 bytes");
     static_assert(std::is_trivially_copyable<MeshNodesQueryParam>::value,
                   "MeshNodesQueryParam must be trivially copyable");
-    static_assert(sizeof(MeshNodesQueryParam) == 1104,
-                  "MeshNodesQueryParam must be exactly 1104 bytes");
     static_assert(std::is_trivially_copyable<MeshElementsQueryParam>::value,
                   "MeshElementsQueryParam must be trivially copyable");
-    static_assert(sizeof(MeshElementsQueryParam) == 1104,
-                  "MeshElementsQueryParam must be exactly 1104 bytes");
 
 } // namespace EgLab::Platform

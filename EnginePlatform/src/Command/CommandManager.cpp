@@ -62,6 +62,16 @@ namespace EgLab::Platform
             uint32_t mode;
             uint32_t count;
         };
+
+        // Wire layout for the variable length GetNodesXYZ / GetElementsTopology payload.
+        // 80 字节对齐，后面紧跟 count 个 uint32 id。
+        struct MeshIdsQueryWireHeader
+        {
+            uint64_t dataNodeId;
+            char name[64];
+            uint32_t count;
+            uint32_t reserved;
+        };
     } // namespace
 
     class ShowPanelCommand : public ICommand
@@ -167,10 +177,8 @@ namespace EgLab::Platform
                 return Common::makeShared<GetMeshDataCmd>(param);
             };
 
-            _creator[EventId::ListDataTreeNodes] = [](const PacketPOD& pod) {
-                ListDataTreeParam param{};
-                std::memcpy(&param, pod.data, sizeof(param));
-                return Common::makeShared<ListDataTreeNodesCmd>(param);
+            _creator[EventId::ListDataTreeNodes] = [](const PacketPOD&) {
+                return Common::makeShared<ListDataTreeNodesCmd>();
             };
 
             _creator[EventId::GetMeshNodes] = [](const PacketPOD& pod) {
@@ -185,17 +193,8 @@ namespace EgLab::Platform
                 return Common::makeShared<GetMeshElementsCmd>(param);
             };
 
-            _creator[EventId::GetNodesXYZ] = [](const PacketPOD& pod) {
-                MeshNodesQueryParam param{};
-                std::memcpy(&param, pod.data, sizeof(param));
-                return Common::makeShared<GetNodesXYZCmd>(param);
-            };
-
-            _creator[EventId::GetElementsTopology] = [](const PacketPOD& pod) {
-                MeshElementsQueryParam param{};
-                std::memcpy(&param, pod.data, sizeof(param));
-                return Common::makeShared<GetElementsTopologyCmd>(param);
-            };
+            // GetNodesXYZ / GetElementsTopology 为变长 wire（见 worker 中的解析分支），
+            // 不使用固定 POD 的 _creator。
 
             _creator[EventId::FitView] = [](const PacketPOD&) {
                 return Common::makeShared<FitViewCommand>();
@@ -320,20 +319,8 @@ namespace EgLab::Platform
                 return pod;
             };
 
-            _packetCreator[EventId::ListDataTreeNodes] = [](const EventPacket& packet) {
-                PacketPOD pod{};
-                ListDataTreeParam param{};
-                if (packet.contains("offset"))
-                {
-                    param.offset = packet.getData<uint32_t>("offset");
-                }
-                if (packet.contains("limit"))
-                {
-                    param.limit = packet.getData<uint32_t>("limit");
-                }
-                pod.dataSize = sizeof(param);
-                std::memcpy(pod.data, &param, sizeof(param));
-                return pod;
+            _packetCreator[EventId::ListDataTreeNodes] = [](const EventPacket&) {
+                return PacketPOD{};
             };
 
             const auto meshQueryPacketCreator = [](const EventPacket& packet) {
@@ -350,14 +337,6 @@ namespace EgLab::Platform
                     std::memcpy(param.name, name.c_str(), copySize);
                     param.name[copySize] = '\0';
                 }
-                if (packet.contains("offset"))
-                {
-                    param.offset = packet.getData<uint32_t>("offset");
-                }
-                if (packet.contains("limit"))
-                {
-                    param.limit = packet.getData<uint32_t>("limit");
-                }
                 pod.dataSize = sizeof(param);
                 std::memcpy(pod.data, &param, sizeof(param));
                 return pod;
@@ -365,49 +344,8 @@ namespace EgLab::Platform
             _packetCreator[EventId::GetMeshNodes] = meshQueryPacketCreator;
             _packetCreator[EventId::GetMeshElements] = meshQueryPacketCreator;
 
-            _packetCreator[EventId::GetNodesXYZ] = [](const EventPacket& packet) {
-                PacketPOD pod{};
-                MeshNodesQueryParam param{};
-                if (packet.contains("dataNodeId"))
-                {
-                    param.dataNodeId = packet.getData<uint64_t>("dataNodeId");
-                }
-                if (packet.contains("name"))
-                {
-                    const Common::String name = packet.getData<Common::String>("name");
-                    const size_t copySize = std::min(name.size(), sizeof(param.name) - 1);
-                    std::memcpy(param.name, name.c_str(), copySize);
-                    param.name[copySize] = '\0';
-                }
-                const Common::String ids = packet.getData<Common::String>("ids");
-                param.count =
-                    static_cast<uint32_t>(parseIdList(ids, param.nodeIds, MAX_QUERY_IDS));
-                pod.dataSize = sizeof(param);
-                std::memcpy(pod.data, &param, sizeof(param));
-                return pod;
-            };
-
-            _packetCreator[EventId::GetElementsTopology] = [](const EventPacket& packet) {
-                PacketPOD pod{};
-                MeshElementsQueryParam param{};
-                if (packet.contains("dataNodeId"))
-                {
-                    param.dataNodeId = packet.getData<uint64_t>("dataNodeId");
-                }
-                if (packet.contains("name"))
-                {
-                    const Common::String name = packet.getData<Common::String>("name");
-                    const size_t copySize = std::min(name.size(), sizeof(param.name) - 1);
-                    std::memcpy(param.name, name.c_str(), copySize);
-                    param.name[copySize] = '\0';
-                }
-                const Common::String ids = packet.getData<Common::String>("ids");
-                param.count =
-                    static_cast<uint32_t>(parseIdList(ids, param.elemIds, MAX_QUERY_IDS));
-                pod.dataSize = sizeof(param);
-                std::memcpy(pod.data, &param, sizeof(param));
-                return pod;
-            };
+            // GetNodesXYZ / GetElementsTopology 为变长 wire，在 call(EventId, EventPacket) 中
+            // 单独构造，不走固定 POD 的 _packetCreator。
 
             _packetCreator[EventId::FitView] = [](const EventPacket&) { return PacketPOD{}; };
 
@@ -538,6 +476,56 @@ namespace EgLab::Platform
                             }
                             command = Common::makeShared<NodeVisibilityCmd>(param);
                         }
+                        else if (static_cast<EventId>(eventId) == EventId::GetNodesXYZ)
+                        {
+                            if (dataSize < sizeof(MeshIdsQueryWireHeader)) continue;
+
+                            MeshIdsQueryWireHeader wire{};
+                            std::memcpy(&wire, rawPacket.data() + sizeof(dataSize), sizeof(wire));
+                            const size_t idsByteSize =
+                                static_cast<size_t>(wire.count) * sizeof(uint32_t);
+                            if (idsByteSize != dataSize - sizeof(wire)) continue;
+
+                            MeshNodesQueryParam param{};
+                            param.dataNodeId = wire.dataNodeId;
+                            std::memcpy(param.name, wire.name, sizeof(param.name));
+                            param.count = wire.count;
+                            param.reserved = 0;
+                            param.nodeIds = nullptr;
+                            if (wire.count > 0)
+                            {
+                                param.nodeIds = new uint32_t[wire.count];
+                                std::memcpy(param.nodeIds,
+                                            rawPacket.data() + sizeof(dataSize) + sizeof(wire),
+                                            idsByteSize);
+                            }
+                            command = Common::makeShared<GetNodesXYZCmd>(param);
+                        }
+                        else if (static_cast<EventId>(eventId) == EventId::GetElementsTopology)
+                        {
+                            if (dataSize < sizeof(MeshIdsQueryWireHeader)) continue;
+
+                            MeshIdsQueryWireHeader wire{};
+                            std::memcpy(&wire, rawPacket.data() + sizeof(dataSize), sizeof(wire));
+                            const size_t idsByteSize =
+                                static_cast<size_t>(wire.count) * sizeof(uint32_t);
+                            if (idsByteSize != dataSize - sizeof(wire)) continue;
+
+                            MeshElementsQueryParam param{};
+                            param.dataNodeId = wire.dataNodeId;
+                            std::memcpy(param.name, wire.name, sizeof(param.name));
+                            param.count = wire.count;
+                            param.reserved = 0;
+                            param.elemIds = nullptr;
+                            if (wire.count > 0)
+                            {
+                                param.elemIds = new uint32_t[wire.count];
+                                std::memcpy(param.elemIds,
+                                            rawPacket.data() + sizeof(dataSize) + sizeof(wire),
+                                            idsByteSize);
+                            }
+                            command = Common::makeShared<GetElementsTopologyCmd>(param);
+                        }
                         else if (dataSize <= sizeof(PacketPOD::data))
                         {
                             PacketPOD pod{};
@@ -656,6 +644,49 @@ namespace EgLab::Platform
                                        static_cast<uint32_t>(wirePayload.size())))
             {
                 throw std::runtime_error("Failed to publish NodeVisibility payload.");
+            }
+            return;
+        }
+
+        if (eventId == EventId::GetNodesXYZ || eventId == EventId::GetElementsTopology)
+        {
+            MeshIdsQueryWireHeader wire{};
+            if (packet.contains("dataNodeId"))
+            {
+                wire.dataNodeId = packet.getData<uint64_t>("dataNodeId");
+            }
+            if (packet.contains("name"))
+            {
+                const Common::String name = packet.getData<Common::String>("name");
+                const size_t copySize = std::min(name.size(), sizeof(wire.name) - 1);
+                std::memcpy(wire.name, name.c_str(), copySize);
+                wire.name[copySize] = '\0';
+            }
+
+            Common::DynamicArray<uint32_t> parsedIds;
+            if (packet.contains("ids"))
+            {
+                parseIdList(packet.getData<Common::String>("ids"), parsedIds);
+            }
+            wire.count = static_cast<uint32_t>(parsedIds.size());
+
+            const size_t idsByteSize = static_cast<size_t>(parsedIds.size()) * sizeof(uint32_t);
+            const uint32_t dataSize = static_cast<uint32_t>(sizeof(wire) + idsByteSize);
+
+            Common::DynamicArray<uint8_t> wirePayload;
+            wirePayload.resize(sizeof(dataSize) + dataSize);
+            std::memcpy(wirePayload.data(), &dataSize, sizeof(dataSize));
+            std::memcpy(wirePayload.data() + sizeof(dataSize), &wire, sizeof(wire));
+            if (!parsedIds.empty())
+            {
+                std::memcpy(wirePayload.data() + sizeof(dataSize) + sizeof(wire), parsedIds.data(),
+                            idsByteSize);
+            }
+
+            if (!_impl->_memQueue.push(static_cast<uint32_t>(eventId), wirePayload.data(),
+                                       static_cast<uint32_t>(wirePayload.size())))
+            {
+                throw std::runtime_error("Failed to publish mesh query payload.");
             }
             return;
         }

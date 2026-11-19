@@ -8,17 +8,15 @@ namespace EgLab::Platform
     // 每条命令对应一个 EventId，查询结果通过 "EgLab MeshDataResult-<pid>" 共享内存队列
     // 异步回传，由调用方（EgLab-Agent）读取。
 
-    class ListDataTreeNodesCmd : public CommandBase<ListDataTreeParam>
+    class ListDataTreeNodesCmd : public ICommand
     {
     public:
-        explicit ListDataTreeNodesCmd(const ListDataTreeParam& params);
-
         Common::String getCmdName() const override
         {
             return Common::String("ListDataTreeNodesCmd");
         }
 
-        Common::Return execImpl() override;
+        Common::Return exec() override;
     };
 
     class GetMeshNodesCmd : public CommandBase<MeshQueryParam>
@@ -51,6 +49,7 @@ namespace EgLab::Platform
     {
     public:
         explicit GetNodesXYZCmd(const MeshNodesQueryParam& params);
+        ~GetNodesXYZCmd() override;
 
         Common::String getCmdName() const override
         {
@@ -64,6 +63,7 @@ namespace EgLab::Platform
     {
     public:
         explicit GetElementsTopologyCmd(const MeshElementsQueryParam& params);
+        ~GetElementsTopologyCmd() override;
 
         Common::String getCmdName() const override
         {

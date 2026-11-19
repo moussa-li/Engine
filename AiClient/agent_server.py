@@ -326,13 +326,16 @@ class NativeCommandBridge:
         finally:
             self._release_mutex()
 
-    def _read_result(self, pid, event_id, timeout=2.0):
+    def _read_result(self, pid, event_id, timeout=3.0):
         """读取同步查询回传结果（EgLab MeshDataResult-<pid> 队列）。
 
         引擎把查询结果 push 到该队列，channelId = 对应命令的 eventId。本方法轮询消费：
         跳过与 event_id 不匹配的槽（消费并丢弃），直到取到目标槽或超时。
+        支持 Common::MemoryQueue 的大载荷分片（marker=0x46524147 'FRAG'）自动重组。
         返回 (bytes|None, error_str|None)。
         """
+        FRAGMENT_MARKER = 0x46524147
+        FRAGMENT_HEADER_SIZE = 16  # u64 messageId + u32 totalSize + u32 offset
         name = ("EgLab MeshDataResult-%d" % pid).encode("ascii")
         handle = self._k.OpenFileMappingA(FILE_MAP_ALL_ACCESS, False, name)
         if not handle:
@@ -343,6 +346,11 @@ class NativeCommandBridge:
                 return None, "无法映射网格数据结果队列内存"
             try:
                 deadline = time.time() + timeout
+                fragment_message_id = None
+                fragment_total_size = 0
+                fragment_received = 0
+                fragment_buffer = None
+                fragment_channel = 0
                 while True:
                     write = self._read_u64(base + 0)
                     read = self._read_u64(base + 64)
@@ -352,6 +360,7 @@ class NativeCommandBridge:
                         if state == SLOT_READY:
                             channel = self._read_u32(slot + 12)
                             size = self._read_u32(slot + 16)
+                            marker = self._read_u32(slot + 20)
                             # 消费侧推进：先取数据，再置 EMPTY + readIdx++（普通写即可）
                             data_len = min(size, COMMON_MAX_PAYLOAD)
                             buf = ctypes.create_string_buffer(data_len)
@@ -359,6 +368,33 @@ class NativeCommandBridge:
                                 ctypes.memmove(buf, slot + 24, data_len)
                             self._write_u32(slot + 8, SLOT_EMPTY)
                             self._write_u64(base + 64, read + 1)
+
+                            if marker == FRAGMENT_MARKER:
+                                if data_len < FRAGMENT_HEADER_SIZE:
+                                    continue
+                                message_id, total_size, offset = struct.unpack_from(
+                                    "<QII", buf.raw, 0)
+                                chunk = bytes(buf.raw[FRAGMENT_HEADER_SIZE:data_len])
+                                if offset == 0:
+                                    fragment_message_id = message_id
+                                    fragment_total_size = total_size
+                                    fragment_channel = channel
+                                    fragment_buffer = bytearray(total_size)
+                                    fragment_received = 0
+                                if (message_id != fragment_message_id
+                                        or total_size != fragment_total_size
+                                        or offset != fragment_received
+                                        or channel != fragment_channel):
+                                    fragment_message_id = None
+                                    continue
+                                fragment_buffer[offset:offset + len(chunk)] = chunk
+                                fragment_received += len(chunk)
+                                if fragment_received == fragment_total_size:
+                                    fragment_message_id = None
+                                    if fragment_channel == event_id:
+                                        return bytes(fragment_buffer), None
+                                continue
+
                             if channel == event_id:
                                 return bytes(buf.raw[:data_len]), None
                             continue
@@ -559,25 +595,21 @@ class NativeCommandBridge:
         if name == "GetMeshData":
             return 200010, struct.pack("<I", 8) + struct.pack("<Q", int(args.get("dataNodeId") or 0))
         if name == "ListDataTreeNodes":
-            offset = int(args.get("offset") or 0)
-            limit = int(args.get("limit") or 0)
-            return 200011, struct.pack("<I", 8) + struct.pack("<II", offset, limit)
+            return 200011, struct.pack("<I", 0)
         if name in ("GetMeshNodes", "GetMeshElements"):
             node = int(args.get("dataNodeId") or 0)
             mesh_name = (args.get("name") or "").encode("utf-8")
-            offset = int(args.get("offset") or 0)
-            limit = int(args.get("limit") or 0)
             event_id = 200012 if name == "GetMeshNodes" else 200013
-            body = struct.pack("<Q64sII", node, mesh_name.ljust(64, b"\x00")[:64], offset, limit)
-            return event_id, struct.pack("<I", 80) + body
+            body = struct.pack("<Q64s", node, mesh_name.ljust(64, b"\x00")[:64])
+            return event_id, struct.pack("<I", 72) + body
         if name in ("GetNodesXYZ", "GetElementsTopology"):
             node = int(args.get("dataNodeId") or 0)
             mesh_name = (args.get("name") or "").encode("utf-8")
-            ids = parse_ids(args.get("ids"))[:256]
+            ids = parse_ids(args.get("ids"))
             event_id = 200014 if name == "GetNodesXYZ" else 200015
             body = struct.pack("<Q64sII", node, mesh_name.ljust(64, b"\x00")[:64], len(ids), 0)
-            body += struct.pack("<256I", *(ids + [0] * (256 - len(ids))))
-            return event_id, struct.pack("<I", 1104) + body
+            body += struct.pack("<%dI" % len(ids), *ids)
+            return event_id, struct.pack("<I", 80 + len(ids) * 4) + body
         if name == "MeshImport":
             path = (args.get("fileDir") or "").encode("utf-8")
             return 200002, struct.pack("<I", 128) + path.ljust(128, b"\x00")[:128]

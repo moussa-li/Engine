@@ -4,14 +4,9 @@
 
 namespace EgLab::Platform
 {
-    ListDataTreeNodesCmd::ListDataTreeNodesCmd(const ListDataTreeParam& params)
-        : CommandBase<ListDataTreeParam>(params)
+    Common::Return ListDataTreeNodesCmd::exec()
     {
-    }
-
-    Common::Return ListDataTreeNodesCmd::execImpl()
-    {
-        return MeshDataQueryService::instance().queryListDataTree(getParams());
+        return MeshDataQueryService::instance().queryListDataTree();
     }
 
     GetMeshNodesCmd::GetMeshNodesCmd(const MeshQueryParam& params)
@@ -39,6 +34,14 @@ namespace EgLab::Platform
     {
     }
 
+    GetNodesXYZCmd::~GetNodesXYZCmd()
+    {
+        if (getParams().nodeIds != nullptr)
+        {
+            delete[] getParams().nodeIds;
+        }
+    }
+
     Common::Return GetNodesXYZCmd::execImpl()
     {
         return MeshDataQueryService::instance().queryNodesXYZ(getParams());
@@ -47,6 +50,14 @@ namespace EgLab::Platform
     GetElementsTopologyCmd::GetElementsTopologyCmd(const MeshElementsQueryParam& params)
         : CommandBase<MeshElementsQueryParam>(params)
     {
+    }
+
+    GetElementsTopologyCmd::~GetElementsTopologyCmd()
+    {
+        if (getParams().elemIds != nullptr)
+        {
+            delete[] getParams().elemIds;
+        }
     }
 
     Common::Return GetElementsTopologyCmd::execImpl()

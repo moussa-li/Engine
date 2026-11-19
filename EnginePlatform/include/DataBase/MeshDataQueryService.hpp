@@ -18,11 +18,11 @@ namespace EgLab::Platform
     public:
         Common::Return queryAndPublish(DataNodeId dataNodeId);
 
-        // 精确查询：数据树节点清单。
-        Common::Return queryListDataTree(const ListDataTreeParam& param);
-        // 精确查询：网格节点 id 列表（分页）。
+        // 精确查询：数据树节点清单（一次返回全部节点）。
+        Common::Return queryListDataTree();
+        // 精确查询：网格节点 id 列表（一次返回全部）。
         Common::Return queryMeshNodes(const MeshQueryParam& param);
-        // 精确查询：网格单元 id 列表（分页）。
+        // 精确查询：网格单元 id 列表（一次返回全部）。
         Common::Return queryMeshElements(const MeshQueryParam& param);
         // 精确查询：按节点 id 查询坐标。
         Common::Return queryNodesXYZ(const MeshNodesQueryParam& param);

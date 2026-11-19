@@ -249,29 +249,28 @@ namespace EgLab::Platform
         return Common::dynamicSharedPtrCast<MeshData>(node);
     }
 
-    Common::Return MeshDataQueryService::queryListDataTree(const ListDataTreeParam& param)
+    Common::Return MeshDataQueryService::queryListDataTree()
     {
-        ListDataTreeResult result{};
-        result.header.magic = MESH_RESULT_MAGIC;
-        result.header.version = MESH_RESULT_VERSION;
-        result.header.status = 0;
-
         const auto dataNodes = Context::instance().getDataTree().getDataNodes();
-        result.header.total = static_cast<uint32_t>(dataNodes.size());
-        result.header.offset = param.offset;
 
-        uint32_t limit = param.limit;
-        if (limit == 0 || limit > MAX_DATA_TREE_ENTRIES)
-        {
-            limit = MAX_DATA_TREE_ENTRIES;
-        }
+        MeshQueryResultHeader header{};
+        header.magic = MESH_RESULT_MAGIC;
+        header.version = MESH_RESULT_VERSION;
+        header.status = 0;
+        header.total = static_cast<uint32_t>(dataNodes.size());
+        header.offset = 0;
+        header.returned = header.total;
 
-        uint32_t written = 0;
-        for (size_t index = param.offset; index < dataNodes.size() && written < limit; ++index)
+        Common::DynamicArray<uint8_t> buffer;
+        buffer.resize(sizeof(header) + static_cast<size_t>(header.returned) *
+                                           sizeof(DataTreeNodeEntry));
+        std::memcpy(buffer.data(), &header, sizeof(header));
+
+        uint8_t* cursor = buffer.data() + sizeof(header);
+        for (size_t index = 0; index < dataNodes.size(); ++index)
         {
+            DataTreeNodeEntry entry{};
             const auto& node = dataNodes[index];
-            DataTreeNodeEntry& entry = result.entries[written];
-
             entry.dataNodeId = node->getId();
             const Common::String& name = node->getName();
             const size_t copySize =
@@ -297,20 +296,22 @@ namespace EgLab::Platform
             {
                 entry.kind = 0;
             }
-            ++written;
+
+            std::memcpy(cursor, &entry, sizeof(entry));
+            cursor += sizeof(entry);
         }
 
-        result.header.returned = written;
-        return publishResult(static_cast<uint32_t>(EventId::ListDataTreeNodes), &result,
-                             sizeof(result));
+        return publishResult(static_cast<uint32_t>(EventId::ListDataTreeNodes), buffer.data(),
+                             static_cast<uint32_t>(buffer.size()));
     }
 
     Common::Return MeshDataQueryService::queryMeshNodes(const MeshQueryParam& param)
     {
-        MeshIdsResult result{};
-        result.header.magic = MESH_RESULT_MAGIC;
-        result.header.version = MESH_RESULT_VERSION;
-        result.header.status = 0;
+        MeshQueryResultHeader header{};
+        header.magic = MESH_RESULT_MAGIC;
+        header.version = MESH_RESULT_VERSION;
+        header.status = 0;
+        header.offset = 0;
 
         auto meshData = resolveMesh(param.dataNodeId, param.name);
         Common::SharedPtr<ME::Mesh> mesh;
@@ -320,48 +321,37 @@ namespace EgLab::Platform
         }
         if (!mesh)
         {
-            result.header.status = 1;
-            return publishResult(static_cast<uint32_t>(EventId::GetMeshNodes), &result,
-                                 sizeof(result));
+            header.status = 1;
+            return publishResult(static_cast<uint32_t>(EventId::GetMeshNodes), &header,
+                                 sizeof(header));
         }
 
-        result.header.total = static_cast<uint32_t>(mesh->getNodeNumber());
-        result.header.offset = param.offset;
+        header.total = static_cast<uint32_t>(mesh->getNodeNumber());
+        header.returned = header.total;
 
-        uint32_t limit = param.limit;
-        if (limit == 0 || limit > MAX_QUERY_PAGE_IDS)
-        {
-            limit = MAX_QUERY_PAGE_IDS;
-        }
+        Common::DynamicArray<uint8_t> buffer;
+        buffer.resize(sizeof(header) + static_cast<size_t>(header.returned) * sizeof(uint32_t));
+        std::memcpy(buffer.data(), &header, sizeof(header));
 
+        uint32_t* ids = reinterpret_cast<uint32_t*>(buffer.data() + sizeof(header));
         uint32_t written = 0;
-        uint32_t skipped = 0;
         ME::MeshIterator iterator(*mesh);
         for (; iterator.hasMoreNode(); iterator.nextNode())
         {
-            if (skipped < param.offset)
-            {
-                ++skipped;
-                continue;
-            }
-            if (written >= limit)
-            {
-                break;
-            }
-            result.ids[written++] = iterator.currentNode().getId();
+            ids[written++] = iterator.currentNode().getId();
         }
 
-        result.header.returned = written;
-        return publishResult(static_cast<uint32_t>(EventId::GetMeshNodes), &result,
-                             sizeof(result));
+        return publishResult(static_cast<uint32_t>(EventId::GetMeshNodes), buffer.data(),
+                             static_cast<uint32_t>(buffer.size()));
     }
 
     Common::Return MeshDataQueryService::queryMeshElements(const MeshQueryParam& param)
     {
-        MeshIdsResult result{};
-        result.header.magic = MESH_RESULT_MAGIC;
-        result.header.version = MESH_RESULT_VERSION;
-        result.header.status = 0;
+        MeshQueryResultHeader header{};
+        header.magic = MESH_RESULT_MAGIC;
+        header.version = MESH_RESULT_VERSION;
+        header.status = 0;
+        header.offset = 0;
 
         auto meshData = resolveMesh(param.dataNodeId, param.name);
         Common::SharedPtr<ME::Mesh> mesh;
@@ -371,48 +361,37 @@ namespace EgLab::Platform
         }
         if (!mesh)
         {
-            result.header.status = 1;
-            return publishResult(static_cast<uint32_t>(EventId::GetMeshElements), &result,
-                                 sizeof(result));
+            header.status = 1;
+            return publishResult(static_cast<uint32_t>(EventId::GetMeshElements), &header,
+                                 sizeof(header));
         }
 
-        result.header.total = static_cast<uint32_t>(mesh->getElemNumber());
-        result.header.offset = param.offset;
+        header.total = static_cast<uint32_t>(mesh->getElemNumber());
+        header.returned = header.total;
 
-        uint32_t limit = param.limit;
-        if (limit == 0 || limit > MAX_QUERY_PAGE_IDS)
-        {
-            limit = MAX_QUERY_PAGE_IDS;
-        }
+        Common::DynamicArray<uint8_t> buffer;
+        buffer.resize(sizeof(header) + static_cast<size_t>(header.returned) * sizeof(uint32_t));
+        std::memcpy(buffer.data(), &header, sizeof(header));
 
+        uint32_t* ids = reinterpret_cast<uint32_t*>(buffer.data() + sizeof(header));
         uint32_t written = 0;
-        uint32_t skipped = 0;
         ME::MeshIterator iterator(*mesh);
         for (; iterator.hasMoreElem(); iterator.nextElem())
         {
-            if (skipped < param.offset)
-            {
-                ++skipped;
-                continue;
-            }
-            if (written >= limit)
-            {
-                break;
-            }
-            result.ids[written++] = iterator.currentElem().getId();
+            ids[written++] = iterator.currentElem().getId();
         }
 
-        result.header.returned = written;
-        return publishResult(static_cast<uint32_t>(EventId::GetMeshElements), &result,
-                             sizeof(result));
+        return publishResult(static_cast<uint32_t>(EventId::GetMeshElements), buffer.data(),
+                             static_cast<uint32_t>(buffer.size()));
     }
 
     Common::Return MeshDataQueryService::queryNodesXYZ(const MeshNodesQueryParam& param)
     {
-        NodesXYZResult result{};
-        result.header.magic = MESH_RESULT_MAGIC;
-        result.header.version = MESH_RESULT_VERSION;
-        result.header.status = 0;
+        MeshQueryResultHeader header{};
+        header.magic = MESH_RESULT_MAGIC;
+        header.version = MESH_RESULT_VERSION;
+        header.status = 0;
+        header.offset = 0;
 
         auto meshData = resolveMesh(param.dataNodeId, param.name);
         Common::SharedPtr<ME::Mesh> mesh;
@@ -422,14 +401,18 @@ namespace EgLab::Platform
         }
         if (!mesh)
         {
-            result.header.status = 1;
-            return publishResult(static_cast<uint32_t>(EventId::GetNodesXYZ), &result,
-                                 sizeof(result));
+            header.status = 1;
+            return publishResult(static_cast<uint32_t>(EventId::GetNodesXYZ), &header,
+                                 sizeof(header));
         }
 
-        const uint32_t count = param.count > MAX_QUERY_IDS ? MAX_QUERY_IDS : param.count;
+        Common::DynamicArray<uint8_t> buffer;
+        buffer.resize(sizeof(header) + static_cast<size_t>(param.count) * sizeof(NodeXYZEntry));
+        NodeXYZEntry* entries =
+            reinterpret_cast<NodeXYZEntry*>(buffer.data() + sizeof(header));
+
         uint32_t written = 0;
-        for (uint32_t index = 0; index < count; ++index)
+        for (uint32_t index = 0; index < param.count; ++index)
         {
             const ME::IdType nodeId = param.nodeIds[index];
             if (mesh->getNodeIdx(nodeId) == ME::INVALID_IDX)
@@ -437,26 +420,32 @@ namespace EgLab::Platform
                 continue;
             }
             ME::Node& node = mesh->getNodeById(nodeId);
-            NodeXYZEntry& entry = result.nodes[written++];
+            NodeXYZEntry& entry = entries[written++];
             entry.id = nodeId;
             entry.xyz[0] = static_cast<float>(node.x());
             entry.xyz[1] = static_cast<float>(node.y());
             entry.xyz[2] = static_cast<float>(node.z());
         }
 
-        result.header.total = written;
-        result.header.returned = written;
-        return publishResult(static_cast<uint32_t>(EventId::GetNodesXYZ), &result,
-                             sizeof(result));
+        header.total = written;
+        header.returned = written;
+        std::memcpy(buffer.data(), &header, sizeof(header));
+
+        const uint32_t payloadSize =
+            static_cast<uint32_t>(sizeof(header) + static_cast<size_t>(written) *
+                                                      sizeof(NodeXYZEntry));
+        return publishResult(static_cast<uint32_t>(EventId::GetNodesXYZ), buffer.data(),
+                             payloadSize);
     }
 
     Common::Return MeshDataQueryService::queryElementsTopology(
         const MeshElementsQueryParam& param)
     {
-        ElementsTopoResult result{};
-        result.header.magic = MESH_RESULT_MAGIC;
-        result.header.version = MESH_RESULT_VERSION;
-        result.header.status = 0;
+        MeshQueryResultHeader header{};
+        header.magic = MESH_RESULT_MAGIC;
+        header.version = MESH_RESULT_VERSION;
+        header.status = 0;
+        header.offset = 0;
 
         auto meshData = resolveMesh(param.dataNodeId, param.name);
         Common::SharedPtr<ME::Mesh> mesh;
@@ -466,14 +455,18 @@ namespace EgLab::Platform
         }
         if (!mesh)
         {
-            result.header.status = 1;
-            return publishResult(static_cast<uint32_t>(EventId::GetElementsTopology), &result,
-                                 sizeof(result));
+            header.status = 1;
+            return publishResult(static_cast<uint32_t>(EventId::GetElementsTopology), &header,
+                                 sizeof(header));
         }
 
-        const uint32_t count = param.count > MAX_QUERY_IDS ? MAX_QUERY_IDS : param.count;
+        Common::DynamicArray<uint8_t> buffer;
+        buffer.resize(sizeof(header) + static_cast<size_t>(param.count) * sizeof(ElementTopoEntry));
+        ElementTopoEntry* entries =
+            reinterpret_cast<ElementTopoEntry*>(buffer.data() + sizeof(header));
+
         uint32_t written = 0;
-        for (uint32_t index = 0; index < count; ++index)
+        for (uint32_t index = 0; index < param.count; ++index)
         {
             const ME::IdType elemId = param.elemIds[index];
             if (mesh->getElemIdx(elemId) == ME::INVALID_IDX)
@@ -481,7 +474,7 @@ namespace EgLab::Platform
                 continue;
             }
             ME::Elem& elem = mesh->getElemById(elemId);
-            ElementTopoEntry& entry = result.elements[written++];
+            ElementTopoEntry& entry = entries[written++];
             entry.id = elemId;
             entry.type = static_cast<uint32_t>(elem.getType());
 
@@ -496,9 +489,14 @@ namespace EgLab::Platform
             }
         }
 
-        result.header.total = written;
-        result.header.returned = written;
-        return publishResult(static_cast<uint32_t>(EventId::GetElementsTopology), &result,
-                             sizeof(result));
+        header.total = written;
+        header.returned = written;
+        std::memcpy(buffer.data(), &header, sizeof(header));
+
+        const uint32_t payloadSize =
+            static_cast<uint32_t>(sizeof(header) + static_cast<size_t>(written) *
+                                                      sizeof(ElementTopoEntry));
+        return publishResult(static_cast<uint32_t>(EventId::GetElementsTopology), buffer.data(),
+                             payloadSize);
     }
 } // namespace EgLab::Platform
