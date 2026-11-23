@@ -872,7 +872,7 @@ TEST_F(TestRender, camera_input_bindings_resolve_defaults)
               EgLab::RE::CameraAction::None);
 }
 
-TEST_F(TestRender, orbit_camera_local_rotation_uses_picked_mesh_center)
+TEST_F(TestRender, orbit_camera_rotation_uses_nearest_mesh_center)
 {
     auto camera = EgLab::Common::makeShared<EgLab::RE::Camera>(
         800, 600, EgLab::RE::CoordType(0.0f, 0.0f, 10.0f));
@@ -881,10 +881,11 @@ TEST_F(TestRender, orbit_camera_local_rotation_uses_picked_mesh_center)
     controller.setInputBindings(EgLab::RE::CameraInputBindings::defaults());
 
     const EgLab::RE::CoordType pivot(3.0f, 2.0f, 1.0f);
-    controller.setLocalPivotProvider([pivot](EgLab::RE::CoordType& center) {
-        center = pivot;
-        return true;
-    });
+    controller.setLocalPivotProvider(
+        [pivot](float, float, EgLab::RE::CoordType& center) {
+            center = pivot;
+            return true;
+        });
 
     const float eyeToPivotBefore = (camera->getPosition() - pivot).length();
     const float targetToPivotBefore = (camera->getTarget() - pivot).length();
@@ -905,39 +906,46 @@ TEST_F(TestRender, orbit_camera_local_rotation_uses_picked_mesh_center)
     EXPECT_GT((camera->getTarget() - targetBefore).length(), 0.0f);
 }
 
-TEST_F(TestRender, orbit_camera_global_rotation_after_local_uses_rotated_target)
+TEST_F(TestRender, orbit_camera_plain_and_ctrl_rotation_share_the_same_pivot)
 {
-    auto camera = EgLab::Common::makeShared<EgLab::RE::Camera>(
-        800, 600, EgLab::RE::CoordType(0.0f, 0.0f, 10.0f));
-    EgLab::RE::OrbitCameraController controller;
-    controller.setCamera(camera);
-    controller.setInputBindings(EgLab::RE::CameraInputBindings::defaults());
-
     const EgLab::RE::CoordType pivot(3.0f, 2.0f, 1.0f);
-    controller.setLocalPivotProvider([pivot](EgLab::RE::CoordType& center) {
-        center = pivot;
-        return true;
-    });
 
-    // Local rotation first.
-    ASSERT_TRUE(controller.processMouseButton(1, 1, 400.0f, 300.0f,
-                                             EgLab::RE::CameraModifier_Ctrl));
-    ASSERT_TRUE(controller.processMouseMove(430.0f, 310.0f));
-    controller.processMouseButton(1, 0, 430.0f, 310.0f, EgLab::RE::CameraModifier_Ctrl);
+    const auto makeController = [pivot](
+                                    EgLab::Common::SharedPtr<EgLab::RE::Camera>& camera) {
+        camera = EgLab::Common::makeShared<EgLab::RE::Camera>(
+            800, 600, EgLab::RE::CoordType(0.0f, 0.0f, 10.0f));
+        auto controller = EgLab::Common::makeShared<EgLab::RE::OrbitCameraController>();
+        controller->setCamera(camera);
+        controller->setInputBindings(EgLab::RE::CameraInputBindings::defaults());
+        controller->setLocalPivotProvider(
+            [pivot](float, float, EgLab::RE::CoordType& center) {
+                center = pivot;
+                return true;
+            });
+        return controller;
+    };
 
-    const EgLab::RE::CoordType rotatedTarget = camera->getTarget();
-    const float eyeToTarget = (camera->getPosition() - rotatedTarget).length();
+    EgLab::Common::SharedPtr<EgLab::RE::Camera> plainCamera;
+    EgLab::Common::SharedPtr<EgLab::RE::Camera> ctrlCamera;
+    auto plainController = makeController(plainCamera);
+    auto ctrlController = makeController(ctrlCamera);
 
-    // A following global rotation orbits around the already rotated target.
-    ASSERT_TRUE(controller.processMouseButton(1, 1, 430.0f, 310.0f,
-                                             EgLab::RE::CameraModifier_None));
-    ASSERT_TRUE(controller.processMouseMove(450.0f, 310.0f));
+    ASSERT_TRUE(plainController->processMouseButton(1, 1, 400.0f, 300.0f,
+                                                    EgLab::RE::CameraModifier_None));
+    ASSERT_TRUE(plainController->processMouseMove(430.0f, 310.0f));
+    ASSERT_TRUE(ctrlController->processMouseButton(1, 1, 400.0f, 300.0f,
+                                                   EgLab::RE::CameraModifier_Ctrl));
+    ASSERT_TRUE(ctrlController->processMouseMove(430.0f, 310.0f));
 
-    EXPECT_NEAR((camera->getTarget() - rotatedTarget).length(), 0.0f, 0.001f);
-    EXPECT_NEAR((camera->getPosition() - rotatedTarget).length(), eyeToTarget, 0.001f);
+    // The plain and Ctrl-modified right drags must produce the identical local orbit.
+    EXPECT_NEAR((plainCamera->getPosition() - ctrlCamera->getPosition()).length(), 0.0f, 1e-5f);
+    EXPECT_NEAR((plainCamera->getTarget() - ctrlCamera->getTarget()).length(), 0.0f, 1e-5f);
+    EXPECT_NEAR((plainCamera->getPosition() - pivot).length(),
+                (ctrlCamera->getPosition() - pivot).length(), 1e-5f);
 }
 
-TEST_F(TestRender, orbit_camera_global_rotation_keeps_target){
+TEST_F(TestRender, orbit_camera_rotation_falls_back_to_target_without_mesh)
+{
     auto camera = EgLab::Common::makeShared<EgLab::RE::Camera>(
         800, 600, EgLab::RE::CoordType(0.0f, 0.0f, 10.0f));
     EgLab::RE::OrbitCameraController controller;

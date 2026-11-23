@@ -384,6 +384,36 @@ namespace EgLab::Platform
         return _renderData.getMeshCenter(pickedMesh, center);
     }
 
+    bool RenderWork::tryGetNearestMeshCenter(float cursorX, float cursorY,
+                                             RE::CoordType& center) const
+    {
+        if (!_window)
+        {
+            return false;
+        }
+
+        unsigned int framebufferWidth = 0;
+        unsigned int framebufferHeight = 0;
+        unsigned int windowWidth = 0;
+        unsigned int windowHeight = 0;
+        _window->getFramebufferSize(framebufferWidth, framebufferHeight);
+        _window->getWindowSize(windowWidth, windowHeight);
+        if (framebufferWidth == 0 || framebufferHeight == 0 || windowWidth == 0 ||
+            windowHeight == 0)
+        {
+            return false;
+        }
+
+        // Cursor positions arrive in window coordinates while the camera projection uses
+        // framebuffer pixels, so convert before comparing projected centers.
+        const float scaleX = static_cast<float>(framebufferWidth) / static_cast<float>(windowWidth);
+        const float scaleY =
+            static_cast<float>(framebufferHeight) / static_cast<float>(windowHeight);
+
+        std::lock_guard<std::mutex> stateLock(_renderData.stateMutex());
+        return _renderData.getNearestMeshCenter(cursorX * scaleX, cursorY * scaleY, center);
+    }
+
     void RenderWork::publishPickInfo(const RE::PrimitivePickInfo& info)
     {
         PickedMeshInfo pickedInfo;

@@ -87,7 +87,8 @@ namespace EgLab::Platform
             controller->setZoomAnchor(EgLab::RE::CameraZoomAnchor::MouseCursor);
             IniManager::instance().setBool("camera.zoomAtCursor", true);
         }
-        ImGui::TextDisabled("Local orbit (Ctrl + right drag by default) uses the picked mesh center.");
+        ImGui::TextDisabled("Right drag (and Ctrl + right drag) rotates around the mesh "
+                            "nearest the cursor.");
 
         ImGui::Separator();
 

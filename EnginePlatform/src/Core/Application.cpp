@@ -9,7 +9,6 @@
 #include "Core/PidRegistry.hpp"
 #include "GLFW/glfw3.h"
 #include "RenderEngine/Core/OrbitCameraController.hpp"
-#include "RenderEngine/Core/PickKind.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"
 #include "Work/RenderWork.hpp"
 #include "Work/UIWork.hpp"
@@ -37,14 +36,10 @@ namespace EgLab::Platform
         cameraController = EgLab::Common::makeShared<EgLab::RE::OrbitCameraController>();
         cameraController->setCamera(camera);
         cameraController->setInputBindings(ShortcutManager::instance().cameraInputBindings());
-        cameraController->setLocalPivotProvider([](EgLab::RE::CoordType& center) {
-            return RenderWork::instance().tryGetPickedMeshCenter(center);
-        });
-        // Ctrl + right drag picks under the cursor even though no panel requested picking.
-        cameraController->setLocalPivotRequester([](float cursorX, float cursorY) {
-            RenderWork::instance().requestPick(cursorX, cursorY,
-                                              EgLab::RE::toPickMask(EgLab::RE::PickKind::All));
-        });
+        cameraController->setLocalPivotProvider(
+            [](float cursorX, float cursorY, EgLab::RE::CoordType& center) {
+                return RenderWork::instance().tryGetNearestMeshCenter(cursorX, cursorY, center);
+            });
         cameraController->setZoomAnchor(
             ini.getBool("camera.zoomAtCursor", false)
                 ? EgLab::RE::CameraZoomAnchor::MouseCursor

@@ -49,11 +49,8 @@ namespace EgLab::RE
         /// @brief Sets the window size used to map the cursor to view coordinates.
         void setViewportSize(float width, float height) override;
 
-        /// @brief Sets the pivot source used by the local-orbit gesture.
+        /// @brief Sets the pivot source used by the rotate gestures.
         void setLocalPivotProvider(CameraPivotProvider provider) override;
-
-        /// @brief Sets the callback that requests a pick for the local-orbit pivot.
-        void setLocalPivotRequester(CameraPivotRequester requester) override;
 
         /// @brief Sets whether zooming anchors on the screen center or on the cursor.
         void setZoomAnchor(CameraZoomAnchor anchor) override;
@@ -97,12 +94,8 @@ namespace EgLab::RE
 
         CoordType _activePivot;
         bool _hasActivePivot{false};
-        // Set while a local orbit waits for the pick that resolves its pivot.
-        bool _pendingLocalPivot{false};
-        float _pendingLocalPivotElapsed{0.0f};
 
         CameraPivotProvider _pivotProvider;
-        CameraPivotRequester _pivotRequester;
 
         std::atomic<CameraZoomAnchor> _zoomAnchor{CameraZoomAnchor::ScreenCenter};
         float _viewportWidth{0.0f};

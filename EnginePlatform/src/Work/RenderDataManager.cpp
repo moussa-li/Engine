@@ -1,5 +1,7 @@
 #include "Work/RenderDataManager.hpp"
 
+#include <limits>
+
 #include "Common/BBox.hpp"
 #include "Common/HashMap.hpp"
 #include "Common/Log.hpp"
@@ -335,6 +337,81 @@ namespace EgLab::Platform
         }
 
         center = (bounds.min() + bounds.max()) * 0.5f;
+        return true;
+    }
+
+    bool RenderDataManager::getNearestMeshCenter(float cursorX, float cursorY,
+                                                 RE::CoordType& center) const
+    {
+        if (!_camera)
+        {
+            return false;
+        }
+
+        const unsigned int width = _camera->getViewportWidth();
+        const unsigned int height = _camera->getViewportHeight();
+        if (width == 0 || height == 0)
+        {
+            return false;
+        }
+
+        const Common::Matrix4f view = _camera->view();
+        Common::BBox<RE::Scalar, 3> sceneBounds;
+        if (_scene)
+        {
+            sceneBounds = _scene->getBounds();
+        }
+        const Common::Matrix4f projection = _camera->perspective(sceneBounds);
+
+        bool found = false;
+        RE::Scalar bestDistanceSquared = std::numeric_limits<RE::Scalar>::max();
+        RE::CoordType bestCenter;
+
+        for (const auto& entry : _activeMeshes)
+        {
+            Common::BBox<RE::Scalar, 3> bounds;
+            if (entry.packet.renderNode)
+            {
+                bounds.merge(entry.packet.renderNode->getBounds());
+            }
+            if (entry.packet.renderLine)
+            {
+                bounds.merge(entry.packet.renderLine->getBounds());
+            }
+            if (entry.packet.renderFace)
+            {
+                bounds.merge(entry.packet.renderFace->getBounds());
+            }
+            if (bounds.isEmpty())
+            {
+                continue;
+            }
+
+            const RE::CoordType meshCenter = (bounds.min() + bounds.max()) * 0.5f;
+            RE::PickUtils::ScreenPoint screenPoint;
+            if (!RE::PickUtils::projectPoint(meshCenter, view, projection, width, height,
+                                             screenPoint))
+            {
+                continue;
+            }
+
+            const RE::Scalar deltaX = screenPoint.x - cursorX;
+            const RE::Scalar deltaY = screenPoint.y - cursorY;
+            const RE::Scalar distanceSquared = deltaX * deltaX + deltaY * deltaY;
+            if (!found || distanceSquared < bestDistanceSquared)
+            {
+                found = true;
+                bestDistanceSquared = distanceSquared;
+                bestCenter = meshCenter;
+            }
+        }
+
+        if (!found)
+        {
+            return false;
+        }
+
+        center = bestCenter;
         return true;
     }
 

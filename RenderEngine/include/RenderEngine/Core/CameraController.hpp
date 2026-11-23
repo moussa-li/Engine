@@ -12,13 +12,11 @@ namespace EgLab::RE
 {
     class Camera;
 
-    /// Source of the pivot used by the local-orbit gesture, usually the picked mesh center.
-    /// Returns false when no mesh has been picked.
-    using CameraPivotProvider = std::function<bool(CoordType &)>;
-
-    /// Asks for a pick at a window-space cursor position, used to resolve the local-orbit
-    /// pivot when no feature currently needs picking.
-    using CameraPivotRequester = std::function<void(float, float)>;
+    /// Source of the pivot used by the rotate gestures. Receives the window-space cursor
+    /// position that started the gesture and returns the pivot in world space. The default
+    /// implementation resolves the bounding-box centre of the mesh nearest the cursor, so no
+    /// geometry pick is required. Returns false when no pivot is available.
+    using CameraPivotProvider = std::function<bool(float cursorX, float cursorY, CoordType &)>;
 
     /// Base class for camera input and update controllers.
     class RenderEngineAPI CameraController
@@ -99,16 +97,10 @@ namespace EgLab::RE
             (void)height;
         }
 
-        /// @brief Sets the pivot source used by the local-orbit gesture.
+        /// @brief Sets the pivot source used by the rotate gestures.
         virtual void setLocalPivotProvider(CameraPivotProvider provider)
         {
             (void)provider;
-        }
-
-        /// @brief Sets the callback that requests a pick for the local-orbit pivot.
-        virtual void setLocalPivotRequester(CameraPivotRequester requester)
-        {
-            (void)requester;
         }
 
         /// @brief Sets whether zooming anchors on the screen center or on the cursor.

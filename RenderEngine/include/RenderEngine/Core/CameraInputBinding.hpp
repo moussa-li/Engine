@@ -68,7 +68,7 @@ namespace EgLab::RE
         CameraInputChord rotateLocal{};
         CameraInputChord zoom{};
 
-        /// Left pans, right orbits the target, Ctrl+right orbits the picked mesh,
+        /// Left pans, right (and Ctrl+right) orbit around the mesh nearest the cursor,
         /// middle drags the zoom.
         static CameraInputBindings defaults()
         {

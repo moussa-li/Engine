@@ -13,8 +13,6 @@ namespace EgLab::RE
         // Vertical drag distance, in pixels, that equals one wheel step.
         constexpr float kZoomDragStepsPerPixel = 0.01f;
         constexpr float kMinZoom = 1e-4f;
-        // How long a local orbit waits for its pivot pick before falling back to the target.
-        constexpr float kLocalPivotTimeoutSeconds = 0.25f;
     } // namespace
 
     /**
@@ -33,28 +31,6 @@ namespace EgLab::RE
         if (_camera)
         {
             _camera->updateCameraTransition(deltaTime);
-        }
-
-        if (!_pendingLocalPivot)
-        {
-            return;
-        }
-
-        // The pivot pick runs on the render thread; wait a couple of frames for its result
-        // before giving up and rotating around the view target instead.
-        _pendingLocalPivotElapsed += deltaTime;
-        CoordType pivot;
-        if (_pivotProvider && _pivotProvider(pivot))
-        {
-            _activePivot = pivot;
-            _hasActivePivot = true;
-            _pendingLocalPivot = false;
-            return;
-        }
-
-        if (_pendingLocalPivotElapsed > kLocalPivotTimeoutSeconds)
-        {
-            _pendingLocalPivot = false;
         }
     }
 
@@ -79,23 +55,17 @@ namespace EgLab::RE
             _lastXPos = xpos;
             _lastYPos = ypos;
             _hasActivePivot = false;
-            _pendingLocalPivot = false;
-            _pendingLocalPivotElapsed = 0.0f;
 
-            if (requested == CameraAction::RotateLocal)
+            // Both the plain and the modified rotate gestures orbit around the mesh nearest
+            // the cursor. Resolve that pivot immediately from bounding-box centres so no
+            // geometry pick has to complete first.
+            if (requested == CameraAction::Rotate || requested == CameraAction::RotateLocal)
             {
                 CoordType pivot;
-                if (_pivotProvider && _pivotProvider(pivot))
+                if (_pivotProvider && _pivotProvider(xpos, ypos, pivot))
                 {
                     _activePivot = pivot;
                     _hasActivePivot = true;
-                }
-                else if (_pivotRequester)
-                {
-                    // No feature is picking right now: request a pick at the cursor and wait
-                    // for its result before rotating around the picked mesh center.
-                    _pendingLocalPivot = true;
-                    _pivotRequester(xpos, ypos);
                 }
             }
             return true;
@@ -106,7 +76,6 @@ namespace EgLab::RE
             _activeAction = CameraAction::None;
             _activeButton = static_cast<int>(CameraMouseButton::None);
             _hasActivePivot = false;
-            _pendingLocalPivot = false;
         }
         return false;
     }
@@ -114,13 +83,6 @@ namespace EgLab::RE
     bool OrbitCameraController::processMouseMove(float xpos, float ypos)
     {
         if (_camera == nullptr) return false;
-
-        // A local orbit cannot rotate before its pivot pick resolved; keep the pending drag
-        // so the first accepted move applies the accumulated offset.
-        if (_activeAction == CameraAction::RotateLocal && !_hasActivePivot && _pendingLocalPivot)
-        {
-            return false;
-        }
 
         if (_lastXPos < 0.0f || _lastYPos < 0.0f)
         {
@@ -139,10 +101,10 @@ namespace EgLab::RE
             isChanged = pan(xoffset, yoffset);
             break;
         case CameraAction::Rotate:
-            isChanged = rotate(xoffset, yoffset, _camera->getTarget(), false);
-            break;
         case CameraAction::RotateLocal:
         {
+            // Both rotate gestures share the local pivot; when no mesh pivot resolved we fall
+            // back to orbiting the view target with the world up axis.
             const CoordType pivot = _hasActivePivot ? _activePivot : _camera->getTarget();
             isChanged = rotate(xoffset, yoffset, pivot, _hasActivePivot);
             break;
@@ -268,11 +230,6 @@ namespace EgLab::RE
     void OrbitCameraController::setLocalPivotProvider(CameraPivotProvider provider)
     {
         _pivotProvider = Common::move(provider);
-    }
-
-    void OrbitCameraController::setLocalPivotRequester(CameraPivotRequester requester)
-    {
-        _pivotRequester = Common::move(requester);
     }
 
     void OrbitCameraController::setZoomAnchor(CameraZoomAnchor anchor)

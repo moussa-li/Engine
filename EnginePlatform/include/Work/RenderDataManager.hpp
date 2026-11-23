@@ -75,6 +75,11 @@ namespace EgLab::Platform
         /// primitives fitView uses, so hidden element changes are respected.
         bool getMeshCenter(const Common::SharedPtr<ME::Mesh>& mesh, RE::CoordType& center) const;
 
+        /// Returns the bounding-box center of the active mesh whose projected center lies
+        /// nearest to the given cursor position. Coordinates are framebuffer pixels with a
+        /// top-left origin. Does not require a geometry pick.
+        bool getNearestMeshCenter(float cursorX, float cursorY, RE::CoordType& center) const;
+
         // ---- apply phase: mutate the scene ----
         Common::Return applyMeshUpdate(const MeshUpdateEvent& event);
         void applyMeshColor(const Common::SharedPtr<ME::Mesh>& mesh, const Common::Vector4f& color);

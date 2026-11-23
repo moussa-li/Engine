@@ -103,6 +103,9 @@ namespace EgLab::Platform
         bool tryReceivePickInfo(PickInfoSubscriptionId subscriptionId, PickedMeshInfo& info);
         // Returns the world-space center of the most recently picked mesh.
         bool tryGetPickedMeshCenter(RE::CoordType& center) const;
+        // Returns the world-space bounding-box center of the mesh whose projected center is
+        // nearest to the window-space cursor. Does not require a geometry pick.
+        bool tryGetNearestMeshCenter(float cursorX, float cursorY, RE::CoordType& center) const;
 
         // Pick registry shared by the renderer and the features that need picking.
         RE::PickManager& pickManager()
