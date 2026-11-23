@@ -93,6 +93,30 @@ namespace EgLab::Platform
         renderer->setRenderFacesEnabled(
             ini.getBool("mesh.renderFaces", renderer->isRenderFacesEnabled()));
 
+        EgLab::RE::ReferencePlaneSettings referencePlane =
+            renderer->getReferencePlane().getSettings();
+        referencePlane.enabled = ini.getBool("referencePlane.enabled", referencePlane.enabled);
+        referencePlane.showGrid = ini.getBool("referencePlane.showGrid", referencePlane.showGrid);
+        referencePlane.placement = static_cast<EgLab::RE::ReferencePlanePlacement>(
+            ini.getInt("referencePlane.placement",
+                       static_cast<int>(referencePlane.placement)));
+        referencePlane.scale = ini.getFloat("referencePlane.scale", referencePlane.scale);
+        static const char* referencePlaneAxes[3] = {"x", "y", "z"};
+        for (int plane = 0; plane < 3; ++plane)
+        {
+            const Common::String prefix =
+                Common::String("referencePlane.") + referencePlaneAxes[plane];
+            referencePlane.colors[plane][0] =
+                ini.getFloat(prefix + ".r", referencePlane.colors[plane][0]);
+            referencePlane.colors[plane][1] =
+                ini.getFloat(prefix + ".g", referencePlane.colors[plane][1]);
+            referencePlane.colors[plane][2] =
+                ini.getFloat(prefix + ".b", referencePlane.colors[plane][2]);
+            referencePlane.colors[plane][3] =
+                ini.getFloat(prefix + ".a", referencePlane.colors[plane][3]);
+        }
+        renderer->getReferencePlane().setSettings(referencePlane);
+
         RenderWork::instance().bindWindow(window);
         RenderWork::instance().bindRenderer(renderer);
         RenderWork::instance().bindScene(scene);

@@ -25,6 +25,7 @@ namespace EgLab::RE
 {
     class Scene;
     class Camera;
+    class Renderer;
     class Shader;
     class MeshSelector;
     class RenderPrimitive;
@@ -44,6 +45,7 @@ namespace EgLab::Platform
 
         void bindScene(const Common::SharedPtr<RE::Scene>& scene);
         void bindCamera(const Common::SharedPtr<RE::Camera>& camera);
+        void bindRenderer(const Common::SharedPtr<RE::Renderer>& renderer);
         void bindMeshSelector(const Common::SharedPtr<RE::MeshSelector>& selector);
         // Visibility filter used while picking, typically the renderer's node/edge/face switches.
         void bindVisibilityFilter(RE::ScenePicker::VisibilityFilter filter);
@@ -82,6 +84,7 @@ namespace EgLab::Platform
         void applyNodePointSize(float pointSize);
         void applyLineWidth(float lineWidth);
         void applyFaceShrink(float shrink);
+        void applyReferencePlaneSettings(const SetReferencePlaneParam& param);
         void applyLocate();
         void applyElementsVisibility(const ElementsVisibilityEvent& event);
         void applyNodeVisibility(const NodeVisibilityEvent& event);
@@ -159,6 +162,7 @@ namespace EgLab::Platform
 
         Common::SharedPtr<RE::Scene> _scene;
         Common::SharedPtr<RE::Camera> _camera;
+        Common::SharedPtr<RE::Renderer> _renderer;
         Common::SharedPtr<RE::MeshSelector> _meshSelector;
         RE::ScenePicker::VisibilityFilter _visibilityFilter;
 

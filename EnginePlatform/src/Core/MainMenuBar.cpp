@@ -248,6 +248,10 @@ namespace EgLab::Platform
                 {
                     requestShowPanel("LightSetting");
                 }
+                if (ImGui::MenuItem("Reference Plane"))
+                {
+                    requestShowPanel("ReferencePlane");
+                }
                 if (ImGui::MenuItem("Data Tree"))
                 {
                     requestShowPanel("DataTree");

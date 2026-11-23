@@ -170,6 +170,8 @@ namespace EgLab::Platform
         void setNodePointSize(float pointSize);
         void setLineWidth(float lineWidth);
         void setFaceShrink(float shrink);
+        // Applies a partial reference-plane update on the render thread.
+        void setReferencePlaneSettings(const SetReferencePlaneParam& params);
         void setHEMeshHighlight(const Common::SharedPtr<ME::HEMesh>& mesh, uint32_t vertexIndex,
                                 uint32_t halfEdgeIndex = UINT32_MAX);
         void setMeshColor(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,

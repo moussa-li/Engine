@@ -312,6 +312,29 @@ namespace EgLab::Platform
         RenderDataManager& _data;
     };
 
+    class ReferencePlaneSettingsHandler : public IRenderEventHandler
+    {
+    public:
+        explicit ReferencePlaneSettingsHandler(RenderDataManager& data) : _data(data)
+        {
+        }
+
+        static Common::SharedPtr<IRenderEventHandler> create(RenderDataManager& data)
+        {
+            return Common::makeShared<ReferencePlaneSettingsHandler>(data);
+        }
+
+        Common::Return apply(const RenderEvent& event) override
+        {
+            _data.applyReferencePlaneSettings(
+                static_cast<const ReferencePlaneSettingsEvent&>(event).param);
+            return Common::Return::Succeed;
+        }
+
+    private:
+        RenderDataManager& _data;
+    };
+
     class HEMeshHighlightHandler : public IRenderEventHandler
     {
     public:
@@ -557,6 +580,7 @@ namespace EgLab::Platform
         {RenderEventType::NodePointSize, &NodePointSizeHandler::create},
         {RenderEventType::LineWidth, &LineWidthHandler::create},
         {RenderEventType::FaceShrink, &FaceShrinkHandler::create},
+        {RenderEventType::ReferencePlaneSettings, &ReferencePlaneSettingsHandler::create},
         {RenderEventType::HEMeshHighlight, &HEMeshHighlightHandler::create},
         {RenderEventType::Locate, &LocateHandler::create},
         {RenderEventType::ElementsVisibility, &ElementsVisibilityHandler::create},

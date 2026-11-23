@@ -441,6 +441,50 @@
         "required": ["mode"],
         "additionalProperties": false
       }
+    },
+    {
+      "name": "SetReferencePlane",
+      "eventId": 400001,
+      "category": "View",
+      "summary": "配置参考平面",
+      "description": "配置 x/y/z 三个正交参考平面的显示开关、网格开关、放置位置、相对包围盒的缩放系数以及三个平面各自的 RGBA 颜色。所有参数均为可选，仅更新传入的字段。placement: 0=包围盒中面，1=包围盒后三个面。缩放默认 1.2。颜色格式为 \"r,g,b,a\"，取值范围 0..1。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "是否显示参考平面。"
+          },
+          "showGrid": {
+            "type": "boolean",
+            "description": "是否显示网格线。"
+          },
+          "placement": {
+            "type": "integer",
+            "description": "放置位置：0=包围盒中面，1=包围盒后三个面。",
+            "enum": [0, 1]
+          },
+          "scale": {
+            "type": "number",
+            "description": "相对包围盒的缩放系数，默认 1.2。",
+            "minimum": 0.1,
+            "maximum": 10
+          },
+          "colorX": {
+            "type": "string",
+            "description": "YZ 平面（X 法向）的 RGBA，逗号分隔，取值 0..1，例如 \"1.0,0.3,0.3,0.1\"。"
+          },
+          "colorY": {
+            "type": "string",
+            "description": "XZ 平面（Y 法向）的 RGBA，逗号分隔，取值 0..1。"
+          },
+          "colorZ": {
+            "type": "string",
+            "description": "XY 平面（Z 法向）的 RGBA，逗号分隔，取值 0..1。"
+          }
+        },
+        "additionalProperties": false
+      }
     }
   ],
   "excluded": [

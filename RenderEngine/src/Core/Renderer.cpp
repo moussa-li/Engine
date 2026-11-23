@@ -97,6 +97,17 @@ namespace EgLab::RE
             Common::SharedPtr<Shader> highlightShader;
             ShaderLib::instance().getHighlightShader(highlightShader);
 
+            // Reference planes are drawn before the scene content and never write depth, so
+            // the model is always rendered on top of them.
+            Common::SharedPtr<Shader> referencePlaneShader;
+            if (_referencePlane->getSettings().enabled &&
+                ShaderLib::instance().getNodeShader(referencePlaneShader) ==
+                    Common::Return::Succeed)
+            {
+                loadCamera(referencePlaneShader, camera, scene);
+                _referencePlane->draw(scene->getBounds(), referencePlaneShader);
+            }
+
             for (auto it = renderBuckets.begin(); it.hasNext(); it.next())
             {
                 const auto &shader = it.data().first;
@@ -150,6 +161,16 @@ namespace EgLab::RE
     Common::UniquePtr<RenderConfigure> &Renderer::getConfigure()
     {
         return _configure;
+    }
+
+    ReferencePlane &Renderer::getReferencePlane()
+    {
+        return *_referencePlane;
+    }
+
+    const ReferencePlane &Renderer::getReferencePlane() const
+    {
+        return *_referencePlane;
     }
 
     void Renderer::setRenderNodesEnabled(bool enabled)
@@ -255,7 +276,9 @@ namespace EgLab::RE
         shader->unBind();
     }
 
-    Renderer::Renderer() : _configure(Common::makeUnique<RenderConfigure>())
+    Renderer::Renderer()
+        : _configure(Common::makeUnique<RenderConfigure>()),
+          _referencePlane(Common::makeUnique<ReferencePlane>())
     {
         _backGroundColor = Common::Vector4f(1, 1, 1, 1);
     }

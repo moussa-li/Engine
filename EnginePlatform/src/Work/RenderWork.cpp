@@ -135,6 +135,7 @@ namespace EgLab::Platform
             _meshSelector->registerPickInfoCallback(
                 [this](const RE::PrimitivePickInfo& info) { publishPickInfo(info); });
             _renderData.bindMeshSelector(_meshSelector);
+            _renderData.bindRenderer(_renderer);
             _renderData.bindVisibilityFilter(
                 [this](const Common::SharedPtr<RE::RenderPrimitive>& primitive) {
                     return _renderer != nullptr && _renderer->isPrimitiveVisible(primitive);
@@ -144,6 +145,7 @@ namespace EgLab::Platform
         {
             _meshSelector = nullptr;
             _renderData.bindMeshSelector(nullptr);
+            _renderData.bindRenderer(nullptr);
             _renderData.bindVisibilityFilter(nullptr);
         }
     }
@@ -780,6 +782,13 @@ namespace EgLab::Platform
     {
         auto event = Common::makeShared<FaceShrinkEvent>();
         event->faceShrink = shrink;
+        queueRenderEvent(event);
+    }
+
+    void RenderWork::setReferencePlaneSettings(const SetReferencePlaneParam& params)
+    {
+        auto event = Common::makeShared<ReferencePlaneSettingsEvent>();
+        event->param = params;
         queueRenderEvent(event);
     }
 

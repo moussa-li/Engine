@@ -18,6 +18,7 @@
 #include "Panel/MeshRenderSettingPanel.hpp"
 #include "Panel/MessageLogPanel.hpp"
 #include "Panel/MessageToast.hpp"
+#include "Panel/ReferencePlanePanel.hpp"
 #include "Panel/ShortcutSettingPanel.hpp"
 
 namespace
@@ -53,6 +54,8 @@ namespace EgLab::Platform
         _panels[MeshRenderSettingPanel().getPanelName()] =
             Common::makeShared<MeshRenderSettingPanel>();
         _panels[LightSettingPanel().getPanelName()] = Common::makeShared<LightSettingPanel>();
+        _panels[ReferencePlanePanel().getPanelName()] =
+            Common::makeShared<ReferencePlanePanel>();
         _panels[ShortcutSettingPanel().getPanelName()] = Common::makeShared<ShortcutSettingPanel>();
         _panels[CommandParamWizardPanel().getPanelName()] =
             Common::makeShared<CommandParamWizardPanel>();

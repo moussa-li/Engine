@@ -181,6 +181,25 @@ def parse_vec3(value):
         return None
 
 
+def parse_vec4(value):
+    """把 [r,g,b,a] 或 "r,g,b,a" 解析为四个 float；失败返回 None。"""
+    if value is None:
+        return None
+    if isinstance(value, (list, tuple)):
+        tokens = list(value)
+    elif isinstance(value, str):
+        tokens = re.split(r"[\s,;]+", value.strip().replace("，", ","))
+        tokens = [t for t in tokens if t != ""]
+    else:
+        return None
+    if len(tokens) < 4:
+        return None
+    try:
+        return float(tokens[0]), float(tokens[1]), float(tokens[2]), float(tokens[3])
+    except (ValueError, TypeError):
+        return None
+
+
 def find_engine_pids():
     """枚举当前运行的 EnginePlatform.exe 进程 PID（注册表 PID 失效时的回退）。"""
     try:
@@ -631,6 +650,34 @@ class NativeCommandBridge:
             event_id = 200006 if name == "ElementsVisibility" else 200007
             body = struct.pack("<QII", node, mode, len(ids)) + struct.pack("<%dI" % len(ids), *ids)
             return event_id, struct.pack("<I", len(body)) + body
+        if name == "SetReferencePlane":
+            mask = 0
+            enabled = 0
+            show_grid = 0
+            placement = 1
+            scale = 1.2
+            colors = [0.0] * 12
+            if "enabled" in args:
+                enabled = 1 if args.get("enabled") else 0
+                mask |= 0x1
+            if "showGrid" in args:
+                show_grid = 1 if args.get("showGrid") else 0
+                mask |= 0x2
+            if "placement" in args:
+                placement = int(args.get("placement") or 0)
+                mask |= 0x4
+            if "scale" in args and is_number(args.get("scale")):
+                scale = float(args.get("scale"))
+                mask |= 0x8
+            for index, key in enumerate(("colorX", "colorY", "colorZ")):
+                if key in args:
+                    color = parse_vec4(args.get(key))
+                    if color is not None:
+                        base = index * 4
+                        colors[base:base + 4] = list(color)
+                        mask |= 1 << (4 + index)
+            body = struct.pack("<IIIIf12f", mask, enabled, show_grid, placement, scale, *colors)
+            return 400001, struct.pack("<I", 68) + body
         return None
 
     def call(self, name, arguments):

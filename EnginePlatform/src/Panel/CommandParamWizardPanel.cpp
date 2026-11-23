@@ -112,6 +112,14 @@ namespace EgLab::Platform
                     launcher.setDraftUInt(step, value);
                 }
             }
+            else if (field.type == ParamFieldType::Float)
+            {
+                float value = launcher.getDraftFloat(step);
+                if (ImGui::InputScalar("##paramValue", ImGuiDataType_Float, &value))
+                {
+                    launcher.setDraftFloat(step, value);
+                }
+            }
             else
             {
                 uint64_t value = launcher.getDraftUInt(step);

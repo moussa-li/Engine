@@ -76,6 +76,18 @@ namespace EgLab::Platform
             {"ids", "Node Ids", ParamFieldType::String, 256, "1, 2, 3"},
         };
 
+        // ===== SetReferencePlaneParam =====
+        const ParamFieldDesc kReferencePlaneFields[] = {
+            {"enabled", "Enabled", ParamFieldType::Bool, 0, "true / false"},
+            {"showGrid", "Show Grid", ParamFieldType::Bool, 0, "true / false"},
+            {"placement", "Placement", ParamFieldType::UInt32, 0,
+             "0=bbox center 1=bbox back faces"},
+            {"scale", "Bounds Scale", ParamFieldType::Float, 0, "default 1.2"},
+            {"colorX", "Color X (r,g,b,a)", ParamFieldType::String, 64, "1.0,0.3,0.3,0.1"},
+            {"colorY", "Color Y (r,g,b,a)", ParamFieldType::String, 64, "0.3,1.0,0.3,0.1"},
+            {"colorZ", "Color Z (r,g,b,a)", ParamFieldType::String, 64, "0.3,0.5,1.0,0.1"},
+        };
+
         // UpdateMesh carries a raw memory pointer (published directly by MeshEngine) and has no
         // fixed field layout, therefore it is not part of the command catalog.
         const CommandDesc kCommands[] = {
@@ -130,6 +142,9 @@ namespace EgLab::Platform
             {EventId::SetCamera, "SetCamera", "Set Camera", "Camera", true,
              sizeof(SetCameraParam), kSetCameraFields,
              sizeof(kSetCameraFields) / sizeof(kSetCameraFields[0])},
+            {EventId::SetReferencePlane, "SetReferencePlane", "Set Reference Plane", "View", true,
+             sizeof(SetReferencePlaneParam), kReferencePlaneFields,
+             sizeof(kReferencePlaneFields) / sizeof(kReferencePlaneFields[0])},
         };
 
         constexpr size_t kCommandCount = sizeof(kCommands) / sizeof(kCommands[0]);

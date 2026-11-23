@@ -55,6 +55,7 @@ namespace EgLab::Platform
         FitView,
         Pick,
         SetCamera,
+        ReferencePlaneSettings,
     };
 
     /// Polymorphic base for rendering change requests. Each concrete event type carries only
@@ -304,5 +305,17 @@ namespace EgLab::Platform
         }
 
         SetCameraParam param;
+    };
+
+    /// Requests a partial update of the reference plane appearance. The update is applied on
+    /// the render thread so the renderer state stays single-threaded.
+    class ReferencePlaneSettingsEvent : public RenderEvent
+    {
+    public:
+        ReferencePlaneSettingsEvent() : RenderEvent(RenderEventType::ReferencePlaneSettings)
+        {
+        }
+
+        SetReferencePlaneParam param;
     };
 } // namespace EgLab::Platform

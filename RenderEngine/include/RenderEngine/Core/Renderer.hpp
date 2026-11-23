@@ -4,7 +4,9 @@
 #include "Common/DynamicArray.hpp"
 #include "Common/Return.hpp"
 #include "Common/SharedPtr.hpp"
+#include "Common/UniquePtr.hpp"
 #include "RenderEngine/Core/Definites.hpp"
+#include "RenderEngine/Core/ReferencePlane.hpp"
 #include "RenderEngine/Core/RenderEngineAPI.hpp"
 
 namespace EgLab::RE
@@ -83,6 +85,11 @@ namespace EgLab::RE
         /// @brief Returns the mutable render configuration.
         Common::UniquePtr<RenderConfigure> &getConfigure();
 
+        /// @brief Returns the reference plane renderer.
+        ReferencePlane &getReferencePlane();
+        /// @brief Returns the reference plane renderer.
+        const ReferencePlane &getReferencePlane() const;
+
         /// @brief Enables or disables rendering of nodes.
         /// @param enabled Whether node rendering is enabled.
         void setRenderNodesEnabled(bool enabled);
@@ -118,6 +125,7 @@ namespace EgLab::RE
         Common::DynamicArray<Light *> _lights;
 
         Common::UniquePtr<RenderConfigure> _configure;
+        Common::UniquePtr<ReferencePlane> _referencePlane;
 
         Common::Vector4f _backGroundColor;
         mutable std::mutex _lightMutex;

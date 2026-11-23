@@ -19,6 +19,7 @@ namespace EgLab::Platform
         Bool,
         UInt32,
         UInt64,
+        Float,
     };
 
     // Describes one field of a CommandParam structure.

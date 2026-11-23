@@ -42,6 +42,8 @@ namespace EgLab::Platform
         void setDraftString(size_t fieldIndex, const char* text);
         uint64_t getDraftUInt(size_t fieldIndex) const;
         void setDraftUInt(size_t fieldIndex, uint64_t value);
+        float getDraftFloat(size_t fieldIndex) const;
+        void setDraftFloat(size_t fieldIndex, float value);
 
         // Build the EventPacket from the catalog field description and hand it to CommandManager.
         bool submitDraft();
@@ -56,6 +58,7 @@ namespace EgLab::Platform
         {
             Common::String text;
             uint64_t number{0};
+            float real{0.0f};
         };
 
         EventId _eventId{EventId::Unknow};

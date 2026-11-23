@@ -12,6 +12,7 @@ EgLab 阶段一 (Command as Tool) —— DeepSeek 自然语言 → CommandManage
     python deepseek_command_client.py --validate
     python deepseek_command_client.py --self-test
     python deepseek_command_client.py --prompt "打开网格导入面板"
+    
     python deepseek_command_client.py                     # 交互式 REPL
     python deepseek_command_client.py --model deepseek-chat --api-key sk-xxx
 

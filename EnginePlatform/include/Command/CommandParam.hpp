@@ -143,6 +143,38 @@ namespace EgLab::Platform
         uint32_t* nodeIds;
     };
 
+    // ===== SetReferencePlane =====
+    // Field bits select which reference-plane properties the command updates.
+    constexpr uint32_t REFERENCE_PLANE_FIELD_ENABLED = 1u << 0;
+    constexpr uint32_t REFERENCE_PLANE_FIELD_SHOW_GRID = 1u << 1;
+    constexpr uint32_t REFERENCE_PLANE_FIELD_PLACEMENT = 1u << 2;
+    constexpr uint32_t REFERENCE_PLANE_FIELD_SCALE = 1u << 3;
+    constexpr uint32_t REFERENCE_PLANE_FIELD_COLOR_X = 1u << 4;
+    constexpr uint32_t REFERENCE_PLANE_FIELD_COLOR_Y = 1u << 5;
+    constexpr uint32_t REFERENCE_PLANE_FIELD_COLOR_Z = 1u << 6;
+    constexpr uint32_t REFERENCE_PLANE_FIELD_ALL =
+        REFERENCE_PLANE_FIELD_ENABLED | REFERENCE_PLANE_FIELD_SHOW_GRID |
+        REFERENCE_PLANE_FIELD_PLACEMENT | REFERENCE_PLANE_FIELD_SCALE |
+        REFERENCE_PLANE_FIELD_COLOR_X | REFERENCE_PLANE_FIELD_COLOR_Y |
+        REFERENCE_PLANE_FIELD_COLOR_Z;
+
+    // Reference plane placement values shared with RE::ReferencePlanePlacement.
+    constexpr uint32_t REFERENCE_PLANE_PLACEMENT_CENTER = 0;
+    constexpr uint32_t REFERENCE_PLANE_PLACEMENT_BACK_FACES = 1;
+
+    // Applies a partial reference-plane update. Only fields selected by fieldMask are read.
+    // colors[0] = YZ plane (X normal), [1] = XZ plane (Y normal), [2] = XY plane (Z normal),
+    // each stored as r, g, b, a.
+    struct SetReferencePlaneParam
+    {
+        uint32_t fieldMask;
+        uint32_t enabled;
+        uint32_t showGrid;
+        uint32_t placement;
+        float scale;
+        float colors[3][4];
+    };
+
     static_assert(std::is_trivially_copyable<ShowPanelParam>::value,
                   "ShowPanelParam must be trivially copyable");
     static_assert(std::is_trivially_copyable<HidePanelParam>::value,
@@ -168,6 +200,10 @@ namespace EgLab::Platform
                   "ElementsVisibilityParam must be trivially copyable");
     static_assert(std::is_trivially_copyable<NodeVisibilityParam>::value,
                   "NodeVisibilityParam must be trivially copyable");
+    static_assert(std::is_trivially_copyable<SetReferencePlaneParam>::value,
+                  "SetReferencePlaneParam must be trivially copyable");
+    static_assert(sizeof(SetReferencePlaneParam) == 68,
+                  "SetReferencePlaneParam must be exactly 68 bytes");
     static_assert(std::is_trivially_copyable<MeshQueryParam>::value,
                   "MeshQueryParam must be trivially copyable");
     static_assert(sizeof(MeshQueryParam) == 72, "MeshQueryParam must be exactly 72 bytes");

@@ -129,6 +129,24 @@ namespace EgLab::Platform
         _values[fieldIndex].number = value;
     }
 
+    float CommandLauncher::getDraftFloat(size_t fieldIndex) const
+    {
+        if (fieldIndex >= _values.size())
+        {
+            return 0.0f;
+        }
+        return _values[fieldIndex].real;
+    }
+
+    void CommandLauncher::setDraftFloat(size_t fieldIndex, float value)
+    {
+        if (fieldIndex >= _values.size())
+        {
+            return;
+        }
+        _values[fieldIndex].real = value;
+    }
+
     bool CommandLauncher::submitDraft()
     {
         const CommandDesc* desc = draftDesc();
@@ -156,6 +174,9 @@ namespace EgLab::Platform
                 break;
             case ParamFieldType::UInt64:
                 packet.setData(key, getDraftUInt(i));
+                break;
+            case ParamFieldType::Float:
+                packet.setData(key, getDraftFloat(i));
                 break;
             }
         }

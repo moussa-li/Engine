@@ -26,6 +26,7 @@
 #include "Command/NodeVisibilityCmd.hpp"
 #include "Command/MeshQueryCmd.hpp"
 #include "Command/SetCameraCmd.hpp"
+#include "Command/SetReferencePlaneCmd.hpp"
 #include "Command/UpdateMeshCmd.hpp"
 #include "Common/HashMap.hpp"
 #include "Common/Publisher.hpp"
@@ -169,6 +170,12 @@ namespace EgLab::Platform
                 SetCameraParam param{};
                 std::memcpy(&param, pod.data, sizeof(param));
                 return Common::makeShared<SetCameraCmd>(param);
+            };
+
+            _creator[EventId::SetReferencePlane] = [](const PacketPOD& pod) {
+                SetReferencePlaneParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<SetReferencePlaneCmd>(param);
             };
 
             _creator[EventId::GetMeshData] = [](const PacketPOD& pod) {
@@ -319,6 +326,49 @@ namespace EgLab::Platform
                 return pod;
             };
 
+            _packetCreator[EventId::SetReferencePlane] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                SetReferencePlaneParam param{};
+                if (packet.contains("enabled"))
+                {
+                    param.enabled = packet.getData<bool>("enabled") ? 1u : 0u;
+                    param.fieldMask |= REFERENCE_PLANE_FIELD_ENABLED;
+                }
+                if (packet.contains("showGrid"))
+                {
+                    param.showGrid = packet.getData<bool>("showGrid") ? 1u : 0u;
+                    param.fieldMask |= REFERENCE_PLANE_FIELD_SHOW_GRID;
+                }
+                if (packet.contains("placement"))
+                {
+                    param.placement = packet.getData<uint32_t>("placement");
+                    param.fieldMask |= REFERENCE_PLANE_FIELD_PLACEMENT;
+                }
+                if (packet.contains("scale"))
+                {
+                    param.scale = packet.getData<float>("scale");
+                    param.fieldMask |= REFERENCE_PLANE_FIELD_SCALE;
+                }
+                if (packet.contains("colorX"))
+                {
+                    parseFloat4(packet.getData<Common::String>("colorX"), param.colors[0]);
+                    param.fieldMask |= REFERENCE_PLANE_FIELD_COLOR_X;
+                }
+                if (packet.contains("colorY"))
+                {
+                    parseFloat4(packet.getData<Common::String>("colorY"), param.colors[1]);
+                    param.fieldMask |= REFERENCE_PLANE_FIELD_COLOR_Y;
+                }
+                if (packet.contains("colorZ"))
+                {
+                    parseFloat4(packet.getData<Common::String>("colorZ"), param.colors[2]);
+                    param.fieldMask |= REFERENCE_PLANE_FIELD_COLOR_Z;
+                }
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
             _packetCreator[EventId::ListDataTreeNodes] = [](const EventPacket&) {
                 return PacketPOD{};
             };
@@ -388,6 +438,7 @@ namespace EgLab::Platform
             _subscriber.subscrib(static_cast<uint32_t>(EventId::FitView));
             _subscriber.subscrib(static_cast<uint32_t>(EventId::Highlight));
             _subscriber.subscrib(static_cast<uint32_t>(EventId::SetCamera));
+            _subscriber.subscrib(static_cast<uint32_t>(EventId::SetReferencePlane));
             _subscriber.subscrib(static_cast<uint32_t>(EventId::GetMeshData));
             _subscriber.subscrib(static_cast<uint32_t>(EventId::ListDataTreeNodes));
             _subscriber.subscrib(static_cast<uint32_t>(EventId::GetMeshNodes));

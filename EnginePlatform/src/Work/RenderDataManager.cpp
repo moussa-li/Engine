@@ -14,6 +14,8 @@
 #include "RenderEngine/Core/RenderLine.hpp"
 #include "RenderEngine/Core/RenderNode.hpp"
 #include "RenderEngine/Core/RenderPickHighlight.hpp"
+#include "RenderEngine/Core/ReferencePlane.hpp"
+#include "RenderEngine/Core/Renderer.hpp"
 #include "RenderEngine/Core/Scene.hpp"
 #include "RenderEngine/Core/ShaderLib.hpp"
 
@@ -31,6 +33,11 @@ namespace EgLab::Platform
     void RenderDataManager::bindCamera(const Common::SharedPtr<RE::Camera>& camera)
     {
         _camera = camera;
+    }
+
+    void RenderDataManager::bindRenderer(const Common::SharedPtr<RE::Renderer>& renderer)
+    {
+        _renderer = renderer;
     }
 
     void RenderDataManager::bindMeshSelector(const Common::SharedPtr<RE::MeshSelector>& selector)
@@ -72,6 +79,7 @@ namespace EgLab::Platform
         _meshSelector = nullptr;
         _scene = nullptr;
         _camera = nullptr;
+        _renderer = nullptr;
     }
 
     std::mutex& RenderDataManager::stateMutex() const
@@ -592,6 +600,56 @@ namespace EgLab::Platform
                 face->setFaceShrink(shrink);
             }
         }
+    }
+
+    void RenderDataManager::applyReferencePlaneSettings(const SetReferencePlaneParam& param)
+    {
+        if (!_renderer)
+        {
+            return;
+        }
+
+        RE::ReferencePlane& referencePlane = _renderer->getReferencePlane();
+        RE::ReferencePlaneSettings settings = referencePlane.getSettings();
+
+        if ((param.fieldMask & REFERENCE_PLANE_FIELD_ENABLED) != 0)
+        {
+            settings.enabled = param.enabled != 0;
+        }
+        if ((param.fieldMask & REFERENCE_PLANE_FIELD_SHOW_GRID) != 0)
+        {
+            settings.showGrid = param.showGrid != 0;
+        }
+        if ((param.fieldMask & REFERENCE_PLANE_FIELD_PLACEMENT) != 0)
+        {
+            settings.placement =
+                param.placement == REFERENCE_PLANE_PLACEMENT_BACK_FACES
+                    ? RE::ReferencePlanePlacement::BoundingBoxBackFaces
+                    : RE::ReferencePlanePlacement::BoundingBoxCenter;
+        }
+        if ((param.fieldMask & REFERENCE_PLANE_FIELD_SCALE) != 0)
+        {
+            settings.scale = param.scale > 0.01f ? param.scale : 0.01f;
+        }
+
+        const uint32_t colorMasks[3] = {REFERENCE_PLANE_FIELD_COLOR_X,
+                                        REFERENCE_PLANE_FIELD_COLOR_Y,
+                                        REFERENCE_PLANE_FIELD_COLOR_Z};
+        for (int plane = 0; plane < 3; ++plane)
+        {
+            if ((param.fieldMask & colorMasks[plane]) == 0)
+            {
+                continue;
+            }
+            for (int channel = 0; channel < 4; ++channel)
+            {
+                const float value = param.colors[plane][channel];
+                settings.colors[plane][channel] =
+                    value < 0.0f ? 0.0f : (value > 1.0f ? 1.0f : value);
+            }
+        }
+
+        referencePlane.setSettings(settings);
     }
 
     void RenderDataManager::applyLocate()

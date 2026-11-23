@@ -35,6 +35,7 @@ namespace EgLab::Platform
         CameraRotateLocal = 300003,
         CameraZoom = 300004,
         SetCamera = 300005,
+        SetReferencePlane = 400001, // Appearance = 4xxxxx
     };
 }
 
