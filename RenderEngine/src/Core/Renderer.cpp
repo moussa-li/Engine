@@ -55,10 +55,9 @@ namespace EgLab::RE
 
     void Renderer::loadCamera(const Common::SharedPtr<Shader> &shader,
                               const Common::SharedPtr<Camera> &camera,
-                              const Common::SharedPtr<Scene> &scene) const
+                              const Common::BBox<Scalar, 3> &bounds) const
     {
-        Common::Matrix4f proj = Common::Matrix4f::Identity();
-        proj = camera->perspective(scene->getBounds());
+        Common::Matrix4f proj = camera->perspective(bounds);
         Common::Matrix4f view = camera->view();
         shader->bind();
 
@@ -94,6 +93,11 @@ namespace EgLab::RE
                        static_cast<GLsizei>(framebufferHeight));
             camera->setWH(framebufferWidth, framebufferHeight);
 
+            // Size the projection for both the scene and the (scaled) reference planes so the
+            // planes are never clipped, while the planes themselves keep using the raw bounds.
+            const Common::BBox<Scalar, 3> contentBounds =
+                _referencePlane->getRenderBounds(scene->getBounds());
+
             Common::SharedPtr<Shader> highlightShader;
             ShaderLib::instance().getHighlightShader(highlightShader);
 
@@ -104,7 +108,7 @@ namespace EgLab::RE
                 ShaderLib::instance().getNodeShader(referencePlaneShader) ==
                     Common::Return::Succeed)
             {
-                loadCamera(referencePlaneShader, camera, scene);
+                loadCamera(referencePlaneShader, camera, contentBounds);
                 _referencePlane->draw(scene->getBounds(), referencePlaneShader);
             }
 
@@ -119,7 +123,7 @@ namespace EgLab::RE
                     continue;
                 }
 
-                loadCamera(shader, camera, scene);
+                loadCamera(shader, camera, contentBounds);
                 loadLight(shader, camera);
 
                 for (auto primitiveIt = primitives.begin(); primitiveIt.hasNext();
@@ -142,7 +146,7 @@ namespace EgLab::RE
                     {
                         continue;
                     }
-                    loadCamera(shader, camera, scene);
+                    loadCamera(shader, camera, contentBounds);
                     loadLight(shader, camera);
                     for (auto primitiveIt = it.data().second.begin(); primitiveIt.hasNext();
                          primitiveIt.next())

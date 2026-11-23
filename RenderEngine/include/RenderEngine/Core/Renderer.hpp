@@ -115,7 +115,7 @@ namespace EgLab::RE
     private:
         void loadCamera(const Common::SharedPtr<Shader> &shader,
                         const Common::SharedPtr<Camera> &camera,
-                        const Common::SharedPtr<Scene> &scene) const;
+                        const Common::BBox<Scalar, 3> &bounds) const;
         void loadLight(const Common::SharedPtr<Shader> &shader,
                        const Common::SharedPtr<Camera> &camera) const;
 

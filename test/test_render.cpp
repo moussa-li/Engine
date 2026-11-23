@@ -18,6 +18,7 @@
 #include "RenderEngine/Core/RenderFace.hpp"
 #include "RenderEngine/Core/RenderLine.hpp"
 #include "RenderEngine/Core/RenderNode.hpp"
+#include "RenderEngine/Core/ReferencePlane.hpp"
 #include "RenderEngine/Core/Renderer.hpp"
 #include "RenderEngine/Core/Scene.hpp"
 #include "RenderEngine/Core/ShaderLib.hpp"
@@ -204,6 +205,106 @@ TEST_F(TestRender, fit_view_uses_camera_transition)
 
     camera.fitView(bounds, 2.0f);
     EXPECT_FLOAT_EQ(camera.getPosition().z(), 10.0f);
+}
+
+TEST_F(TestRender, reference_plane_bounds_include_scaled_planes)
+{
+    EgLab::RE::ReferencePlane plane;
+    EgLab::RE::ReferencePlaneSettings settings;
+    settings.enabled = true;
+    settings.scale = 1.2f;
+    plane.setSettings(settings);
+
+    EgLab::Common::BBox<EgLab::RE::Scalar, 3> sceneBounds;
+    sceneBounds.addPoint(EgLab::RE::CoordType(-1.0f, -2.0f, -3.0f));
+    sceneBounds.addPoint(EgLab::RE::CoordType(1.0f, 2.0f, 3.0f));
+
+    const EgLab::Common::BBox<EgLab::RE::Scalar, 3> renderBounds =
+        plane.getRenderBounds(sceneBounds);
+    ASSERT_FALSE(renderBounds.isEmpty());
+    EXPECT_NEAR(renderBounds.min().x(), -1.2f, 1e-5f);
+    EXPECT_NEAR(renderBounds.min().y(), -2.4f, 1e-5f);
+    EXPECT_NEAR(renderBounds.min().z(), -3.6f, 1e-5f);
+    EXPECT_NEAR(renderBounds.max().x(), 1.2f, 1e-5f);
+    EXPECT_NEAR(renderBounds.max().y(), 2.4f, 1e-5f);
+    EXPECT_NEAR(renderBounds.max().z(), 3.6f, 1e-5f);
+
+    // Disabled planes must leave the projection bounds untouched.
+    settings.enabled = false;
+    plane.setSettings(settings);
+    const EgLab::Common::BBox<EgLab::RE::Scalar, 3> disabledBounds =
+        plane.getRenderBounds(sceneBounds);
+    EXPECT_NEAR(disabledBounds.min().x(), -1.0f, 1e-5f);
+    EXPECT_NEAR(disabledBounds.max().z(), 3.0f, 1e-5f);
+}
+
+TEST_F(TestRender, camera_projection_covers_reference_planes_while_orbiting)
+{
+    EgLab::RE::ReferencePlane plane;
+    EgLab::RE::ReferencePlaneSettings settings;
+    settings.enabled = true;
+    settings.scale = 1.2f;
+    plane.setSettings(settings);
+
+    EgLab::Common::BBox<EgLab::RE::Scalar, 3> sceneBounds;
+    sceneBounds.addPoint(EgLab::RE::CoordType(-2.0f, -2.0f, -2.0f));
+    sceneBounds.addPoint(EgLab::RE::CoordType(2.0f, 2.0f, 2.0f));
+    const EgLab::Common::BBox<EgLab::RE::Scalar, 3> renderBounds =
+        plane.getRenderBounds(sceneBounds);
+
+    EgLab::RE::Camera camera(800, 600, EgLab::RE::CoordType(0.0f, 0.0f, 20.0f));
+    const EgLab::RE::CoordType center(0.0f, 0.0f, 0.0f);
+    const float distance = 20.0f;
+
+    // Orbit around the content and verify every plane vertex stays inside the depth range:
+    // the scaled reference planes used to fall beyond zFar at oblique angles and be clipped.
+    for (int degrees = 0; degrees < 360; degrees += 30)
+    {
+        const float yaw = static_cast<float>(degrees) * 3.14159265f / 180.0f;
+        const float pitch = 0.5f;
+        const EgLab::RE::CoordType front(std::cos(pitch) * std::cos(yaw), std::sin(pitch),
+                                         std::cos(pitch) * std::sin(yaw));
+        camera.lookAt(center - front * distance, front,
+                      EgLab::RE::CoordType(0.0f, 1.0f, 0.0f));
+
+        const EgLab::Common::Matrix4f view = camera.view();
+        const EgLab::Common::Matrix4f projection = camera.perspective(renderBounds);
+        const EgLab::RE::CoordType boundsMin = renderBounds.min();
+        const EgLab::RE::CoordType boundsMax = renderBounds.max();
+
+        for (int cornerX = 0; cornerX < 2; ++cornerX)
+        {
+            for (int cornerY = 0; cornerY < 2; ++cornerY)
+            {
+                for (int cornerZ = 0; cornerZ < 2; ++cornerZ)
+                {
+                    const EgLab::RE::CoordType corner(
+                        cornerX ? boundsMax.x() : boundsMin.x(),
+                        cornerY ? boundsMax.y() : boundsMin.y(),
+                        cornerZ ? boundsMax.z() : boundsMin.z());
+                    const EgLab::RE::Scalar eyeX = view[0][0] * corner.x() +
+                                                   view[0][1] * corner.y() +
+                                                   view[0][2] * corner.z() + view[0][3];
+                    const EgLab::RE::Scalar eyeY = view[1][0] * corner.x() +
+                                                   view[1][1] * corner.y() +
+                                                   view[1][2] * corner.z() + view[1][3];
+                    const EgLab::RE::Scalar eyeZ = view[2][0] * corner.x() +
+                                                   view[2][1] * corner.y() +
+                                                   view[2][2] * corner.z() + view[2][3];
+                    const EgLab::RE::Scalar eyeW = view[3][0] * corner.x() +
+                                                   view[3][1] * corner.y() +
+                                                   view[3][2] * corner.z() + view[3][3];
+                    const EgLab::RE::Scalar clipZ = projection[2][0] * eyeX +
+                                                    projection[2][1] * eyeY +
+                                                    projection[2][2] * eyeZ +
+                                                    projection[2][3] * eyeW;
+                    const EgLab::RE::Scalar ndcZ = clipZ / eyeW;
+                    EXPECT_GE(ndcZ, -1.0001f);
+                    EXPECT_LE(ndcZ, 1.0001f);
+                }
+            }
+        }
+    }
 }
 
 TEST_F(TestRender, node_touch_prefers_frontmost_node)

@@ -2,6 +2,7 @@
 
 #include <GL/glew.h>
 
+#include <algorithm>
 #include <cmath>
 
 #include "RenderEngine/Core/Shader.hpp"
@@ -27,6 +28,37 @@ namespace EgLab::RE
     void ReferencePlane::setSettings(const ReferencePlaneSettings &settings)
     {
         _settings = settings;
+    }
+
+    Common::BBox<Scalar, 3> ReferencePlane::getRenderBounds(
+        const Common::BBox<Scalar, 3> &sceneBounds) const
+    {
+        if (sceneBounds.isEmpty() || !_settings.enabled)
+        {
+            return sceneBounds;
+        }
+
+        // Every plane vertex stays within the scene bounds scaled about its centre: in-plane
+        // extents are scaled directly and the back-face placement shifts each plane along its
+        // normal to the scaled minimum. A single scaled box therefore covers all three planes.
+        const Scalar scale = std::max(_settings.scale, 1.0f);
+        const CoordType boundsMin = sceneBounds.min();
+        const CoordType boundsMax = sceneBounds.max();
+
+        CoordType expandedMin;
+        CoordType expandedMax;
+        for (size_t dim = 0; dim < 3; ++dim)
+        {
+            const Scalar center = (boundsMin[dim] + boundsMax[dim]) * 0.5f;
+            const Scalar half = (boundsMax[dim] - boundsMin[dim]) * 0.5f * scale;
+            expandedMin[dim] = center - half;
+            expandedMax[dim] = center + half;
+        }
+
+        Common::BBox<Scalar, 3> result;
+        result.addPoint(expandedMin);
+        result.addPoint(expandedMax);
+        return result;
     }
 
     Scalar ReferencePlane::computeGridStep(Scalar maxExtent)

@@ -187,44 +187,61 @@ namespace EgLab::RE
         return result;
 #else
 
-        float halfHeight = _zoom;
-        float halfWidth = halfHeight * (static_cast<float>(_width) / _height); // 保持宽高比
+        const float aspect = static_cast<float>(_width) / static_cast<float>(std::max(1u, _height));
+        const float halfHeight = std::max(_zoom, 1e-4f);
+        const float halfWidth = halfHeight * aspect; // 保持宽高比
 
         float left = -halfWidth;
         float right = halfWidth;
         float bottom = -halfHeight;
         float top = halfHeight;
 
-        float zNear = 0.01f;
-        float zFar = 10000.0f;
+        // The view matrix normalises the forward vector, so the depth math here must use the
+        // same normalised direction to keep clip-space depth consistent with the projected
+        // vertices.
+        CoordType front(_front);
+        const float frontLength = front.length();
+        if (frontLength > 1e-6f)
+        {
+            front = front * (1.0f / frontLength);
+        }
+        else
+        {
+            front = CoordType(0.0f, 0.0f, -1.0f);
+        }
 
+        // Size the orthographic depth range from a sphere that encloses the whole renderable
+        // content. A bounding sphere makes the range independent of the view direction, so
+        // orbiting the camera can never push content (e.g. the scaled reference planes) past
+        // zFar or zNear, and the depth mapping stays stable between frames instead of
+        // jittering as it did when it was rebuilt from the projected bounds corners.
+        CoordType contentCenter = _target;
+        float contentRadius = 1.0f;
         if (!bounds.isEmpty())
         {
-            const CoordType min = bounds.min();
-            const CoordType max = bounds.max();
-            float minDepth = INFINITY;
-            float maxDepth = 0.0f;
+            const CoordType boundsMin = bounds.min();
+            const CoordType boundsMax = bounds.max();
+            contentCenter = CoordType((boundsMin.x() + boundsMax.x()) * 0.5f,
+                                      (boundsMin.y() + boundsMax.y()) * 0.5f,
+                                      (boundsMin.z() + boundsMax.z()) * 0.5f);
+            contentRadius = (boundsMax - boundsMin).length() * 0.5f;
+        }
+        contentRadius = std::max(contentRadius, 1e-4f);
 
-            for (int x = 0; x < 2; ++x)
-            {
-                for (int y = 0; y < 2; ++y)
-                {
-                    for (int z = 0; z < 2; ++z)
-                    {
-                        const CoordType corner(x ? max.x() : min.x(), y ? max.y() : min.y(),
-                                               z ? max.z() : min.z());
-                        const float depth = (corner - _position).dot(_front);
-                        minDepth = std::min(minDepth, depth);
-                        maxDepth = std::max(maxDepth, depth);
-                    }
-                }
-            }
+        const float centerDepth = (contentCenter - _position).dot(front);
+        const float padding = std::max(0.01f, contentRadius * 0.01f);
+        float zNear = centerDepth - contentRadius - padding;
+        float zFar = centerDepth + contentRadius + padding;
 
-            if (maxDepth > 0.0f)
-            {
-                zNear = std::max(0.01f, minDepth * 0.9f);
-                zFar = std::max(zNear + 0.1f, maxDepth * 1.1f);
-            }
+        // Keep the near plane in front of the eye so geometry behind the camera is not drawn,
+        // while still never clipping content that sits in front of it.
+        if (zNear < 1e-3f)
+        {
+            zNear = 1e-3f;
+        }
+        if (zFar <= zNear)
+        {
+            zFar = zNear + 1.0f;
         }
 
         Common::Matrix4f result; // 注意：正交矩阵初始化为 0，而不是单位矩阵

@@ -64,6 +64,13 @@ namespace EgLab::RE
         void draw(const Common::BBox<Scalar, 3> &bounds,
                   const Common::SharedPtr<Shader> &shader);
 
+        /// @brief Returns the world bounds that include both the scene and its reference planes.
+        /// @details The planes are scaled about the scene bounds centre, so callers building a
+        ///          projection can use these bounds to make sure the planes are never clipped.
+        /// @param sceneBounds World-space scene bounds the planes are built from.
+        /// @return Bounds enclosing the scene bounds and the scaled reference planes.
+        Common::BBox<Scalar, 3> getRenderBounds(const Common::BBox<Scalar, 3> &sceneBounds) const;
+
     private:
         /// Vertex range of one plane inside the shared quad/line buffers.
         struct PlaneRange
