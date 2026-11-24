@@ -75,6 +75,12 @@ namespace EgLab::Platform
             {"limit", "Limit", ParamFieldType::UInt32, 0, "0 = all"},
         };
 
+        // ===== GeometryRenderModeParam =====
+        const ParamFieldDesc kGeometryRenderModeFields[] = {
+            {"mode", "Display Mode", ParamFieldType::UInt32, 0,
+             "0=Mesh (faces + triangle wireframe) 1=FaceOutline (faces + face frame) 2=EdgeOnly (no faces)"},
+        };
+
         // ===== DeleteMeshParam =====
         const ParamFieldDesc kDeleteMeshFields[] = {
             {"dataNodeId", "Data Node Id", ParamFieldType::UInt64, 0,
@@ -170,6 +176,9 @@ namespace EgLab::Platform
             {EventId::ListGeometryFeatures, "ListGeometryFeatures", "List Geometry Features",
              "Geometry", true, sizeof(GeometryFeaturesParam), kGeometryFeaturesFields,
              sizeof(kGeometryFeaturesFields) / sizeof(kGeometryFeaturesFields[0])},
+            {EventId::SetGeometryRenderMode, "SetGeometryRenderMode", "Set Geometry Render Mode",
+             "Geometry", true, sizeof(GeometryRenderModeParam), kGeometryRenderModeFields,
+             sizeof(kGeometryRenderModeFields) / sizeof(kGeometryRenderModeFields[0])},
             {EventId::CameraPan, "CameraPan", "Pan Camera", "Camera", false, 0, nullptr, 0, true,
              true},
             {EventId::CameraRotate, "CameraRotate", "Rotate Camera", "Camera", false, 0, nullptr,

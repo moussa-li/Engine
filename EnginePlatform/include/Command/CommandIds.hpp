@@ -33,6 +33,7 @@ namespace EgLab::Platform
         GeometryImport = 200020,    // 导入 .stp/.step/.brp/.brep 为 GeometryData
         GetGeometryInfo = 200021,   // 查询单个几何特征信息
         ListGeometryFeatures = 200022, // 列出 GeometryData 的几何特征
+        SetGeometryRenderMode = 200023, // 设置几何渲染模式（网格/面外框/仅几何线）
         CameraPan = 300001, // Camera = 3xxxxx
         CameraRotate = 300002,
         CameraRotateLocal = 300003,

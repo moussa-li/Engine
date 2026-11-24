@@ -101,6 +101,8 @@ namespace EgLab::RE
         Common::DynamicArray<CoordType> _vertices;
         Common::DynamicArray<CoordType> _normals;
         Common::DynamicArray<IdxType> _indices;
+        // True when the normals were supplied externally and must not be recomputed.
+        bool _normalsProvided{false};
 
         Common::SharedPtr<VertexArray> _vertexArray;
         Common::SharedPtr<VertexArray> _arrayVertexArray;

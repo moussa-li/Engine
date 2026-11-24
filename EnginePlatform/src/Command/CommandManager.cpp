@@ -24,6 +24,7 @@
 #include "Command/ImportGeometryCmd.hpp"
 #include "Command/GetGeometryInfoCmd.hpp"
 #include "Command/ListGeometryFeaturesCmd.hpp"
+#include "Command/SetGeometryRenderModeCmd.hpp"
 #include "Command/LocateElementsCmd.hpp"
 #include "Command/ElementsVisibilityCmd.hpp"
 #include "Command/NodeVisibilityCmd.hpp"
@@ -240,6 +241,12 @@ namespace EgLab::Platform
                 return Common::makeShared<ListGeometryFeaturesCmd>(param);
             };
 
+            _creator[EventId::SetGeometryRenderMode] = [](const PacketPOD& pod) {
+                GeometryRenderModeParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<SetGeometryRenderModeCmd>(param);
+            };
+
             _creator[EventId::Highlight] = [](const PacketPOD& pod) {
                 HighlightParam param{};
                 std::memcpy(&param, pod.data, sizeof(param));
@@ -350,6 +357,18 @@ namespace EgLab::Platform
                 if (packet.contains("limit"))
                 {
                     param.limit = packet.getData<uint32_t>("limit");
+                }
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
+            _packetCreator[EventId::SetGeometryRenderMode] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                GeometryRenderModeParam param{};
+                if (packet.contains("mode"))
+                {
+                    param.mode = packet.getData<uint32_t>("mode");
                 }
                 pod.dataSize = sizeof(param);
                 std::memcpy(pod.data, &param, sizeof(param));
@@ -565,6 +584,7 @@ namespace EgLab::Platform
             _subscriber.subscrib((uint32_t)EventId::GeometryImport);
             _subscriber.subscrib((uint32_t)EventId::GetGeometryInfo);
             _subscriber.subscrib((uint32_t)EventId::ListGeometryFeatures);
+            _subscriber.subscrib((uint32_t)EventId::SetGeometryRenderMode);
 
             if (_isRunning == true) return;
             _isRunning = true;

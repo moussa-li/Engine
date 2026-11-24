@@ -99,6 +99,12 @@ namespace EgLab::Platform
         void applyHEMeshHighlight(const HEMeshHighlightEvent& event);
         void updateViewDependentHighlights();
 
+        /// Applies a geometry display mode to every imported B-Rep model in the scene.
+        void applyGeometryDisplayMode(const GeometryDisplayModeEvent& event);
+
+        /// Returns the geometry display mode currently applied to the scene.
+        GeometryDisplayMode getGeometryDisplayMode() const;
+
         // ---- pick phase: query the scene and expose the highlight as a scene primitive ----
         void applyPick(const PickEvent& event);
 
@@ -159,6 +165,11 @@ namespace EgLab::Platform
         Common::DynamicArray<ME::IdType> collectHiddenElementIds(MeshElementVisibilityState& state);
         void rebuildMeshSurface(const Common::SharedPtr<ME::Mesh>& mesh,
                                 const Common::DynamicArray<ME::IdType>& hiddenElementIds);
+        /// True when the mesh belongs to an imported B-Rep model (GeometryData node).
+        bool isGeometryMesh(const Common::SharedPtr<ME::Mesh>& mesh) const;
+        /// Display mode in effect for one mesh: geometry meshes follow the global mode,
+        /// regular meshes always use the regular mesh appearance.
+        GeometryDisplayMode effectiveDisplayMode(const Common::SharedPtr<ME::Mesh>& mesh) const;
         Common::Vector4f getMeshBaseColor(const Common::SharedPtr<ME::Mesh>& mesh) const;
         MeshRenderEntry* findActiveMeshEntry(const Common::SharedPtr<ME::Mesh>& mesh);
 
@@ -199,6 +210,7 @@ namespace EgLab::Platform
         float _nodePointSize{3.0f};
         float _lineWidth{2.0f};
         float _faceShrink{0.0f};
+        GeometryDisplayMode _geometryDisplayMode{GeometryDisplayMode::Mesh};
 
         RE::CoordType _highlightViewPosition;
         RE::CoordType _highlightViewFront;

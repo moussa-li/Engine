@@ -110,28 +110,60 @@ if(GEOMETRY_KERNEL_BACKEND STREQUAL "OCCT")
     target_link_libraries(${PROJECT_NAME} PRIVATE ${OCCT_LINK_LIBRARIES})
     message(STATUS "GeometryEngine: kernel backend OCCT")
 
-    # OCCT ships prebuilt DLLs, so its runtime must follow the executables. The optional
-    # OpenCASCADE_THIRDPARTY_DLL_DIRS variable is a ';' separated list of extra runtime
-    # directories (for example the bundled TBB vc14 bin dir).
-    set(OCCT_RUNTIME_DIRS "")
+    # Runtime DLLs: the linked OCCT toolkits plus their runtime-only dependencies
+    # (TKGeomAlgo / TKShHealing are loaded dynamically, never linked directly).
+    # Entries missing from this OCCT version are skipped, so the list works for 7.5 and later.
+    set(OCCT_RUNTIME_DLL_NAMES
+        TKernel
+        TKMath
+        TKG2d
+        TKG3d
+        TKGeomBase
+        TKGeomAlgo
+        TKBRep
+        TKTopAlgo
+        TKShHealing
+        TKMesh
+        TKXSBase
+        TKSTEPBase
+        TKSTEPAttr
+        TKSTEP209
+        TKSTEP
+        TKDESTEP
+        TKDE
+    )
+
+    set(OCCT_RUNTIME_DIR "")
     if(DEFINED OpenCASCADE_DLL_DIR)
-        list(APPEND OCCT_RUNTIME_DIRS "${OpenCASCADE_DLL_DIR}")
+        set(OCCT_RUNTIME_DIR "${OpenCASCADE_DLL_DIR}")
     elseif(DEFINED OpenCASCADE_BINARY_DIR)
-        list(APPEND OCCT_RUNTIME_DIRS "${OpenCASCADE_BINARY_DIR}")
-    endif()
-    if(DEFINED OpenCASCADE_THIRDPARTY_DLL_DIRS)
-        foreach(dllDir IN LISTS OpenCASCADE_THIRDPARTY_DLL_DIRS)
-            if(EXISTS "${dllDir}")
-                list(APPEND OCCT_RUNTIME_DIRS "${dllDir}")
-            endif()
-        endforeach()
+        set(OCCT_RUNTIME_DIR "${OpenCASCADE_BINARY_DIR}")
     endif()
 
     set(OCCT_RUNTIME_DLLS "")
-    foreach(dllDir IN LISTS OCCT_RUNTIME_DIRS)
-        file(GLOB dirDlls "${dllDir}/*.dll")
-        list(APPEND OCCT_RUNTIME_DLLS ${dirDlls})
+    foreach(dllName IN LISTS OCCT_RUNTIME_DLL_NAMES)
+        set(dllPath "${OCCT_RUNTIME_DIR}/${dllName}.dll")
+        if(EXISTS "${dllPath}")
+            list(APPEND OCCT_RUNTIME_DLLS "${dllPath}")
+        endif()
     endforeach()
+
+    # Third-party runtime (TBB) from the directories supplied by the preset. Debug and
+    # preview variants are skipped so a release package does not ship them.
+    if(DEFINED OpenCASCADE_THIRDPARTY_DLL_DIRS)
+        foreach(dllDir IN LISTS OpenCASCADE_THIRDPARTY_DLL_DIRS)
+            if(EXISTS "${dllDir}")
+                file(GLOB dirDlls "${dllDir}/*.dll")
+                foreach(dirDll IN LISTS dirDlls)
+                    get_filename_component(dllFileName "${dirDll}" NAME)
+                    if(dllFileName MATCHES "_debug\\.dll$" OR dllFileName MATCHES "_preview")
+                        continue()
+                    endif()
+                    list(APPEND OCCT_RUNTIME_DLLS "${dirDll}")
+                endforeach()
+            endif()
+        endforeach()
+    endif()
 
     if(WIN32 AND OCCT_RUNTIME_DLLS)
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
@@ -139,6 +171,16 @@ if(GEOMETRY_KERNEL_BACKEND STREQUAL "OCCT")
             COMMAND ${CMAKE_COMMAND} -E copy_if_different ${OCCT_RUNTIME_DLLS}
                     "${CMAKE_BINARY_DIR}/bin"
             COMMENT "Copying OpenCASCADE runtime DLLs")
+    endif()
+
+    # Ship the same runtime next to the installed executables, so an installed
+    # EnginePlatform runs without a separate OCCT/TBB installation on PATH.
+    if(WIN32 AND OCCT_RUNTIME_DLLS)
+        if(NOT CMAKE_INSTALL_BINDIR)
+            set(CMAKE_INSTALL_BINDIR "bin")
+        endif()
+        install(FILES ${OCCT_RUNTIME_DLLS} DESTINATION "${CMAKE_INSTALL_BINDIR}")
+        message(STATUS "GeometryEngine: ${PROJECT_NAME} ships its OCCT/TBB runtime DLLs on install")
     endif()
 else()
     message(STATUS "GeometryEngine: kernel backend NULL (no third-party geometry kernel)")

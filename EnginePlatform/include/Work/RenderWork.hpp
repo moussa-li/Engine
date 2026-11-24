@@ -177,6 +177,8 @@ namespace EgLab::Platform
         void setNodePointSize(float pointSize);
         void setLineWidth(float lineWidth);
         void setFaceShrink(float shrink);
+        // Switches how imported B-Rep geometry is drawn: 0=mesh, 1=face outline, 2=edges only.
+        void setGeometryDisplayMode(uint32_t mode);
         // Applies a partial reference-plane update on the render thread.
         void setReferencePlaneSettings(const SetReferencePlaneParam& params);
         void setHEMeshHighlight(const Common::SharedPtr<ME::HEMesh>& mesh, uint32_t vertexIndex,

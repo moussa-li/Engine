@@ -91,8 +91,10 @@ If OCCT lives elsewhere, edit those two cache variables in
 locally with the official `opencascade-7.5.0-vc14-64.exe` installer.
 
 `BUILD_GEOMETRY_KERNEL` also accepts `AUTO` (default; probes OpenCASCADE and falls back to `NULL`)
-and `NULL`. The adapter links only the OCCT toolkits it uses, and on Windows the OCCT runtime DLLs
-(plus the TBB DLLs) are copied next to the executables. The OCCT import test is opt-in: set
+and `NULL`. The adapter links only the OCCT toolkits it uses, and on Windows the required OCCT
+runtime DLLs (15 toolkits plus the TBB DLLs, about 25 MB) are copied next to the build executables
+and also installed next to the installed executables, so a packaged `EnginePlatform` needs no
+separate OCCT/TBB installation on `PATH`. The OCCT import test is opt-in: set
 `EGLAB_GEOMETRY_TEST_STEP` to a `.stp`/`.brep` file before running `geometry_test`.
 
 OpenCASCADE is consumed as prebuilt libraries (LGPL-2.1 with exception, dynamically linked) and is
@@ -198,6 +200,22 @@ renderable tessellation exposed by `GeometryFeature::getMesh()`. Every OCCT head
 namespace stays inside `GeometryEngine/src/Kernel/Occt`; nothing kernel-specific appears under
 `GeometryEngine/include`. Consumers choose the kernel (for example from `EgPlatform.ini`) and pass
 its name to `GeometryImporter`.
+
+#### Geometry display modes
+
+Imported B-Rep models are rendered through `ME::Mesh` (Tri3). Their display can be switched in
+`Geometry` → `Geometry Render Settings` (persisted as `geometry.displayMode` in `EgPlatform.ini`)
+or through the `SetGeometryRenderMode` command:
+
+| Mode | Value | Appearance |
+| --- | --- | --- |
+| Mesh | 0 | Shaded faces with the dense triangle wireframe (the regular mesh look). |
+| Face outline | 1 | Shaded faces, but only each face's outer frame is drawn; normals are smoothed per mesh node so curved faces shade smoothly while B-Rep face boundaries stay sharp. |
+| Edges only | 2 | Faces are not rendered (and not pickable); only the geometry outline lines are drawn. |
+
+The mode applies to imported geometry models only; regular meshes keep their existing appearance.
+`Geometry Render Settings` dispatches `SetGeometryRenderMode` through `CommandManager`, so AI
+clients can drive the same modes.
 
 ### Add render primitives to a scene
 

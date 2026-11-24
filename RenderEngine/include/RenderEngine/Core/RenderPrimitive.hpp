@@ -357,5 +357,20 @@ namespace EgLab::RE
         {
             return PickKind::None;
         }
+
+        /// @brief Sets whether the renderer draws this primitive and picking can see it.
+        void setVisible(bool visible)
+        {
+            _visible = visible;
+        }
+
+        /// @brief Reports whether the primitive participates in drawing and picking.
+        bool isVisible() const
+        {
+            return _visible;
+        }
+
+    private:
+        bool _visible{true};
     };
 } // namespace EgLab::RE

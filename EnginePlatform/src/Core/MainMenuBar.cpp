@@ -290,6 +290,10 @@ namespace EgLab::Platform
                 {
                     requestShowPanel("GeometryInfo");
                 }
+                if (ImGui::MenuItem("Geometry Render Settings"))
+                {
+                    requestShowPanel("GeometryRenderSettings");
+                }
                 ImGui::EndMenu();
             }
             if (animatedBeginMenu("Selection"))

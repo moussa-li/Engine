@@ -36,6 +36,44 @@ add_executable(mesh_test
     test_main.cpp
 )
 
+add_executable(geometry_test
+    test_geometry.cpp
+    test_main.cpp
+)
+
+# Temporary diagnostic target (removed after debugging Gangti.stp).
+add_executable(geometry_probe probe_geometry.cpp)
+target_include_directories(geometry_probe PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/RenderEngine/include
+    ${CMAKE_SOURCE_DIR}/MeshEngine/include
+    ${CMAKE_SOURCE_DIR}/GeometryEngine/include
+    ${CMAKE_SOURCE_DIR}/Common/include
+)
+target_link_libraries(geometry_probe PRIVATE
+    Common
+    MeshEngine
+    RenderEngine
+    GeometryEngine
+    glfw
+    glew_s
+)
+
+if(WIN32)
+    add_executable(geometry_import_sender
+        geometry_import_sender.cpp
+    )
+
+    target_include_directories(geometry_import_sender PRIVATE
+        ${CMAKE_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/EnginePlatform/include
+    )
+
+    target_link_libraries(geometry_import_sender PRIVATE
+        Common
+    )
+endif()
+
 if(WIN32)
     add_executable(command_cross_process_test
         test_command_cross_process.cpp
@@ -107,6 +145,18 @@ target_link_libraries(mesh_test PRIVATE
     MeshEngine
 )
 
+target_include_directories(geometry_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/3rd/gtest/googletest/include
+    ${CMAKE_SOURCE_DIR}
+)
+
+target_link_libraries(geometry_test PRIVATE
+    gtest
+    gtest_main
+    Common
+    GeometryEngine
+)
+
 target_link_libraries(common_test PRIVATE
     gtest
     gtest_main
@@ -118,3 +168,5 @@ target_link_libraries(common_test PRIVATE
 add_test(NAME engine_tests COMMAND engine_tests)
 
 add_test(NAME common_test COMMAND common_test)
+
+add_test(NAME geometry_test COMMAND geometry_test)

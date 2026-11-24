@@ -5,6 +5,7 @@
 #include "Common/BBox.hpp"
 #include "Common/HashMap.hpp"
 #include "Common/Log.hpp"
+#include "DataBase/GeometryData.hpp"
 #include "MeshEngine/Algorithm/ExtractSilhouette.hpp"
 #include "MeshEngine/MeshData/HEMesh.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
@@ -524,9 +525,16 @@ namespace EgLab::Platform
         if (result == Common::Return::Succeed && entry.mesh)
         {
             MeshElementVisibilityState* visibilityState = findElementVisibilityState(entry.mesh);
-            if (visibilityState != nullptr)
+            if (visibilityState != nullptr || isGeometryMesh(entry.mesh))
             {
-                rebuildMeshSurface(entry.mesh, collectHiddenElementIds(*visibilityState));
+                // Rebuilding also normalises the line data and face visibility so a newly
+                // uploaded geometry model immediately follows the current display mode.
+                Common::DynamicArray<ME::IdType> hiddenElementIds;
+                if (visibilityState != nullptr)
+                {
+                    hiddenElementIds = collectHiddenElementIds(*visibilityState);
+                }
+                rebuildMeshSurface(entry.mesh, hiddenElementIds);
             }
             else if (_locateMesh && _locateMesh == entry.mesh)
             {
@@ -677,6 +685,66 @@ namespace EgLab::Platform
                 face->setFaceShrink(shrink);
             }
         }
+    }
+
+    bool RenderDataManager::isGeometryMesh(const Common::SharedPtr<ME::Mesh>& mesh) const
+    {
+        if (!mesh)
+        {
+            return false;
+        }
+        return GeometryData::findByMesh(reinterpret_cast<uint64_t>(mesh.get())) != nullptr;
+    }
+
+    GeometryDisplayMode RenderDataManager::effectiveDisplayMode(
+        const Common::SharedPtr<ME::Mesh>& mesh) const
+    {
+        // Regular meshes always use the regular mesh appearance; the geometry mode only
+        // affects imported B-Rep models.
+        return isGeometryMesh(mesh) ? _geometryDisplayMode : GeometryDisplayMode::Mesh;
+    }
+
+    void RenderDataManager::applyGeometryDisplayMode(const GeometryDisplayModeEvent& event)
+    {
+        if (!GeometryDisplayModeInfo::isValid(event.mode))
+        {
+            LOG(WARNING) << "RenderDataManager::applyGeometryDisplayMode() rejected mode "
+                         << event.mode;
+            return;
+        }
+
+        const auto mode = static_cast<GeometryDisplayMode>(event.mode);
+        if (_geometryDisplayMode == mode)
+        {
+            return;
+        }
+        _geometryDisplayMode = mode;
+
+        // Rebuild the geometry models so the line data and face visibility follow the mode.
+        Common::DynamicArray<Common::SharedPtr<ME::Mesh>> geometryMeshes;
+        for (const auto& entry : _activeMeshes)
+        {
+            if (isGeometryMesh(entry.mesh))
+            {
+                geometryMeshes.pushBack(entry.mesh);
+            }
+        }
+
+        for (const auto& mesh : geometryMeshes)
+        {
+            Common::DynamicArray<ME::IdType> hiddenElementIds;
+            MeshElementVisibilityState* state = findElementVisibilityState(mesh);
+            if (state != nullptr)
+            {
+                hiddenElementIds = collectHiddenElementIds(*state);
+            }
+            rebuildMeshSurface(mesh, hiddenElementIds);
+        }
+    }
+
+    GeometryDisplayMode RenderDataManager::getGeometryDisplayMode() const
+    {
+        return _geometryDisplayMode;
     }
 
     void RenderDataManager::applyReferencePlaneSettings(const SetReferencePlaneParam& param)
@@ -1584,7 +1652,15 @@ namespace EgLab::Platform
 
         target->translator->setHiddenElements(hiddenElementIds);
 
+        const GeometryDisplayMode displayMode = effectiveDisplayMode(mesh);
+
         RE::MeshPrimitiveCreator creator(mesh, target->translator);
+        if (displayMode != GeometryDisplayMode::Mesh)
+        {
+            creator.setLineIndexSource(RE::MeshPrimitiveCreator::LineIndexSource::BoundaryOnly);
+        }
+        // Smooth shading is what makes the face frames readable on curved B-Rep faces.
+        creator.setSmoothNormals(displayMode == GeometryDisplayMode::FaceOutline);
         auto facePrimitive = creator.getPrimitive<RE::RenderFace>();
         auto linePrimitive = creator.getPrimitive<RE::RenderLine>();
         auto newFace = Common::dynamicSharedPtrCast<RE::RenderFace>(facePrimitive);
@@ -1595,6 +1671,10 @@ namespace EgLab::Platform
                 << "RenderDataManager::rebuildMeshSurface() failed to create rebuilt primitives";
             return;
         }
+
+        // EdgeOnly hides the shaded faces; picking follows the same flag through the
+        // renderer visibility filter, so faces are not picked while they are not drawn.
+        newFace->setVisible(displayMode != GeometryDisplayMode::EdgeOnly);
 
         newFace->setColor(getMeshBaseColor(mesh));
         newFace->setFaceShrink(_faceShrink);

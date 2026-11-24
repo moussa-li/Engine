@@ -213,6 +213,10 @@ namespace EgLab::RE
         {
             return false;
         }
+        if (!primitive->isVisible())
+        {
+            return false;
+        }
         if (dynamic_cast<const RenderNode *>(primitive.get()) != nullptr)
         {
             return _renderNodesEnabled;

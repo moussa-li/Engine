@@ -811,6 +811,9 @@ class NativeCommandBridge:
             body = struct.pack("<Q64sIIII", node, model_name.ljust(64, b"\x00")[:64],
                                feature_type, offset, limit, 0)
             return 200022, struct.pack("<I", 88) + body
+        if name == "SetGeometryRenderMode":
+            mode = int(args.get("mode") or 0)
+            return 200023, struct.pack("<I", 8) + struct.pack("<II", mode, 0)
         return None
 
     def call(self, name, arguments):

@@ -111,6 +111,14 @@ namespace EgLab::Platform
         uint32_t reserved;    // off 84; 恒为 0
     };
 
+    // SetGeometryRenderMode：几何渲染模式。0=网格（面+三角线框），1=面外框（面+面边界），
+    // 2=仅几何线（不渲染面）。作用于场景内全部导入的 B-Rep 几何模型。
+    struct GeometryRenderModeParam
+    {
+        uint32_t mode;     // off 0; 0=Mesh 1=FaceOutline 2=EdgeOnly
+        uint32_t reserved; // off 4; 恒为 0
+    };
+
     // ===== SetCamera =====
     enum class CameraMode : uint32_t
     {
@@ -258,5 +266,9 @@ namespace EgLab::Platform
                   "GeometryFeaturesParam must be trivially copyable");
     static_assert(sizeof(GeometryFeaturesParam) == 88,
                   "GeometryFeaturesParam must be exactly 88 bytes");
+    static_assert(std::is_trivially_copyable<GeometryRenderModeParam>::value,
+                  "GeometryRenderModeParam must be trivially copyable");
+    static_assert(sizeof(GeometryRenderModeParam) == 8,
+                  "GeometryRenderModeParam must be exactly 8 bytes");
 
 } // namespace EgLab::Platform

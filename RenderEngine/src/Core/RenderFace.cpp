@@ -21,36 +21,42 @@ namespace EgLab::RE
 
     void RenderFace::setup()
     {
-        _normals.clear();
-        _normals.resize(_vertices.size());
-
-        Common::Performance perf;
-        perf.start();
-        for (size_t i = 0; i + 2 < _indices.size(); i += 3)
+        // Smooth normals may be supplied by the caller (geometry models). Only compute the
+        // face-local average when none were provided.
+        if (!_normalsProvided || _normals.size() != _vertices.size())
         {
-            const IdxType i0 = _indices[i];
-            const IdxType i1 = _indices[i + 1];
-            const IdxType i2 = _indices[i + 2];
-            if (i0 >= _vertices.size() || i1 >= _vertices.size() || i2 >= _vertices.size())
+            _normals.clear();
+            _normals.resize(_vertices.size());
+
+            Common::Performance perf;
+            perf.start();
+            for (size_t i = 0; i + 2 < _indices.size(); i += 3)
             {
-                continue;
+                const IdxType i0 = _indices[i];
+                const IdxType i1 = _indices[i + 1];
+                const IdxType i2 = _indices[i + 2];
+                if (i0 >= _vertices.size() || i1 >= _vertices.size() || i2 >= _vertices.size())
+                {
+                    continue;
+                }
+
+                CoordType normal =
+                    (_vertices[i1] - _vertices[i0]).cross(_vertices[i2] - _vertices[i0]);
+                _normals[i0] = _normals[i0] + normal;
+                _normals[i1] = _normals[i1] + normal;
+                _normals[i2] = _normals[i2] + normal;
             }
 
-            CoordType normal = (_vertices[i1] - _vertices[i0]).cross(_vertices[i2] - _vertices[i0]);
-            _normals[i0] = _normals[i0] + normal;
-            _normals[i1] = _normals[i1] + normal;
-            _normals[i2] = _normals[i2] + normal;
-        }
+            for (size_t i = 0; i < _normals.size(); ++i)
+            {
+                _normals[i].normalize();
+            }
 
-        for (size_t i = 0; i < _normals.size(); ++i)
-        {
-            _normals[i].normalize();
+            perf.stop();
+            LOG(INFO) << "Finished calculating face-local node normals for RenderFace: "
+                      << ", end_ms=" << perf.getEndTimestampMs()
+                      << ", elapsed_ms=" << perf.getElapsedMilliseconds();
         }
-
-        perf.stop();
-        LOG(INFO) << "Finished calculating face-local node normals for RenderFace: "
-                  << ", end_ms=" << perf.getEndTimestampMs()
-                  << ", elapsed_ms=" << perf.getElapsedMilliseconds();
 
         _vertexArray = Common::makeShared<VertexArray>();
         _vertexArray->bind();
@@ -525,6 +531,7 @@ namespace EgLab::RE
     void RenderFace::setNormals(Common::DynamicArray<CoordType> &&norms)
     {
         _normals = Common::move(norms);
+        _normalsProvided = !_normals.empty();
     }
 
     void RenderFace::setColors(Common::DynamicArray<Common::Vector4f> &&colors)

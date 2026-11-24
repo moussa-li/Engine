@@ -6,6 +6,7 @@
 #include "Common/DynamicArray.hpp"
 #include "Common/SharedPtr.hpp"
 #include "Common/Vector.hpp"
+#include "Work/GeometryDisplayMode.hpp"
 
 namespace EgLab::ME
 {
@@ -56,6 +57,7 @@ namespace EgLab::Platform
         Pick,
         SetCamera,
         ReferencePlaneSettings,
+        GeometryDisplayMode,
     };
 
     /// Polymorphic base for rendering change requests. Each concrete event type carries only
@@ -317,5 +319,16 @@ namespace EgLab::Platform
         }
 
         SetReferencePlaneParam param;
+    };
+
+    /// Requests changing how imported B-Rep geometry is drawn (mesh / face outline / edges).
+    class GeometryDisplayModeEvent : public RenderEvent
+    {
+    public:
+        GeometryDisplayModeEvent() : RenderEvent(RenderEventType::GeometryDisplayMode)
+        {
+        }
+
+        uint32_t mode{0};
     };
 } // namespace EgLab::Platform

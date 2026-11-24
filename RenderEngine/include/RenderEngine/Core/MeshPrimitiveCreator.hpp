@@ -26,6 +26,25 @@ namespace EgLab::RE
         /// @return The mesh-to-triangle-face translator.
         Common::SharedPtr<MeshToTriFace> getTranslator() const;
 
+        /// @brief Source of the index data drawn by the line primitive.
+        enum class LineIndexSource
+        {
+            /// Every triangle edge of the tessellation (default, dense mesh wireframe).
+            AllTriangleEdges,
+            /// Only the outer boundary of the tessellated patches (face outline).
+            BoundaryOnly,
+        };
+
+        /// @brief Selects which line indices the line primitive receives.
+        /// @details Must be called before getPrimitive<RenderLine>().
+        void setLineIndexSource(LineIndexSource source);
+
+        /// @brief Enables smooth (node-averaged) normals for the face primitive.
+        /// @details Must be called before getPrimitive<RenderFace>(). Normals are averaged per
+        ///          mesh node, so triangles of one B-Rep face shade smoothly while different
+        ///          faces keep their sharp boundary.
+        void setSmoothNormals(bool smooth);
+
     protected:
         /// @brief Populates a node primitive from the source mesh.
         virtual void updateData(Common::SharedPtr<RenderNode>);
@@ -37,5 +56,7 @@ namespace EgLab::RE
     private:
         Common::SharedPtr<ME::Mesh> _mesh;
         Common::SharedPtr<MeshToTriFace> _translator;
+        LineIndexSource _lineIndexSource{LineIndexSource::AllTriangleEdges};
+        bool _smoothNormals{false};
     };
 } // namespace EgLab::RE

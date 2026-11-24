@@ -23,6 +23,7 @@
               "DataTree",
               "ElementVisibility",
               "GeometryInfo",
+              "GeometryRenderSettings",
               "HEMesh",
               "HEMeshInspector",
               "MeshRenderSettings",
@@ -57,6 +58,7 @@
               "DataTree",
               "ElementVisibility",
               "GeometryInfo",
+              "GeometryRenderSettings",
               "HEMesh",
               "HEMeshInspector",
               "MeshRenderSettings",
@@ -554,8 +556,7 @@
     },
     {
       "name": "ListGeometryFeatures",
-      "eventId": 200022,
-      "category": "Geometry",
+      "eventId": 200022,      "category": "Geometry",
       "summary": "列出几何特征清单（同步返回）",
       "description": "同步返回一个 GeometryData 的全部（或按类型过滤）几何特征清单，支持 offset/limit 分页。featureType: 0=Vertex 1=Edge 2=Face 3=Solid；缺省返回全部类型。",
       "parameters": {
@@ -589,6 +590,25 @@
           }
         },
         "required": ["dataNodeId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "SetGeometryRenderMode",
+      "eventId": 200023,
+      "category": "Geometry",
+      "summary": "设置几何渲染模式（网格 / 面外框 / 仅几何线）",
+      "description": "切换导入的 B-Rep 几何模型（STEP/BREP）的显示方式，作用于场景内全部几何模型，普通网格模型不受影响。mode: 0=网格（面 + 三角线框，默认），1=面外框（面填充 + 只画面的外边框），2=仅几何线（不渲染面，只渲染几何线）。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "integer",
+            "description": "几何渲染模式：0=网格 1=面外框 2=仅几何线。",
+            "enum": [0, 1, 2]
+          }
+        },
+        "required": ["mode"],
         "additionalProperties": false
       }
     }

@@ -29,6 +29,16 @@ namespace EgLab::RE
         return _translator;
     }
 
+    void MeshPrimitiveCreator::setLineIndexSource(LineIndexSource source)
+    {
+        _lineIndexSource = source;
+    }
+
+    void MeshPrimitiveCreator::setSmoothNormals(bool smooth)
+    {
+        _smoothNormals = smooth;
+    }
+
     void MeshPrimitiveCreator::updateData(Common::SharedPtr<RenderNode> primitive)
     {
         ME::MeshIterator meshIt(*_mesh);
@@ -59,7 +69,11 @@ namespace EgLab::RE
 
         primitive->setNodes(Common::move(nodes));
 
-        primitive->setIndices(_translator->getBoundaryLineIdx());
+        // BoundaryOnly keeps only the tessellation patch outline, which for B-Rep geometry is
+        // the face frame; AllTriangleEdges keeps the dense triangle wireframe.
+        primitive->setIndices(_lineIndexSource == LineIndexSource::BoundaryOnly
+                                  ? _translator->getBoundaryElementEdgeIdx()
+                                  : _translator->getBoundaryLineIdx());
     }
 
     void MeshPrimitiveCreator::updateData(Common::SharedPtr<RenderFace> primitive)
@@ -85,6 +99,73 @@ namespace EgLab::RE
         primitive->setNodes(Common::move(faceNodes));
         Common::DynamicArray<IdxType> sourceIndices = _translator->getBoundaryFaceIdx();
         primitive->setIndices(Common::move(sourceIndices));
+
+        if (_smoothNormals)
+        {
+            // Average the triangle normals per mesh node. Geometry models duplicate nodes
+            // between different B-Rep faces, so one face shades smoothly while different
+            // faces keep a sharp boundary.
+            Common::DynamicArray<RE::CoordType> accumulated;
+            accumulated.resize(_mesh->getNodeNumber());
+
+            ME::MeshIterator elemIt(*_mesh);
+            for (; elemIt.hasMoreElem(); elemIt.nextElem())
+            {
+                const ME::Elem& elem = elemIt.currentElem();
+                if (elem.getType() != ME::ElemType::Tri3)
+                {
+                    continue;
+                }
+                const auto& ids = elem.getNodes();
+                if (ids.size() < 3)
+                {
+                    continue;
+                }
+
+                const ME::IdxType i0 = _mesh->getNodeIdx(ids[0]);
+                const ME::IdxType i1 = _mesh->getNodeIdx(ids[1]);
+                const ME::IdxType i2 = _mesh->getNodeIdx(ids[2]);
+                const ME::IdxType maxIndex =
+                    i0 > i1 ? (i0 > i2 ? i0 : i2) : (i1 > i2 ? i1 : i2);
+                if (maxIndex >= accumulated.size())
+                {
+                    accumulated.resize(static_cast<size_t>(maxIndex) + 1);
+                }
+
+                const ME::Node& n0 = _mesh->getNodeById(ids[0]);
+                const ME::Node& n1 = _mesh->getNodeById(ids[1]);
+                const ME::Node& n2 = _mesh->getNodeById(ids[2]);
+                const RE::CoordType p0(n0.x(), n0.y(), n0.z());
+                const RE::CoordType p1(n1.x(), n1.y(), n1.z());
+                const RE::CoordType p2(n2.x(), n2.y(), n2.z());
+                const RE::CoordType normal = (p1 - p0).cross(p2 - p0);
+
+                accumulated[i0] = accumulated[i0] + normal;
+                accumulated[i1] = accumulated[i1] + normal;
+                accumulated[i2] = accumulated[i2] + normal;
+            }
+
+            for (size_t i = 0; i < accumulated.size(); ++i)
+            {
+                accumulated[i].normalize();
+            }
+
+            Common::DynamicArray<RE::CoordType> smoothNormals;
+            const auto& faceNodeIndices = _translator->getBoundaryFaceNodeIdx();
+            smoothNormals.reserve(faceNodeIndices.size());
+            for (IdxType sourceNodeIndex : faceNodeIndices)
+            {
+                if (sourceNodeIndex < accumulated.size())
+                {
+                    smoothNormals.pushBack(accumulated[sourceNodeIndex]);
+                }
+                else
+                {
+                    smoothNormals.pushBack(RE::CoordType(0.0f, 0.0f, 1.0f));
+                }
+            }
+            primitive->setNormals(Common::move(smoothNormals));
+        }
 
         // Hand the face primitive the geometric center of each boundary element face so that
         // shrinking collapses every element face toward its own center. This works for both

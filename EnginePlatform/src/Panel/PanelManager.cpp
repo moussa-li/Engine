@@ -11,6 +11,7 @@
 #include "Panel/DataTreePanel.hpp"
 #include "Panel/ElementVisibilityPanel.hpp"
 #include "Panel/GeometryInfoPanel.hpp"
+#include "Panel/GeometryRenderSettingsPanel.hpp"
 #include "Panel/HEMeshDataPanel.hpp"
 #include "Panel/HEMeshPanel.hpp"
 #include "Panel/IPanel.hpp"
@@ -49,6 +50,8 @@ namespace EgLab::Platform
         _panels[ElementVisibilityPanel().getPanelName()] =
             Common::makeShared<ElementVisibilityPanel>();
         _panels[GeometryInfoPanel().getPanelName()] = Common::makeShared<GeometryInfoPanel>();
+        _panels[GeometryRenderSettingsPanel().getPanelName()] =
+            Common::makeShared<GeometryRenderSettingsPanel>();
         _panels[HEMeshDataPanel().getPanelName()] = Common::makeShared<HEMeshDataPanel>();
         _heMeshPanel = Common::makeShared<HEMeshPanel>();
         _panels[_heMeshPanel->getPanelName()] = _heMeshPanel;

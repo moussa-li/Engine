@@ -817,6 +817,13 @@ namespace EgLab::Platform
         queueRenderEvent(event);
     }
 
+    void RenderWork::setGeometryDisplayMode(uint32_t mode)
+    {
+        auto event = Common::makeShared<GeometryDisplayModeEvent>();
+        event->mode = mode;
+        queueRenderEvent(event);
+    }
+
     void RenderWork::setReferencePlaneSettings(const SetReferencePlaneParam& params)
     {
         auto event = Common::makeShared<ReferencePlaneSettingsEvent>();

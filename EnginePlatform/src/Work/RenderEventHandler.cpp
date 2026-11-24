@@ -312,6 +312,29 @@ namespace EgLab::Platform
         RenderDataManager& _data;
     };
 
+    class GeometryDisplayModeHandler : public IRenderEventHandler
+    {
+    public:
+        explicit GeometryDisplayModeHandler(RenderDataManager& data) : _data(data)
+        {
+        }
+
+        static Common::SharedPtr<IRenderEventHandler> create(RenderDataManager& data)
+        {
+            return Common::makeShared<GeometryDisplayModeHandler>(data);
+        }
+
+        Common::Return apply(const RenderEvent& event) override
+        {
+            const auto& e = static_cast<const GeometryDisplayModeEvent&>(event);
+            _data.applyGeometryDisplayMode(e);
+            return Common::Return::Succeed;
+        }
+
+    private:
+        RenderDataManager& _data;
+    };
+
     class ReferencePlaneSettingsHandler : public IRenderEventHandler
     {
     public:
@@ -580,6 +603,7 @@ namespace EgLab::Platform
         {RenderEventType::NodePointSize, &NodePointSizeHandler::create},
         {RenderEventType::LineWidth, &LineWidthHandler::create},
         {RenderEventType::FaceShrink, &FaceShrinkHandler::create},
+        {RenderEventType::GeometryDisplayMode, &GeometryDisplayModeHandler::create},
         {RenderEventType::ReferencePlaneSettings, &ReferencePlaneSettingsHandler::create},
         {RenderEventType::HEMeshHighlight, &HEMeshHighlightHandler::create},
         {RenderEventType::Locate, &LocateHandler::create},

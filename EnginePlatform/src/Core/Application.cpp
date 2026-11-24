@@ -10,6 +10,7 @@
 #include "GLFW/glfw3.h"
 #include "RenderEngine/Core/OrbitCameraController.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"
+#include "Work/GeometryDisplayMode.hpp"
 #include "Work/RenderWork.hpp"
 #include "Work/UIWork.hpp"
 
@@ -124,6 +125,12 @@ namespace EgLab::Platform
         RenderWork::instance().setNodePointSize(ini.getFloat("mesh.nodePointSize", 3.0f));
         RenderWork::instance().setLineWidth(ini.getFloat("mesh.lineWidth", 2.0f));
         RenderWork::instance().setFaceShrink(ini.getFloat("mesh.faceShrink", 0.0f));
+
+        const int savedGeometryMode = ini.getInt("geometry.displayMode", 0);
+        RenderWork::instance().setGeometryDisplayMode(
+            GeometryDisplayModeInfo::isValid(static_cast<uint32_t>(savedGeometryMode))
+                ? static_cast<uint32_t>(savedGeometryMode)
+                : static_cast<uint32_t>(GeometryDisplayMode::Mesh));
 
         // 周期性读取注册表中的活动进程 PID，供主菜单实时高亮当前进程。
         const int pidIntervalMs = ini.getInt("registry.pidIntervalMs", 300);

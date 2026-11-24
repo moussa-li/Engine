@@ -67,6 +67,7 @@
               "DataTree",
               "ElementVisibility",
               "GeometryInfo",
+              "GeometryRenderSettings",
               "HEMesh",
               "HEMeshInspector",
               "MeshRenderSettings",
