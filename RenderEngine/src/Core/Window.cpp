@@ -177,6 +177,10 @@ namespace EgLab::RE
 
         void processMouseButton(int button, int action, float xpos, float ypos, int mods)
         {
+            _cursorX = xpos;
+            _cursorY = ypos;
+            _hasCursor = true;
+
             if (button == GLFW_MOUSE_BUTTON_LEFT && isLeftButtonMasked())
             {
                 // The rubber-band tool consumes the left button; no camera rotation and no
@@ -199,6 +203,10 @@ namespace EgLab::RE
 
         void processMouseMove(float xpos, float ypos)
         {
+            _cursorX = xpos;
+            _cursorY = ypos;
+            _hasCursor = true;
+
             if (_cameraController == nullptr) return;
 
             updateCameraViewport();
@@ -235,6 +243,10 @@ namespace EgLab::RE
         bool _selectDirty{false};
         Scalar _selectX{0.0f};
         Scalar _selectY{0.0f};
+
+        bool _hasCursor{false};
+        Scalar _cursorX{0.0f};
+        Scalar _cursorY{0.0f};
 
         float lastFrame{0.0f};
         float deltaTime{0.0f};
@@ -404,6 +416,17 @@ namespace EgLab::RE
             return true;
         }
         return false;
+    }
+
+    bool Window::tryGetCursorPos(Scalar &x, Scalar &y) const
+    {
+        if (_impl == nullptr || !_impl->_hasCursor)
+        {
+            return false;
+        }
+        x = _impl->_cursorX;
+        y = _impl->_cursorY;
+        return true;
     }
 
 } // namespace EgLab::RE

@@ -93,43 +93,50 @@ namespace EgLab::Platform
 
     void GeometryInfoPanel::updatePickedInfo()
     {
-        _hasPickedInfo = false;
         if (_pickInfoSubscriptionId == 0)
         {
             return;
         }
 
+        // Picking only runs while the cursor moves (or the requested kinds change), so the
+        // panel keeps the last result and only replaces it when a new one arrives. Clearing
+        // the state on every frame made the info vanish as soon as the mouse stopped.
         PickedMeshInfo pickedInfo;
         while (RenderWork::instance().tryReceivePickInfo(_pickInfoSubscriptionId, pickedInfo))
         {
             _pickedInfo = pickedInfo;
-            if (pickedInfo.kind == PickedMeshKind::ElementFace ||
-                pickedInfo.kind == PickedMeshKind::ElementEdge)
+            _hasPickedInfo = false;
+            _hoverStatus = Common::String();
+
+            // A cleared result arrives when the cursor leaves every pickable primitive.
+            if (pickedInfo.kind != PickedMeshKind::ElementFace &&
+                pickedInfo.kind != PickedMeshKind::ElementEdge)
             {
-                auto geometryData = GeometryData::findByMesh(pickedInfo.meshId);
-                if (geometryData)
-                {
-                    // Resolve the same feature the pick selector reported, so a hit on a
-                    // filtered-out face shows the solid that stands in for it.
-                    const GeometryFeatureRef feature =
-                        geometryData->getFeatureByElement(pickedInfo.entityId);
-                    const GeometryFeatureRef resolved =
-                        geometryData->resolveByMask(feature, _pickFilter);
-                    _featureInfo = geometryData->getFeatureInfo(resolved);
-                    if (_featureInfo.ref.isValid())
-                    {
-                        _featureInfo.elemId = pickedInfo.entityId;
-                        _hasPickedInfo = true;
-                    }
-                    else
-                    {
-                        _hoverStatus = Common::String("picked face has no geometry feature");
-                    }
-                }
-                else
-                {
-                    _hoverStatus = Common::String("picked mesh is not a geometry model");
-                }
+                continue;
+            }
+
+            auto geometryData = GeometryData::findByMesh(pickedInfo.meshId);
+            if (!geometryData)
+            {
+                _hoverStatus = Common::String("picked mesh is not a geometry model");
+                continue;
+            }
+
+            // Resolve the same feature the pick selector reported, so a hit on a
+            // filtered-out face shows the solid that stands in for it.
+            const GeometryFeatureRef feature =
+                geometryData->getFeatureByElement(pickedInfo.entityId);
+            const GeometryFeatureRef resolved =
+                geometryData->resolveByMask(feature, _pickFilter);
+            _featureInfo = geometryData->getFeatureInfo(resolved);
+            if (_featureInfo.ref.isValid())
+            {
+                _featureInfo.elemId = pickedInfo.entityId;
+                _hasPickedInfo = true;
+            }
+            else
+            {
+                _hoverStatus = Common::String("picked face has no geometry feature");
             }
         }
     }

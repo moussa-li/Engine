@@ -501,6 +501,13 @@ namespace EgLab::Platform
         float cursorX = 0.0f;
         float cursorY = 0.0f;
         const bool hasCursor = _window->trySelectedPos(cursorX, cursorY);
+        if (!hasCursor)
+        {
+            // No motion this frame: reuse the last known position so a pick-kind change
+            // (panel opened, filter toggled) is still evaluated under the stationary cursor
+            // instead of the window origin.
+            _window->tryGetCursorPos(cursorX, cursorY);
+        }
 
         PendingPick pending;
         bool hasPending = false;

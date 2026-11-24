@@ -92,6 +92,15 @@ namespace EgLab::RE
         /// @return true if a selected position is available.
         bool trySelectedPos(Scalar &x, Scalar &y);
 
+        /// @brief Retrieves the latest cursor position observed by the window.
+        /// @details Unlike trySelectedPos(), the pending selection is not consumed and the
+        ///          position stays valid while the mouse is not moving, so hover queries can
+        ///          be re-run without a fresh motion event.
+        /// @param x Receives the cursor x-coordinate in window space.
+        /// @param y Receives the cursor y-coordinate in window space.
+        /// @return true if a cursor position has been observed.
+        bool tryGetCursorPos(Scalar &x, Scalar &y) const;
+
     private:
         class Impl;
         Impl *_impl;
