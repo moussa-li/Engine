@@ -58,6 +58,7 @@ namespace EgLab::Platform
         SetCamera,
         ReferencePlaneSettings,
         GeometryDisplayMode,
+        GeometryVertexDisplay,
     };
 
     /// Polymorphic base for rendering change requests. Each concrete event type carries only
@@ -330,5 +331,16 @@ namespace EgLab::Platform
         }
 
         uint32_t mode{0};
+    };
+
+    /// Requests showing or hiding the B-Rep vertex markers of geometry models.
+    class GeometryVertexDisplayEvent : public RenderEvent
+    {
+    public:
+        GeometryVertexDisplayEvent() : RenderEvent(RenderEventType::GeometryVertexDisplay)
+        {
+        }
+
+        bool visible{true};
     };
 } // namespace EgLab::Platform

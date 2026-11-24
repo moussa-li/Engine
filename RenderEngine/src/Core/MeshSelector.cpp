@@ -172,6 +172,17 @@ namespace EgLab::RE
         }
     }
 
+    void MeshSelector::publishPick(const PrimitivePickInfo& info, const ME::Mesh* mesh)
+    {
+        _lastPickInfo = info;
+        _hasLastPickInfo = info.kind != PrimitivePickKind::None;
+        _lastPickedMesh = _hasLastPickInfo ? mesh : nullptr;
+        if (_pickInfoCallback)
+        {
+            _pickInfoCallback(info);
+        }
+    }
+
     bool MeshSelector::resolveRectSelection(const Common::SharedPtr<RenderPrimitive>& primitive,
                                             const Common::DynamicArray<IdxType>& indices,
                                             RectSelectionResolution& resolution) const

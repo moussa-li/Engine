@@ -64,8 +64,35 @@ namespace EgLab::Platform
         /// 且 refs[elemId - 1] 对应 elemId。须在 addDataNode 发布前调用，发布后只读。
         void setElementFeatures(const Common::DynamicArray<GeometryFeatureRef>& refs);
 
+        /// 顶点/边的引用表，均以渲染 Mesh 的索引寻址（nodeIdx / 线段序号）。
+        /// 须在 addDataNode 发布前调用，发布后只读。
+        /// @param nodeFeatures nodeFeatures[nodeIdx] = 该节点渲染的 Vertex 特征；size 需等于节点数。
+        /// @param edgeSegmentIndices 线段端点对（每段 2 个 nodeIdx），与渲染线段的顺序一致。
+        /// @param edgeSegmentFeatures edgeSegmentFeatures[segment] = 该线段所属的 Edge 特征。
+        void setVertexEdgeFeatures(const Common::DynamicArray<GeometryFeatureRef>& nodeFeatures,
+                                   const Common::DynamicArray<uint32_t>& edgeSegmentIndices,
+                                   const Common::DynamicArray<GeometryFeatureRef>& edgeSegmentFeatures);
+
         /// 无效 elemId 返回 GeometryFeatureRef{}（两个 0xFFFFFFFF）。
         GeometryFeatureRef getFeatureByElement(uint32_t elemId) const;
+
+        /// 按渲染节点序号查询顶点特征；非顶点节点返回无效引用。
+        GeometryFeatureRef getFeatureByNodeIndex(uint32_t nodeIndex) const;
+
+        /// 按渲染节点的节点 id 查询顶点特征。
+        GeometryFeatureRef getFeatureByNodeId(uint32_t nodeId) const;
+
+        /// 按渲染线段序号查询边特征；无该线段时返回无效引用。
+        GeometryFeatureRef getFeatureByEdgeSegment(uint32_t segmentIndex) const;
+
+        /// 该节点是否渲染为几何顶点（即 ref 到 Vertex 特征）。
+        bool isVertexNode(uint32_t nodeIndex) const;
+
+        /// 线段端点对（nodeIdx），供渲染与拾取共用。
+        const Common::DynamicArray<uint32_t>& getEdgeSegmentIndices() const;
+
+        /// 是否存在可直接渲染的 B-Rep 边线段。
+        bool hasBrepEdges() const;
 
         /// 特征 -> 渲染单元（elemId）映射；特征级拾取/框选使用。发布后只读。
         const GE::GeometryElementMap& getElementMap() const;
@@ -94,6 +121,9 @@ namespace EgLab::Platform
         Common::String _sourcePath;                           // 构造后不可变
         Common::DynamicArray<GeometryFeatureRef> _elementFeatures; // 由 _geometryMutex 保护
         GE::GeometryElementMap _elementMap;                        // 由 _geometryMutex 保护
+        Common::DynamicArray<GeometryFeatureRef> _nodeFeatures;    // 由 _geometryMutex 保护
+        Common::DynamicArray<uint32_t> _edgeSegmentIndices;        // 由 _geometryMutex 保护
+        Common::DynamicArray<GeometryFeatureRef> _edgeSegmentFeatures; // 由 _geometryMutex 保护
     };
 
 } // namespace EgLab::Platform

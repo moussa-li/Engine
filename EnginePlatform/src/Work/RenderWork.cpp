@@ -829,9 +829,27 @@ namespace EgLab::Platform
 
     void RenderWork::setGeometryDisplayMode(uint32_t mode)
     {
+        if (_geometrySelector)
+        {
+            // Face outline and edges-only draw B-Rep edge segments, so line picks resolve to
+            // Edge features instead of the triangle wireframe's face elements.
+            _geometrySelector->setBrepEdgeLines(mode != 0);
+        }
         auto event = Common::makeShared<GeometryDisplayModeEvent>();
         event->mode = mode;
         queueRenderEvent(event);
+    }
+
+    void RenderWork::setGeometryVertexDisplay(bool visible)
+    {
+        auto event = Common::makeShared<GeometryVertexDisplayEvent>();
+        event->visible = visible;
+        queueRenderEvent(event);
+    }
+
+    bool RenderWork::getGeometryVertexDisplay() const
+    {
+        return _renderData.getGeometryVertexDisplay();
     }
 
     void RenderWork::setGeometryPickFilter(uint32_t mask)

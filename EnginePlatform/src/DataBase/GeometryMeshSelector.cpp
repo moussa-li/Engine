@@ -1,16 +1,76 @@
 #include "DataBase/GeometryMeshSelector.hpp"
 
 #include "Common/HashSet.hpp"
+#include "MeshEngine/MeshData/Mesh.hpp"
 #include "RenderEngine/Core/MeshToTriFace.hpp"
 
 namespace EgLab::Platform
 {
+    namespace
+    {
+        constexpr uint32_t INVALID_INDEX = 0xFFFFFFFFu;
+    }
+
+    void GeometryMeshSelector::processPick(const Common::SharedPtr<RE::RenderPrimitive>& primitive,
+                                           RE::IdxType pickedIndex)
+    {
+        const MeshRegistration* registration = findRegistration(primitive);
+        if (registration == nullptr || !registration->mesh)
+        {
+            RE::MeshSelector::processPick(primitive, pickedIndex);
+            return;
+        }
+
+        auto data = GeometryData::findByMesh(reinterpret_cast<uint64_t>(registration->mesh.get()));
+        if (!data)
+        {
+            RE::MeshSelector::processPick(primitive, pickedIndex);
+            return;
+        }
+
+        RE::PrimitivePickInfo info;
+        if (primitive == registration->nodePrimitive)
+        {
+            // Node order equals mesh node order, so the render index maps straight to the id.
+            const ME::IdType nodeId = static_cast<ME::IdType>(pickedIndex) + 1;
+            if (data->getFeatureByNodeId(nodeId).isValid())
+            {
+                const ME::Node& node = registration->mesh->getNodeById(nodeId);
+                info.kind = RE::PrimitivePickKind::Node;
+                info.entityId = nodeId;
+                info.position = RE::CoordType(node.x(), node.y(), node.z());
+            }
+        }
+        else if (primitive == registration->linePrimitive && isBrepEdgeLines())
+        {
+            // With B-Rep edge lines the primitive index is a segment index, so the translator
+            // locations do not describe the hit; faceIdx stays invalid on purpose to tell the
+            // consumers that entityId is a segment and not a mesh element.
+            if (data->getFeatureByEdgeSegment(pickedIndex).isValid())
+            {
+                info.kind = RE::PrimitivePickKind::Edge;
+                info.entityId = pickedIndex;
+            }
+        }
+        else
+        {
+            RE::MeshSelector::processPick(primitive, pickedIndex);
+            return;
+        }
+
+        if (info.kind == RE::PrimitivePickKind::None)
+        {
+            publishPick(info, nullptr);
+            return;
+        }
+        publishPick(info, registration->mesh.get());
+    }
+
     Common::DynamicArray<RE::IdxType> GeometryMeshSelector::getHighlightIndices(
         const Common::SharedPtr<RE::RenderPrimitive>& primitive, RE::IdxType pickedIndex) const
     {
         const MeshRegistration* registration = findRegistration(primitive);
-        if (registration == nullptr || !registration->translator ||
-            primitive != registration->facePrimitive)
+        if (registration == nullptr || !registration->translator)
         {
             return RE::MeshSelector::getHighlightIndices(primitive, pickedIndex);
         }
@@ -22,7 +82,23 @@ namespace EgLab::Platform
         }
 
         Common::DynamicArray<RE::IdxType> indices;
-        collectFeatureTriangles(*registration, hit.data->getElementMap(), hit.ref, indices);
+        if (hit.ref.getType() == GE::TopologyType::Edge)
+        {
+            collectFeatureSegments(*hit.data, hit.ref, indices);
+        }
+        else if (hit.ref.getType() == GE::TopologyType::Vertex)
+        {
+            // A vertex feature is visualised by exactly one node.
+            const RE::IdxType nodeIndex = hit.nodeId == INVALID_INDEX
+                                              ? pickedIndex
+                                              : static_cast<RE::IdxType>(hit.nodeId - 1);
+            indices.pushBack(nodeIndex);
+        }
+        else
+        {
+            collectFeatureTriangles(*registration, hit.data->getElementMap(), hit.ref, indices);
+        }
+
         if (indices.empty())
         {
             return RE::MeshSelector::getHighlightIndices(primitive, pickedIndex);
@@ -48,6 +124,16 @@ namespace EgLab::Platform
             GeometryData::findByMesh(reinterpret_cast<uint64_t>(resolution.mesh.get()));
         if (!data)
         {
+            return true;
+        }
+
+        const MeshRegistration* registration = findRegistration(primitive);
+        if (registration != nullptr && primitive == registration->linePrimitive &&
+            isBrepEdgeLines())
+        {
+            // B-Rep edge segments are not mesh elements; face hits, which stay pickable in
+            // every display mode, already resolve the rectangle to features.
+            resolution.elementIds.clear();
             return true;
         }
 
@@ -114,20 +200,34 @@ namespace EgLab::Platform
             return hit;
         }
 
-        const uint32_t elemId = elementIdOf(*registration, primitive, pickedIndex);
-        if (elemId == 0)
-        {
-            return hit;
-        }
-
         hit.data = GeometryData::findByMesh(reinterpret_cast<uint64_t>(registration->mesh.get()));
         if (!hit.data)
         {
             return hit;
         }
 
-        hit.ref = hit.data->resolveByMask(hit.data->getFeatureByElement(elemId),
-                                          getFeatureTypeMask());
+        const uint32_t mask = getFeatureTypeMask();
+        if (primitive == registration->nodePrimitive)
+        {
+            const ME::IdType nodeId = static_cast<ME::IdType>(pickedIndex) + 1;
+            hit.nodeId = nodeId;
+            hit.ref = hit.data->resolveByMask(hit.data->getFeatureByNodeId(nodeId), mask);
+        }
+        else if (primitive == registration->linePrimitive && isBrepEdgeLines())
+        {
+            hit.ref = hit.data->resolveByMask(hit.data->getFeatureByEdgeSegment(pickedIndex), mask);
+        }
+        else
+        {
+            const uint32_t elemId = elementIdOf(*registration, primitive, pickedIndex);
+            if (elemId == 0)
+            {
+                hit.data = nullptr;
+                return hit;
+            }
+            hit.ref = hit.data->resolveByMask(hit.data->getFeatureByElement(elemId), mask);
+        }
+
         if (!hit.ref.isValid())
         {
             hit.data = nullptr;
@@ -205,6 +305,42 @@ namespace EgLab::Platform
             {
                 outIndices.pushBack(static_cast<RE::IdxType>(index));
             }
+        }
+    }
+
+    void GeometryMeshSelector::collectFeatureSegments(const GeometryData& data,
+                                                      const GeometryFeatureRef& ref,
+                                                      Common::DynamicArray<RE::IdxType>& outIndices)
+    {
+        // Edge segments are laid out per feature, so the feature's segments form one range;
+        // scanning finds it without keeping a second index around.
+        const std::size_t segmentCount = data.getEdgeSegmentIndices().size() / 2;
+        const auto matches = [&data, &ref](std::size_t segment) {
+            return data.getFeatureByEdgeSegment(static_cast<uint32_t>(segment)) == ref;
+        };
+
+        std::size_t first = segmentCount;
+        for (std::size_t segment = 0; segment < segmentCount; ++segment)
+        {
+            if (matches(segment))
+            {
+                first = segment;
+                break;
+            }
+        }
+        if (first >= segmentCount)
+        {
+            return;
+        }
+
+        outIndices.reserve(segmentCount - first);
+        for (std::size_t segment = first; segment < segmentCount; ++segment)
+        {
+            if (!matches(segment))
+            {
+                break;
+            }
+            outIndices.pushBack(static_cast<RE::IdxType>(segment));
         }
     }
 

@@ -3,6 +3,7 @@
 #include <sstream>
 
 #include "Command/CommandManager.hpp"
+#include "Common/Log.hpp"
 #include "Core/IniManager.hpp"
 #include "Work/RenderWork.hpp"
 #include "imgui.h"
@@ -70,20 +71,43 @@ namespace EgLab::Platform
     void GeometryInfoPanel::syncPickRequest()
     {
         RE::PickManager& picks = RenderWork::instance().pickManager();
-        if (isShow() && _showHoverInfo && _facePickToken == RE::PickManager::kInvalidToken)
+        const bool wantsPicking = isShow() && _showHoverInfo;
+
+        // Geometry features live on three primitives: vertices on the node layer, B-Rep edges
+        // on the line layer and faces on the face layer, so all three kinds are requested.
+        syncPickToken(_nodePickToken, wantsPicking, RE::PickKind::Node);
+        syncPickToken(_edgePickToken, wantsPicking, RE::PickKind::Edge);
+        syncPickToken(_facePickToken, wantsPicking, RE::PickKind::Face);
+    }
+
+    void GeometryInfoPanel::syncPickToken(RE::PickManager::PickToken& token, bool wanted,
+                                          RE::PickKind kind)
+    {
+        RE::PickManager& picks = RenderWork::instance().pickManager();
+        if (wanted && token == RE::PickManager::kInvalidToken)
         {
-            _facePickToken = picks.acquire(RE::PickKind::Face, Common::String("GeometryInfoPanel"));
+            token = picks.acquire(kind, Common::String("GeometryInfoPanel"));
         }
-        else if ((!isShow() || !_showHoverInfo) && _facePickToken != RE::PickManager::kInvalidToken)
+        else if (!wanted && token != RE::PickManager::kInvalidToken)
         {
-            picks.release(_facePickToken);
-            _facePickToken = RE::PickManager::kInvalidToken;
+            picks.release(token);
+            token = RE::PickManager::kInvalidToken;
         }
     }
 
     void GeometryInfoPanel::releasePickRequest()
     {
         RE::PickManager& picks = RenderWork::instance().pickManager();
+        if (_nodePickToken != RE::PickManager::kInvalidToken)
+        {
+            picks.release(_nodePickToken);
+            _nodePickToken = RE::PickManager::kInvalidToken;
+        }
+        if (_edgePickToken != RE::PickManager::kInvalidToken)
+        {
+            picks.release(_edgePickToken);
+            _edgePickToken = RE::PickManager::kInvalidToken;
+        }
         if (_facePickToken != RE::PickManager::kInvalidToken)
         {
             picks.release(_facePickToken);
@@ -109,8 +133,11 @@ namespace EgLab::Platform
             _hoverStatus = Common::String();
 
             // A cleared result arrives when the cursor leaves every pickable primitive.
+            // Geometry features live on all three layers: vertex nodes, B-Rep edge segments
+            // and faces.
             if (pickedInfo.kind != PickedMeshKind::ElementFace &&
-                pickedInfo.kind != PickedMeshKind::ElementEdge)
+                pickedInfo.kind != PickedMeshKind::ElementEdge &&
+                pickedInfo.kind != PickedMeshKind::Node)
             {
                 continue;
             }
@@ -123,21 +150,53 @@ namespace EgLab::Platform
             }
 
             // Resolve the same feature the pick selector reported, so a hit on a
-            // filtered-out face shows the solid that stands in for it.
-            const GeometryFeatureRef feature =
-                geometryData->getFeatureByElement(pickedInfo.entityId);
-            const GeometryFeatureRef resolved =
-                geometryData->resolveByMask(feature, _pickFilter);
+            // filtered-out entity shows the feature that stands in for it.
+            const GeometryFeatureRef feature = featureOfPick(*geometryData, pickedInfo);
+            const GeometryFeatureRef resolved = geometryData->resolveByMask(feature, _pickFilter);
             _featureInfo = geometryData->getFeatureInfo(resolved);
             if (_featureInfo.ref.isValid())
             {
                 _featureInfo.elemId = pickedInfo.entityId;
                 _hasPickedInfo = true;
+
+                // Log only when the hovered feature changes, which keeps hovering cheap and
+                // makes pick problems diagnosable from the log.
+                if (_featureInfo.featureId != _lastLoggedFeatureId ||
+                    _featureInfo.ref != _lastLoggedRef)
+                {
+                    _lastLoggedFeatureId = _featureInfo.featureId;
+                    _lastLoggedRef = _featureInfo.ref;
+                    LOG(INFO) << "GeometryInfoPanel picked " << _featureInfo.name
+                              << " (type=" << featureTypeName(_featureInfo.ref.featureType)
+                              << ", picked kind=" << static_cast<uint32_t>(pickedInfo.kind)
+                              << ", entity=" << pickedInfo.entityId << ")";
+                }
             }
             else
             {
-                _hoverStatus = Common::String("picked face has no geometry feature");
+                _hoverStatus = Common::String("picked entity has no geometry feature");
             }
+        }
+    }
+
+    GeometryFeatureRef GeometryInfoPanel::featureOfPick(const GeometryData& data,
+                                                       const PickedMeshInfo& picked) const
+    {
+        switch (picked.kind)
+        {
+        case PickedMeshKind::Node:
+            // Vertex features are visualised by single mesh nodes.
+            return data.getFeatureByNodeId(picked.entityId);
+        case PickedMeshKind::ElementEdge:
+            if (picked.faceIndex == UINT32_MAX)
+            {
+                // B-Rep edge segments carry the segment index and no face index.
+                return data.getFeatureByEdgeSegment(picked.entityId);
+            }
+            return data.getFeatureByElement(picked.entityId);
+        case PickedMeshKind::ElementFace:
+        default:
+            return data.getFeatureByElement(picked.entityId);
         }
     }
 

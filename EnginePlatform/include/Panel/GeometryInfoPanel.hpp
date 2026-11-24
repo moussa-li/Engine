@@ -36,9 +36,12 @@ namespace EgLab::Platform
 
     private:
         void syncPickRequest();
+        void syncPickToken(RE::PickManager::PickToken& token, bool wanted, RE::PickKind kind);
         void releasePickRequest();
 
         void updatePickedInfo();
+        GeometryFeatureRef featureOfPick(const GeometryData& data,
+                                         const PickedMeshInfo& picked) const;
         void renderPickFilter();
         void applyPickFilter(uint32_t mask);
         static Common::String featureTypeName(uint32_t type);
@@ -52,6 +55,10 @@ namespace EgLab::Platform
         PickedMeshInfo _pickedInfo;
         GeometryFeatureInfo _featureInfo;
         Common::String _hoverStatus;
+        RE::PickManager::PickToken _nodePickToken{RE::PickManager::kInvalidToken};
+        RE::PickManager::PickToken _edgePickToken{RE::PickManager::kInvalidToken};
         RE::PickManager::PickToken _facePickToken{RE::PickManager::kInvalidToken};
+        uint32_t _lastLoggedFeatureId{UINT32_MAX};
+        GeometryFeatureRef _lastLoggedRef;
     };
 } // namespace EgLab::Platform

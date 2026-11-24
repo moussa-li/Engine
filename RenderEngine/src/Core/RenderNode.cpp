@@ -151,8 +151,13 @@ namespace EgLab::RE
         }
 
         GLint previousDepthFunction = GL_LESS;
+        GLfloat previousDepthRange[2] = {0.0f, 1.0f};
         glGetIntegerv(GL_DEPTH_FUNC, &previousDepthFunction);
+        glGetFloatv(GL_DEPTH_RANGE, previousDepthRange);
         glDepthFunc(GL_LEQUAL);
+        // Points ignore glPolygonOffset, so squeeze the near depth range: the highlighted
+        // vertex stays visible on top of the surface it lies on.
+        glDepthRange(0.0, 0.999f);
 
         shader->bind();
         shader->setUniform1f("u_PointSize", 10.0f);
@@ -162,6 +167,7 @@ namespace EgLab::RE
         _vertexArray->unBind();
         shader->unBind();
 
+        glDepthRange(previousDepthRange[0], previousDepthRange[1]);
         glDepthFunc(static_cast<GLenum>(previousDepthFunction));
     }
 

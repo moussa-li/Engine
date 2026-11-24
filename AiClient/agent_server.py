@@ -817,6 +817,9 @@ class NativeCommandBridge:
         if name == "SetGeometryPickFilter":
             mask = int(args.get("mask") or 0) & 0x0F
             return 200024, struct.pack("<I", 8) + struct.pack("<II", mask, 0)
+        if name == "SetGeometryVertexDisplay":
+            visible = 1 if args.get("visible") else 0
+            return 200025, struct.pack("<I", 8) + struct.pack("<II", visible, 0)
         return None
 
     def call(self, name, arguments):

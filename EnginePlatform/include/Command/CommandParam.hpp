@@ -127,6 +127,13 @@ namespace EgLab::Platform
         uint32_t reserved; // off 4; 恒为 0
     };
 
+    // SetGeometryVertexDisplay：几何顶点标记（只显示 ref 到 Vertex 特征的节点）显隐。
+    struct GeometryVertexDisplayParam
+    {
+        uint32_t visible;  // off 0; 0=隐藏 1=显示
+        uint32_t reserved; // off 4; 恒为 0
+    };
+
     // ===== SetCamera =====
     enum class CameraMode : uint32_t
     {
@@ -282,5 +289,9 @@ namespace EgLab::Platform
                   "GeometryPickFilterParam must be trivially copyable");
     static_assert(sizeof(GeometryPickFilterParam) == 8,
                   "GeometryPickFilterParam must be exactly 8 bytes");
+    static_assert(std::is_trivially_copyable<GeometryVertexDisplayParam>::value,
+                  "GeometryVertexDisplayParam must be trivially copyable");
+    static_assert(sizeof(GeometryVertexDisplayParam) == 8,
+                  "GeometryVertexDisplayParam must be exactly 8 bytes");
 
 } // namespace EgLab::Platform

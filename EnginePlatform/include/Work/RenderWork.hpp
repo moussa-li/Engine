@@ -180,6 +180,9 @@ namespace EgLab::Platform
         void setFaceShrink(float shrink);
         // Switches how imported B-Rep geometry is drawn: 0=mesh, 1=face outline, 2=edges only.
         void setGeometryDisplayMode(uint32_t mode);
+        // Shows or hides the B-Rep vertex markers of imported geometry models.
+        void setGeometryVertexDisplay(bool visible);
+        bool getGeometryVertexDisplay() const;
         // Restricts which B-Rep feature types may be picked/selected (GEOMETRY_FEATURE_MASK_*).
         void setGeometryPickFilter(uint32_t mask);
         uint32_t getGeometryPickFilter() const;

@@ -32,8 +32,10 @@ namespace EgLab::Platform
 
     private:
         void applyMode(GeometryDisplayMode mode);
+        void applyVertexDisplay(bool visible);
 
         GeometryDisplayMode _mode{GeometryDisplayMode::Mesh};
+        bool _showVertices{true};
         Common::String _status;
     };
 } // namespace EgLab::Platform

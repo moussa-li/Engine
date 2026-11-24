@@ -749,6 +749,67 @@ namespace EgLab::Platform
         return _geometryDisplayMode;
     }
 
+    void RenderDataManager::applyGeometryVertexDisplay(const GeometryVertexDisplayEvent& event)
+    {
+        if (_geometryShowVertices == event.visible)
+        {
+            return;
+        }
+        _geometryShowVertices = event.visible;
+
+        for (const auto& entry : _activeMeshes)
+        {
+            if (!isGeometryMesh(entry.mesh))
+            {
+                continue;
+            }
+            applyGeometryNodeVisibility(entry.mesh);
+        }
+    }
+
+    bool RenderDataManager::getGeometryVertexDisplay() const
+    {
+        return _geometryShowVertices;
+    }
+
+    void RenderDataManager::applyGeometryNodeVisibility(const Common::SharedPtr<ME::Mesh>& mesh)
+    {
+        MeshRenderEntry* entry = findActiveMeshEntry(mesh);
+        if (entry == nullptr)
+        {
+            return;
+        }
+        auto nodePrimitive = Common::dynamicSharedPtrCast<RE::RenderNode>(entry->packet.renderNode);
+        if (!nodePrimitive)
+        {
+            return;
+        }
+
+        // Geometry models render B-Rep vertices only: every other mesh node is a tessellation
+        // artefact of a face and must stay hidden, whatever the mesh node settings say.
+        auto data = GeometryData::findByMesh(reinterpret_cast<uint64_t>(mesh.get()));
+        Common::HashSet<RE::IdxType> hiddenIndices;
+        if (data)
+        {
+            const ME::IdxType nodeCount = mesh->getNodeNumber();
+            hiddenIndices.reserve(nodeCount);
+            for (ME::IdxType index = 0; index < nodeCount; ++index)
+            {
+                if (!data->isVertexNode(index))
+                {
+                    hiddenIndices.insert(index);
+                }
+            }
+        }
+        nodePrimitive->setHiddenNodes(hiddenIndices);
+
+        // Vertex markers follow the geometry display settings, not the mesh node switch.
+        nodePrimitive->setKindSwitchBypassed(true);
+        nodePrimitive->setVisible(_geometryShowVertices);
+        // B-Rep vertices are sparse, so a larger marker keeps them visible against the faces.
+        nodePrimitive->setPointSize(_nodePointSize > 6.0f ? _nodePointSize : 6.0f);
+    }
+
     void RenderDataManager::applyReferencePlaneSettings(const SetReferencePlaneParam& param)
     {
         if (!_renderer)
@@ -1533,6 +1594,14 @@ namespace EgLab::Platform
             return;
         }
 
+        if (isGeometryMesh(mesh))
+        {
+            // Geometry node rendering is owned by the geometry settings: only B-Rep vertices
+            // are shown, so the mesh node/element visibility must not override it.
+            applyGeometryNodeVisibility(mesh);
+            return;
+        }
+
         Common::HashSet<RE::IdxType> hiddenIndices;
         // Explicitly hidden nodes and nodes left without any visible element share one flag
         // buffer, because hiding an element must hide its nodes as well.
@@ -1682,6 +1751,29 @@ namespace EgLab::Platform
         newFace->setVisible(displayMode != GeometryDisplayMode::EdgeOnly);
         newFace->setPickable(true);
 
+        // Geometry primitives are driven by the geometry display settings only, so the mesh
+        // node/edge/face switches must not hide them.
+        if (isGeometryMesh(mesh))
+        {
+            newFace->setKindSwitchBypassed(true);
+            newLine->setKindSwitchBypassed(true);
+
+            auto data = GeometryData::findByMesh(reinterpret_cast<uint64_t>(mesh.get()));
+            if (data && data->hasBrepEdges() && displayMode != GeometryDisplayMode::Mesh)
+            {
+                // Draw the real B-Rep edges instead of the triangle patch outline so every
+                // line resolves to one Edge feature.
+                const auto& segments = data->getEdgeSegmentIndices();
+                Common::DynamicArray<RE::IdxType> indices;
+                indices.reserve(segments.size());
+                for (std::size_t index = 0; index < segments.size(); ++index)
+                {
+                    indices.pushBack(static_cast<RE::IdxType>(segments[index]));
+                }
+                newLine->setIndices(Common::move(indices));
+            }
+        }
+
         newFace->setColor(getMeshBaseColor(mesh));
         newFace->setFaceShrink(_faceShrink);
         newLine->setLineWidth(_lineWidth);
@@ -1700,6 +1792,11 @@ namespace EgLab::Platform
         {
             _meshSelector->registerMesh(target->mesh, target->translator, target->packet.renderNode,
                                         target->packet.renderLine, target->packet.renderFace);
+        }
+
+        if (isGeometryMesh(mesh))
+        {
+            applyGeometryNodeVisibility(mesh);
         }
 
         if (_locateMesh == mesh)

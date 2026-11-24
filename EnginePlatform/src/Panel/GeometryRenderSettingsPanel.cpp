@@ -9,6 +9,7 @@ namespace EgLab::Platform
     namespace
     {
         constexpr const char* GEOMETRY_DISPLAY_MODE_KEY = "geometry.displayMode";
+        constexpr const char* GEOMETRY_SHOW_VERTICES_KEY = "geometry.showVertices";
     } // namespace
 
     GeometryRenderSettingsPanel::GeometryRenderSettingsPanel()
@@ -19,6 +20,17 @@ namespace EgLab::Platform
         {
             _mode = static_cast<GeometryDisplayMode>(savedMode);
         }
+        _showVertices = ini.getInt(GEOMETRY_SHOW_VERTICES_KEY, 1) != 0;
+    }
+
+    void GeometryRenderSettingsPanel::applyVertexDisplay(bool visible)
+    {
+        _showVertices = visible;
+        IniManager::instance().setInt(GEOMETRY_SHOW_VERTICES_KEY, visible ? 1 : 0);
+
+        EventPacket packet;
+        packet.setData("visible", static_cast<uint32_t>(visible ? 1 : 0));
+        CommandManager::instance().call(EventId::SetGeometryVertexDisplay, Common::move(packet));
     }
 
     void GeometryRenderSettingsPanel::configureWindow() const
@@ -74,6 +86,18 @@ namespace EgLab::Platform
             ImGui::TextDisabled("%s", option.hint);
             ImGui::Spacing();
         }
+
+        ImGui::Separator();
+        if (ImGui::Checkbox("Show vertices", &_showVertices))
+        {
+            applyVertexDisplay(_showVertices);
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Only the nodes that reference a B-Rep vertex are drawn; this is "
+                              "independent of the mesh node rendering setting.");
+        }
+        ImGui::TextDisabled("Geometry models never draw their tessellation nodes.");
 
         ImGui::Separator();
         ImGui::Text("Current mode: %s",

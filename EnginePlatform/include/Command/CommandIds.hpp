@@ -35,6 +35,7 @@ namespace EgLab::Platform
         ListGeometryFeatures = 200022, // 列出 GeometryData 的几何特征
         SetGeometryRenderMode = 200023, // 设置几何渲染模式（网格/面外框/仅几何线）
         SetGeometryPickFilter = 200024, // 设置几何拾取/框选的特征类型过滤
+        SetGeometryVertexDisplay = 200025, // 显示/隐藏几何顶点标记
         CameraPan = 300001, // Camera = 3xxxxx
         CameraRotate = 300002,
         CameraRotateLocal = 300003,

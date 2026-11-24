@@ -103,6 +103,11 @@ namespace EgLab::RE
         const MeshRegistration* findRegistration(
             const Common::SharedPtr<RenderPrimitive>& primitive) const;
 
+        /// @brief Records a resolved pick as the current pick and forwards it to the callback.
+        /// @param info Resolved pick information.
+        /// @param mesh Mesh the pick belongs to; null clears the picked mesh.
+        void publishPick(const PrimitivePickInfo& info, const ME::Mesh* mesh);
+
     private:
         Common::DynamicArray<MeshRegistration> _registrations;
         PickInfoCallback _pickInfoCallback;

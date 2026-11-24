@@ -77,6 +77,76 @@ namespace EgLab::Platform
         return _elementMap;
     }
 
+    void GeometryData::setVertexEdgeFeatures(
+        const Common::DynamicArray<GeometryFeatureRef>& nodeFeatures,
+        const Common::DynamicArray<uint32_t>& edgeSegmentIndices,
+        const Common::DynamicArray<GeometryFeatureRef>& edgeSegmentFeatures)
+    {
+        std::lock_guard<std::mutex> lock(_geometryMutex);
+
+        _nodeFeatures.clear();
+        for (std::size_t index = 0; index < nodeFeatures.size(); ++index)
+        {
+            _nodeFeatures.pushBack(nodeFeatures[index]);
+        }
+
+        _edgeSegmentIndices.clear();
+        for (std::size_t index = 0; index < edgeSegmentIndices.size(); ++index)
+        {
+            _edgeSegmentIndices.pushBack(edgeSegmentIndices[index]);
+        }
+
+        _edgeSegmentFeatures.clear();
+        for (std::size_t index = 0; index < edgeSegmentFeatures.size(); ++index)
+        {
+            _edgeSegmentFeatures.pushBack(edgeSegmentFeatures[index]);
+        }
+    }
+
+    GeometryFeatureRef GeometryData::getFeatureByNodeIndex(uint32_t nodeIndex) const
+    {
+        std::lock_guard<std::mutex> lock(_geometryMutex);
+        if (nodeIndex >= _nodeFeatures.size())
+        {
+            return GeometryFeatureRef();
+        }
+        return _nodeFeatures[nodeIndex];
+    }
+
+    GeometryFeatureRef GeometryData::getFeatureByNodeId(uint32_t nodeId) const
+    {
+        if (nodeId == 0)
+        {
+            return GeometryFeatureRef();
+        }
+        return getFeatureByNodeIndex(nodeId - 1);
+    }
+
+    GeometryFeatureRef GeometryData::getFeatureByEdgeSegment(uint32_t segmentIndex) const
+    {
+        std::lock_guard<std::mutex> lock(_geometryMutex);
+        if (segmentIndex >= _edgeSegmentFeatures.size())
+        {
+            return GeometryFeatureRef();
+        }
+        return _edgeSegmentFeatures[segmentIndex];
+    }
+
+    bool GeometryData::isVertexNode(uint32_t nodeIndex) const
+    {
+        return getFeatureByNodeIndex(nodeIndex).isValid();
+    }
+
+    const Common::DynamicArray<uint32_t>& GeometryData::getEdgeSegmentIndices() const
+    {
+        return _edgeSegmentIndices;
+    }
+
+    bool GeometryData::hasBrepEdges() const
+    {
+        return _edgeSegmentIndices.size() >= 2 && !_edgeSegmentFeatures.empty();
+    }
+
     GeometryFeatureRef GeometryData::findParentFeature(const GeometryFeatureRef& ref,
                                                        GE::TopologyType parentType) const
     {

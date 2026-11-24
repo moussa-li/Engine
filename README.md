@@ -225,8 +225,8 @@ or through the `SetGeometryRenderMode` command:
 | Mode | Value | Appearance |
 | --- | --- | --- |
 | Mesh | 0 | Shaded faces with the dense triangle wireframe (the regular mesh look). |
-| Face outline | 1 | Shaded faces, but only each face's outer frame is drawn; normals are smoothed per mesh node so curved faces shade smoothly while B-Rep face boundaries stay sharp. |
-| Edges only | 2 | Faces are not rendered, but they stay pickable so hovering still resolves the B-Rep feature; only the geometry outline lines are drawn. |
+| Face outline | 1 | Shaded faces, but only the B-Rep edges are drawn; normals are smoothed per mesh node so curved faces shade smoothly while B-Rep face boundaries stay sharp. |
+| Edges only | 2 | Faces are not rendered, but they stay pickable so hovering still resolves the B-Rep feature; only the B-Rep edges are drawn. |
 
 The mode applies to imported geometry models only; regular meshes keep their existing appearance.
 `Geometry Render Settings` dispatches `SetGeometryRenderMode` through `CommandManager`, so AI
@@ -234,20 +234,46 @@ clients can drive the same modes.
 
 #### Geometry picking and selection
 
-Geometry models are picked at B-Rep feature level, never at triangle level:
+Geometry models are picked at B-Rep feature level, never at triangle level. One `ME::Mesh`
+carries three topological layers that share the same node array, so every layer is drawn and
+picked with mesh node indices:
+
+| Layer | Render primitive | Feature |
+| --- | --- | --- |
+| Faces | `RenderFace` (Tri3 elements) | `Face`, promoted to `Solid` when faces are filtered out |
+| Edges | `RenderLine` (polyline segments from the B-Rep edges) | `Edge` |
+| Vertices | `RenderNode` (only nodes that reference a `Vertex`) | `Vertex` |
+
+`GeometryInfoPanel` reads whichever layer was hit and shows the feature (type, length, area,
+volume, bbox, center, parents/children). Faces and edges are shown with `Face outline` and
+`Edges only`; the `Mesh` mode still draws the dense triangle wireframe, whose line hits resolve
+to the owning face.
 
 * A hit on a tessellated triangle is resolved to the feature that owns it (`GeometryElementMap`
   maps `elemId → FeatureRef` and back), and **all** triangles of that feature are highlighted, so
-  hovering a face highlights the whole face.
+  hovering a face highlights the whole face. An edge hit highlights every segment of that edge,
+  a vertex hit the single vertex marker.
 * `Geometry Info` exposes the pick filter (persisted as `geometry.pickFilter`, dispatched as the
   `SetGeometryPickFilter` command, `mask` bit0=Vertex bit1=Edge bit2=Face bit3=Solid). A hit whose
   feature type is disabled is rejected, so the cursor falls through to whatever is behind it. With
   `Face` disabled and `Solid` enabled, a face hit is promoted to the solid that contains it and the
   whole solid is highlighted and reported.
 * Highlights are depth-offset so they stay visible on the surface they duplicate: face highlights
-  use `glPolygonOffset(-1, -4)`, line highlights squeeze the near depth range.
+  use `glPolygonOffset(-1, -4)`, while edge and vertex highlights squeeze the near depth range
+  (`glDepthRange(0, 0.999)`) because lines and points ignore the polygon offset.
 * Rectangle selection expands every covered triangle to its complete feature and honours the same
   filter, so a box selected across a face always selects whole faces.
+
+#### Geometry mesh vs. regular mesh
+
+Imported geometry is *not* a regular mesh, and the two are kept apart:
+
+* Geometry primitives bypass the global node/edge/face render switches, so `Mesh Render Settings`
+  can no longer hide geometry faces, edges or vertices.
+* Geometry models never draw their tessellation nodes: only nodes that reference a `Vertex`
+  feature are rendered, controlled by the `Show vertices` checkbox in
+  `Geometry Render Settings` (persisted as `geometry.showVertices`, dispatched as the
+  `SetGeometryVertexDisplay` command).
 
 ### Add render primitives to a scene
 

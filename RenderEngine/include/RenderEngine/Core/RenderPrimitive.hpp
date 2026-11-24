@@ -385,8 +385,23 @@ namespace EgLab::RE
             return _pickable;
         }
 
+        /// @brief Lets the owner control the primitive independently of the renderer switches.
+        /// @details Used by imported geometry models, whose display is driven by the geometry
+        ///          render settings rather than the global node/edge/face switches.
+        void setKindSwitchBypassed(bool bypassed)
+        {
+            _kindSwitchBypassed = bypassed;
+        }
+
+        /// @brief Reports whether the renderer's per-kind switches are ignored.
+        bool isKindSwitchBypassed() const
+        {
+            return _kindSwitchBypassed;
+        }
+
     private:
         bool _visible{true};
         bool _pickable{true};
+        bool _kindSwitchBypassed{false};
     };
 } // namespace EgLab::RE

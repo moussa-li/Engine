@@ -41,6 +41,28 @@ add_executable(geometry_test
     test_main.cpp
 )
 
+# Converter test: links the few EnginePlatform data sources it needs instead of the whole
+# platform target (which pulls in the renderer and the data tree).
+add_executable(geometry_platform_test
+    test_geometry_platform.cpp
+    ${CMAKE_SOURCE_DIR}/EnginePlatform/src/DataBase/GeometryMeshConverter.cpp
+    test_main.cpp
+)
+
+target_include_directories(geometry_platform_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/3rd/gtest/googletest/include
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/EnginePlatform/include
+)
+
+target_link_libraries(geometry_platform_test PRIVATE
+    gtest
+    gtest_main
+    Common
+    MeshEngine
+    GeometryEngine
+)
+
 if(WIN32)
     add_executable(command_cross_process_test
         test_command_cross_process.cpp
@@ -137,3 +159,5 @@ add_test(NAME engine_tests COMMAND engine_tests)
 add_test(NAME common_test COMMAND common_test)
 
 add_test(NAME geometry_test COMMAND geometry_test)
+
+add_test(NAME geometry_platform_test COMMAND geometry_platform_test)

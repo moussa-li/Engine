@@ -631,6 +631,24 @@
         "required": ["mask"],
         "additionalProperties": false
       }
+    },
+    {
+      "name": "SetGeometryVertexDisplay",
+      "eventId": 200025,
+      "category": "Geometry",
+      "summary": "显示/隐藏几何顶点标记",
+      "description": "控制导入的 B-Rep 几何模型是否渲染几何顶点。只有 ref 到 Vertex 特征的网格节点会被渲染，且受几何渲染设置控制而非网格节点开关。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "visible": {
+            "type": "boolean",
+            "description": "true=显示几何顶点，false=隐藏。"
+          }
+        },
+        "required": ["visible"],
+        "additionalProperties": false
+      }
     }
   ],
   "excluded": [

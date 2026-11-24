@@ -138,6 +138,8 @@ namespace EgLab::Platform
                                              static_cast<int>(GEOMETRY_FEATURE_MASK_ALL))) &
             GEOMETRY_FEATURE_MASK_ALL);
 
+        RenderWork::instance().setGeometryVertexDisplay(ini.getInt("geometry.showVertices", 1) != 0);
+
         // 周期性读取注册表中的活动进程 PID，供主菜单实时高亮当前进程。
         const int pidIntervalMs = ini.getInt("registry.pidIntervalMs", 300);
         PidRegistry::instance().startMonitoring(

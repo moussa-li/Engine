@@ -6,6 +6,7 @@
 #include "Common/Return.hpp"
 #include "Common/SharedPtr.hpp"
 #include "DataBase/GeometryData.hpp"
+#include "DataBase/GeometryMeshBuild.hpp"
 
 namespace EgLab::GE
 {
@@ -20,14 +21,12 @@ namespace EgLab::ME
 namespace EgLab::Platform
 {
     /// Converts a GeometryEngine document into a renderable ME::Mesh (Tri3) plus the
-    /// elemId -> feature table consumed by GeometryData.
+    /// feature tables consumed by GeometryData: face elements, edge segments and vertices.
     class GeometryMeshConverter
     {
     public:
         static Common::Return convert(const Common::SharedPtr<GE::GeometryDocument>& document,
-                                      Common::SharedPtr<ME::Mesh>& outMesh,
-                                      Common::DynamicArray<GeometryFeatureRef>& outElementFeatures,
-                                      uint32_t& outTriangleCount);
+                                      GeometryMeshBuild& outBuild);
     };
 
 } // namespace EgLab::Platform

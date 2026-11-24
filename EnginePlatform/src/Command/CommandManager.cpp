@@ -26,6 +26,7 @@
 #include "Command/ListGeometryFeaturesCmd.hpp"
 #include "Command/SetGeometryRenderModeCmd.hpp"
 #include "Command/SetGeometryPickFilterCmd.hpp"
+#include "Command/SetGeometryVertexDisplayCmd.hpp"
 #include "Command/LocateElementsCmd.hpp"
 #include "Command/ElementsVisibilityCmd.hpp"
 #include "Command/NodeVisibilityCmd.hpp"
@@ -254,6 +255,12 @@ namespace EgLab::Platform
                 return Common::makeShared<SetGeometryPickFilterCmd>(param);
             };
 
+            _creator[EventId::SetGeometryVertexDisplay] = [](const PacketPOD& pod) {
+                GeometryVertexDisplayParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<SetGeometryVertexDisplayCmd>(param);
+            };
+
             _creator[EventId::Highlight] = [](const PacketPOD& pod) {
                 HighlightParam param{};
                 std::memcpy(&param, pod.data, sizeof(param));
@@ -388,6 +395,18 @@ namespace EgLab::Platform
                 if (packet.contains("mask"))
                 {
                     param.mask = packet.getData<uint32_t>("mask");
+                }
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
+            _packetCreator[EventId::SetGeometryVertexDisplay] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                GeometryVertexDisplayParam param{};
+                if (packet.contains("visible"))
+                {
+                    param.visible = packet.getData<uint32_t>("visible");
                 }
                 pod.dataSize = sizeof(param);
                 std::memcpy(pod.data, &param, sizeof(param));
@@ -605,6 +624,7 @@ namespace EgLab::Platform
             _subscriber.subscrib((uint32_t)EventId::ListGeometryFeatures);
             _subscriber.subscrib((uint32_t)EventId::SetGeometryRenderMode);
             _subscriber.subscrib((uint32_t)EventId::SetGeometryPickFilter);
+            _subscriber.subscrib((uint32_t)EventId::SetGeometryVertexDisplay);
 
             if (_isRunning == true) return;
             _isRunning = true;

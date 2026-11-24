@@ -122,24 +122,24 @@ namespace EgLab::Platform
             return Common::Return::Succeed;
         }
 
-        // 转换为渲染网格（Tri3）与 elemId -> feature 映射。
-        Common::SharedPtr<ME::Mesh> mesh;
-        Common::DynamicArray<GeometryFeatureRef> elementFeatures;
-        uint32_t triangleCount = 0;
-        if (GeometryMeshConverter::convert(document, mesh, elementFeatures, triangleCount) !=
-            Common::Return::Succeed)
+        // 转换为渲染网格（Tri3）+ 面/边/顶点三层特征映射。
+        GeometryMeshBuild build;
+        if (GeometryMeshConverter::convert(document, build) != Common::Return::Succeed)
         {
             LOG(ERROR) << "ImportGeometryCmd: no renderable triangles in the model";
             queryService.publishGeometryImport(makeImportResult(3));
             return Common::Return::Succeed;
         }
+        const uint32_t triangleCount = build.triangleCount;
 
         // 创建 GeometryData 数据节点。
         const Common::String nodeName(path.filename().string().c_str());
         auto& factory = DataNodeFactory::instance();
         auto geometryData =
-            factory.create<GeometryData>(nodeName, mesh, document, filePath);
-        geometryData->setElementFeatures(elementFeatures);
+            factory.create<GeometryData>(nodeName, build.mesh, document, filePath);
+        geometryData->setElementFeatures(build.elementFeatures);
+        geometryData->setVertexEdgeFeatures(build.nodeFeatures, build.edgeSegmentIndices,
+                                            build.edgeSegmentFeatures);
 
         if (Context::instance().addDataNode(geometryData) != Common::Return::Succeed)
         {
@@ -148,7 +148,7 @@ namespace EgLab::Platform
             return Common::Return::Succeed;
         }
 
-        RenderWork::instance().onUpdateMesh(mesh);
+        RenderWork::instance().onUpdateMesh(build.mesh);
 
         GeometryImportResult result = makeImportResult(0);
         result.dataNodeId = geometryData->getId();
@@ -161,11 +161,13 @@ namespace EgLab::Platform
         result.solidCount =
             static_cast<uint32_t>(document->getFeatureCount(GE::TopologyType::Solid));
         result.triangleCount = triangleCount;
-        fillMeshBBox(*mesh, result.bboxMin, result.bboxMax);
+        fillMeshBBox(*build.mesh, result.bboxMin, result.bboxMax);
 
         queryService.publishGeometryImport(result);
         LOG(INFO) << "ImportGeometryCmd: imported " << nodeName << " (faces=" << result.faceCount
-                  << ", triangles=" << result.triangleCount << ")";
+                  << ", triangles=" << result.triangleCount << ", edges=" << result.edgeCount
+                  << ", edge segments=" << build.edgeSegmentCount
+                  << ", vertices=" << result.vertexCount << ")";
         return Common::Return::Succeed;
     }
 

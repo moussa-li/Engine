@@ -236,6 +236,10 @@ namespace EgLab::RE
     bool Renderer::isPrimitiveKindEnabled(
         const Common::SharedPtr<RenderPrimitive> &primitive) const
     {
+        if (primitive->isKindSwitchBypassed())
+        {
+            return true;
+        }
         if (dynamic_cast<const RenderNode *>(primitive.get()) != nullptr)
         {
             return _renderNodesEnabled;

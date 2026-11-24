@@ -87,6 +87,12 @@ namespace EgLab::Platform
              "Bit mask of pickable B-Rep feature types: bit0=Vertex bit1=Edge bit2=Face bit3=Solid (15 = all)"},
         };
 
+        // ===== GeometryVertexDisplayParam =====
+        const ParamFieldDesc kGeometryVertexDisplayFields[] = {
+            {"visible", "Show Vertices", ParamFieldType::UInt32, 0,
+             "0 = hide the B-Rep vertex markers, 1 = show them"},
+        };
+
         // ===== DeleteMeshParam =====
         const ParamFieldDesc kDeleteMeshFields[] = {
             {"dataNodeId", "Data Node Id", ParamFieldType::UInt64, 0,
@@ -188,6 +194,10 @@ namespace EgLab::Platform
             {EventId::SetGeometryPickFilter, "SetGeometryPickFilter", "Set Geometry Pick Filter",
              "Geometry", true, sizeof(GeometryPickFilterParam), kGeometryPickFilterFields,
              sizeof(kGeometryPickFilterFields) / sizeof(kGeometryPickFilterFields[0])},
+            {EventId::SetGeometryVertexDisplay, "SetGeometryVertexDisplay",
+             "Set Geometry Vertex Display", "Geometry", true, sizeof(GeometryVertexDisplayParam),
+             kGeometryVertexDisplayFields,
+             sizeof(kGeometryVertexDisplayFields) / sizeof(kGeometryVertexDisplayFields[0])},
             {EventId::CameraPan, "CameraPan", "Pan Camera", "Camera", false, 0, nullptr, 0, true,
              true},
             {EventId::CameraRotate, "CameraRotate", "Rotate Camera", "Camera", false, 0, nullptr,

@@ -105,6 +105,12 @@ namespace EgLab::Platform
         /// Returns the geometry display mode currently applied to the scene.
         GeometryDisplayMode getGeometryDisplayMode() const;
 
+        /// Shows or hides the B-Rep vertex markers of every geometry model.
+        void applyGeometryVertexDisplay(const GeometryVertexDisplayEvent& event);
+
+        /// Returns whether geometry vertex markers are shown.
+        bool getGeometryVertexDisplay() const;
+
         // ---- pick phase: query the scene and expose the highlight as a scene primitive ----
         void applyPick(const PickEvent& event);
 
@@ -142,6 +148,9 @@ namespace EgLab::Platform
         };
 
         Common::Return uploadRenderPacket(const MeshRenderEntry& entry);
+        /// Shows or hides the B-Rep vertex markers of every geometry model.
+        void applyGeometryNodeVisibility(const Common::SharedPtr<ME::Mesh>& mesh);
+
         void updateMeshHighlight();
         void clearPickHighlight();
         void notifyPickCleared();
@@ -211,6 +220,7 @@ namespace EgLab::Platform
         float _lineWidth{2.0f};
         float _faceShrink{0.0f};
         GeometryDisplayMode _geometryDisplayMode{GeometryDisplayMode::Mesh};
+        bool _geometryShowVertices{true};
 
         RE::CoordType _highlightViewPosition;
         RE::CoordType _highlightViewFront;

@@ -41,7 +41,23 @@ namespace EgLab::Platform
             return _featureTypeMask.load();
         }
 
-        /// @brief Highlight indices of the complete feature that owns the picked triangle.
+        /// Declares whether the geometry line primitives currently draw B-Rep edge segments
+        /// instead of the triangle wireframe. Set by the geometry display mode.
+        void setBrepEdgeLines(bool enabled)
+        {
+            _brepEdgeLines.store(enabled);
+        }
+
+        bool isBrepEdgeLines() const
+        {
+            return _brepEdgeLines.load();
+        }
+
+        /// @brief Resolves the pick into a feature and publishes it.
+        void processPick(const Common::SharedPtr<RE::RenderPrimitive>& primitive,
+                         RE::IdxType pickedIndex) override;
+
+        /// @brief Highlight indices of the complete feature that owns the picked entity.
         Common::DynamicArray<RE::IdxType> getHighlightIndices(
             const Common::SharedPtr<RE::RenderPrimitive>& primitive,
             RE::IdxType pickedIndex) const override;
@@ -61,6 +77,8 @@ namespace EgLab::Platform
         {
             Common::SharedPtr<GeometryData> data;
             GeometryFeatureRef ref;
+            /// Mesh node id of a picked vertex, or UINT32_MAX.
+            uint32_t nodeId{UINT32_MAX};
 
             bool isValid() const
             {
@@ -83,7 +101,12 @@ namespace EgLab::Platform
                                             const GeometryFeatureRef& ref,
                                             Common::DynamicArray<RE::IdxType>& outIndices);
 
+        /// Appends the line segments of an edge feature to outIndices, ascending.
+        static void collectFeatureSegments(const GeometryData& data, const GeometryFeatureRef& ref,
+                                           Common::DynamicArray<RE::IdxType>& outIndices);
+
         std::atomic<uint32_t> _featureTypeMask{GEOMETRY_FEATURE_MASK_ALL};
+        std::atomic<bool> _brepEdgeLines{false};
     };
 
 } // namespace EgLab::Platform
