@@ -1,17 +1,21 @@
 #include <cstddef>
+#include <cstdlib>
 
 #include <gtest/gtest.h>
 
 #include "Common/DynamicArray.hpp"
 #include "Common/Return.hpp"
 #include "DataBase/GeometryMeshConverter.hpp"
+#include "GeometryEngine/Common/GeometryImportReport.hpp"
 #include "GeometryEngine/Common/GeometryTypes.hpp"
 #include "GeometryEngine/Geometry/Geometry.hpp"
 #include "GeometryEngine/Geometry/Tessellation.hpp"
+#include "GeometryEngine/IO/GeometryImporter.hpp"
 #include "GeometryEngine/Model/GeometryDocument.hpp"
 #include "GeometryEngine/Topology/TopologyType.hpp"
 #include "MeshEngine/MeshData/Element.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
+#include "MeshEngine/MeshData/Node.hpp"
 
 namespace
 {
@@ -57,6 +61,62 @@ namespace
                                           vertex) == Common::Return::Succeed);
     }
 
+    /// Every edge segment must join two consecutive nodes of that edge's own polyline. This
+    /// catches node-index vs node-id mix-ups, which shift all segments onto foreign nodes.
+    void expectEdgeSegmentsMatchPolylines(const GE::GeometryDocument& document,
+                                          const Platform::GeometryMeshBuild& build)
+    {
+        const std::size_t edgeCount = document.getFeatureCount(GE::TopologyType::Edge);
+        std::size_t checkedSegments = 0;
+        for (std::size_t edgeIndex = 0; edgeIndex < edgeCount; ++edgeIndex)
+        {
+            const GE::Geometry* geometry =
+                document.getGeometry(GE::TopologyType::Edge, static_cast<GE::IdxType>(edgeIndex));
+            if (geometry == nullptr)
+            {
+                continue;
+            }
+            const GE::Tessellation& tessellation = geometry->getTessellation();
+            const auto& nodes = tessellation.getNodes();
+            if (nodes.size() < 2)
+            {
+                continue;
+            }
+
+            const GE::FeatureRef ref(GE::TopologyType::Edge, static_cast<GE::IdxType>(edgeIndex));
+            std::size_t segmentInEdge = 0;
+            for (std::size_t segment = 0; segment < build.edgeSegmentFeatures.size(); ++segment)
+            {
+                if (build.edgeSegmentFeatures[segment] != ref)
+                {
+                    continue;
+                }
+                ASSERT_LT(segmentInEdge + 1, nodes.size())
+                    << "edge " << edgeIndex << " has more segments than polyline nodes";
+                const std::uint32_t firstIndex = build.edgeSegmentIndices[segment * 2];
+                const std::uint32_t secondIndex = build.edgeSegmentIndices[segment * 2 + 1];
+                ASSERT_LT(firstIndex, build.mesh->getNodeNumber());
+                ASSERT_LT(secondIndex, build.mesh->getNodeNumber());
+
+                const ME::Node& firstNode = build.mesh->getNodeById(firstIndex + 1);
+                const ME::Node& secondNode = build.mesh->getNodeById(secondIndex + 1);
+                const GE::Vec3& expectedFirst = nodes[segmentInEdge];
+                const GE::Vec3& expectedSecond = nodes[segmentInEdge + 1];
+                EXPECT_NEAR(firstNode.x(), expectedFirst[0], 1e-9);
+                EXPECT_NEAR(firstNode.y(), expectedFirst[1], 1e-9);
+                EXPECT_NEAR(firstNode.z(), expectedFirst[2], 1e-9);
+                EXPECT_NEAR(secondNode.x(), expectedSecond[0], 1e-9);
+                EXPECT_NEAR(secondNode.y(), expectedSecond[1], 1e-9);
+                EXPECT_NEAR(secondNode.z(), expectedSecond[2], 1e-9);
+                ++segmentInEdge;
+                ++checkedSegments;
+            }
+            EXPECT_EQ(segmentInEdge + 1, nodes.size())
+                << "edge " << edgeIndex << " segments do not cover its polyline";
+        }
+        EXPECT_GT(checkedSegments, 0u);
+    }
+
     TEST(GeometryMeshConverter, emitsFaceEdgeAndVertexFeatures)
     {
         auto document = Common::makeShared<GE::GeometryDocument>();
@@ -76,7 +136,8 @@ namespace
         EXPECT_EQ(build.elementFeatures[0].featureType,
                   static_cast<uint32_t>(GE::TopologyType::Face));
 
-        // Edge layer: the 3-point polyline becomes two segments of the same edge.
+        // Edge layer: the 3-point polyline becomes two segments of the same edge, addressed by
+        // 0-based mesh node index (render primitives do not use mesh node ids).
         ASSERT_EQ(build.edgeSegmentCount, 2u);
         ASSERT_EQ(build.edgeSegmentIndices.size(), 4u);
         ASSERT_EQ(build.edgeSegmentFeatures.size(), 2u);
@@ -91,6 +152,20 @@ namespace
         }
         // Consecutive segments share the middle node of the polyline.
         EXPECT_EQ(build.edgeSegmentIndices[1], build.edgeSegmentIndices[2]);
+
+        // The segment indices must address the edge nodes, not the face nodes: verify the
+        // positions they resolve to are the sampled polyline points.
+        for (std::size_t segment = 0; segment < build.edgeSegmentCount; ++segment)
+        {
+            const std::uint32_t first = build.edgeSegmentIndices[segment * 2];
+            const std::uint32_t second = build.edgeSegmentIndices[segment * 2 + 1];
+            const ME::Node& firstNode = build.mesh->getNodeById(first + 1);
+            const ME::Node& secondNode = build.mesh->getNodeById(second + 1);
+            EXPECT_NEAR(firstNode.x(), 0.5 * static_cast<double>(segment), 1e-9);
+            EXPECT_NEAR(firstNode.y(), 0.0, 1e-9);
+            EXPECT_NEAR(secondNode.x(), 0.5 * static_cast<double>(segment + 1), 1e-9);
+            EXPECT_NEAR(secondNode.y(), 0.0, 1e-9);
+        }
 
         // Vertex layer: exactly one node references the vertex feature; face and edge nodes
         // must stay un-referenced so only B-Rep vertices are ever rendered as markers.
@@ -118,6 +193,44 @@ namespace
         // Triangles reference the first three nodes only, and every element is a Tri3.
         ASSERT_EQ(build.mesh->getElemNumber(), 1u);
         EXPECT_EQ(build.mesh->getElemById(1).getType(), ME::ElemType::Tri3);
+
+        expectEdgeSegmentsMatchPolylines(*document, build);
+    }
+
+    /// Imports the file named by EGLAB_GEOMETRY_TEST_STEP and validates every edge segment
+    /// against its edge's tessellated polyline.
+    TEST(GeometryMeshConverter, importedEdgeSegmentsMatchPolylines)
+    {
+        const char* path = std::getenv("EGLAB_GEOMETRY_TEST_STEP");
+        if (path == nullptr || path[0] == '\0')
+        {
+            GTEST_SKIP() << "set EGLAB_GEOMETRY_TEST_STEP to a STEP or BREP file to run this test";
+        }
+
+        auto document = Common::makeShared<GE::GeometryDocument>();
+        GE::GeometryImporter importer(Common::String("OCCT"));
+        const GE::GeometryImportReport report =
+            importer.importFile(Common::String(path), *document);
+        ASSERT_TRUE(report.isSucceed()) << report.getMessage().c_str();
+
+        Platform::GeometryMeshBuild build;
+        ASSERT_TRUE(Platform::GeometryMeshConverter::convert(document, build) ==
+                    Common::Return::Succeed);
+
+        EXPECT_GT(build.edgeSegmentCount, 0u);
+        EXPECT_EQ(build.edgeSegmentIndices.size(), build.edgeSegmentCount * 2u);
+        expectEdgeSegmentsMatchPolylines(*document, build);
+
+        // Vertex markers must never collide with edge or face nodes.
+        std::size_t vertexNodes = 0;
+        for (std::size_t index = 0; index < build.nodeFeatures.size(); ++index)
+        {
+            if (build.nodeFeatures[index].isValid())
+            {
+                ++vertexNodes;
+            }
+        }
+        EXPECT_EQ(vertexNodes, build.vertexCount);
     }
 
 } // namespace

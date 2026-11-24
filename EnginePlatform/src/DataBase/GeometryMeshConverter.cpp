@@ -154,13 +154,14 @@ namespace EgLab::Platform
             ref.featureType = static_cast<uint32_t>(GE::TopologyType::Edge);
             ref.featureIndex = static_cast<uint32_t>(edgeIndex);
 
-            // Consecutive polyline pairs become pickable segments, laid out contiguously per
-            // edge so a feature lookup is one range of segments.
+            // Render primitives address nodes by 0-based index, while mesh node ids start at 1.
+            const std::uint32_t edgeNodeBaseIndex = static_cast<std::uint32_t>(edgeNodeBase - 1);
             for (std::size_t node = 0; node + 1 < nodes.size(); ++node)
             {
-                outBuild.edgeSegmentIndices.pushBack(static_cast<uint32_t>(edgeNodeBase + node));
+                outBuild.edgeSegmentIndices.pushBack(edgeNodeBaseIndex +
+                                                     static_cast<std::uint32_t>(node));
                 outBuild.edgeSegmentIndices.pushBack(
-                    static_cast<uint32_t>(edgeNodeBase + node + 1));
+                    edgeNodeBaseIndex + static_cast<std::uint32_t>(node) + 1);
                 outBuild.edgeSegmentFeatures.pushBack(ref);
                 ++outBuild.edgeSegmentCount;
             }
