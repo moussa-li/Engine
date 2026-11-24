@@ -76,10 +76,14 @@ namespace EgLab::Platform
         double z{0.0};
         uint32_t topologyNodeCount{0};
         uint32_t topologyNodeIds[20]{};
+        // 拾取到的 ME::Mesh 对象指针值，用于反查 GeometryData；0 表示无。
+        uint64_t meshId{0};
     };
 
     static_assert(std::is_trivially_copyable<PickedMeshInfo>::value,
                   "PickedMeshInfo must be trivially copyable");
+    static_assert(sizeof(PickedMeshInfo) == 136,
+                  "PickedMeshInfo must be exactly 136 bytes");
 
     /// Accepts rendering requests, forwards them to their RenderEvent handlers and runs the
     /// render loop. RenderWork does not own or manage render data; all render state lives in

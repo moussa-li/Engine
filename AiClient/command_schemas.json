@@ -9,7 +9,7 @@
       "eventId": 100001,
       "category": "Panel",
       "summary": "打开 / 切换到指定 UI 面板",
-      "description": "显示并切换到指定的界面面板。面板是渲染、相机、网格数据、设置等能力的入口，打开面板相当于进行视图/工作区切换。常用面板：MeshImport（网格导入）、CameraSetting（相机设置）、DataTree（数据树）、MeshRenderSettings（网格渲染设置）、LightSetting（光照设置）。",
+      "description": "显示并切换到指定的界面面板。面板是渲染、相机、网格数据、设置等能力的入口，打开面板相当于进行视图/工作区切换。常用面板：MeshImport（网格导入）、CameraSetting（相机设置）、DataTree（数据树）、MeshRenderSettings（网格渲染设置）、GeometryInfo（几何特征信息）、LightSetting（光照设置）。",
       "parameters": {
         "type": "object",
         "properties": {
@@ -22,6 +22,7 @@
               "BackGroundSetting",
               "DataTree",
               "ElementVisibility",
+              "GeometryInfo",
               "HEMesh",
               "HEMeshInspector",
               "MeshRenderSettings",
@@ -55,6 +56,7 @@
               "BackGroundSetting",
               "DataTree",
               "ElementVisibility",
+              "GeometryInfo",
               "HEMesh",
               "HEMeshInspector",
               "MeshRenderSettings",
@@ -483,6 +485,110 @@
             "description": "XY 平面（Z 法向）的 RGBA，逗号分隔，取值 0..1。"
           }
         },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "ImportGeometry",
+      "eventId": 200020,
+      "category": "Geometry",
+      "summary": "从 STEP/BREP 文件导入 B-Rep 几何（同步返回数据节点 ID）",
+      "description": "通过几何内核（默认 OCCT，可用 kernelName 覆盖）导入 .stp/.step/.brp/.brep 文件，转换为渲染网格并作为 GeometryData 数据节点加入场景，同步返回节点 ID 与顶点/边/面/体/三角形数量。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filePath": {
+            "type": "string",
+            "description": "几何文件的绝对路径，例如 \"C:/path/to/model.stp\" 或 \".brep\"。",
+            "maxLength": 511
+          },
+          "kernelName": {
+            "type": "string",
+            "description": "几何内核名（可选），空串使用默认内核（OCCT/Null）。",
+            "maxLength": 63
+          }
+        },
+        "required": ["filePath"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "GetGeometryInfo",
+      "eventId": 200021,
+      "category": "Geometry",
+      "summary": "查询单个几何特征信息（同步返回）",
+      "description": "同步返回一个几何特征（顶点/边/面/体）的类型、名称、边长/面积/体积、包围盒中心与范围、父子数。优先按 elemId（渲染三角形单元 id）反查特征；否则按 featureType + featureId（类型内索引）查询。featureType: 0=Vertex 1=Edge 2=Face 3=Solid。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dataNodeId": {
+            "type": "integer",
+            "description": "GeometryData 数据节点 ID；0 表示按 name 查找。",
+            "minimum": 0,
+            "maximum": 18446744073709551615
+          },
+          "name": {
+            "type": "string",
+            "description": "几何模型名称（dataNodeId=0 时使用）。",
+            "maxLength": 63
+          },
+          "featureType": {
+            "type": "integer",
+            "description": "特征类型：0=Vertex 1=Edge 2=Face 3=Solid。缺省时按 elemId 反查。",
+            "enum": [0, 1, 2, 3]
+          },
+          "featureId": {
+            "type": "integer",
+            "description": "特征在其类型内的索引（从 0 开始）。",
+            "minimum": 0
+          },
+          "elemId": {
+            "type": "integer",
+            "description": "渲染三角形单元 id，非 0 时优先于 featureType/featureId。",
+            "minimum": 0
+          }
+        },
+        "required": ["dataNodeId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "ListGeometryFeatures",
+      "eventId": 200022,
+      "category": "Geometry",
+      "summary": "列出几何特征清单（同步返回）",
+      "description": "同步返回一个 GeometryData 的全部（或按类型过滤）几何特征清单，支持 offset/limit 分页。featureType: 0=Vertex 1=Edge 2=Face 3=Solid；缺省返回全部类型。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dataNodeId": {
+            "type": "integer",
+            "description": "GeometryData 数据节点 ID；0 表示按 name 查找。",
+            "minimum": 0,
+            "maximum": 18446744073709551615
+          },
+          "name": {
+            "type": "string",
+            "description": "几何模型名称（dataNodeId=0 时使用）。",
+            "maxLength": 63
+          },
+          "featureType": {
+            "type": "integer",
+            "description": "特征类型过滤：0=Vertex 1=Edge 2=Face 3=Solid；缺省返回全部。",
+            "enum": [0, 1, 2, 3]
+          },
+          "offset": {
+            "type": "integer",
+            "description": "结果偏移量（分页起始位置），缺省 0。",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "description": "返回条数上限，缺省 0 表示全部。",
+            "minimum": 0
+          }
+        },
+        "required": ["dataNodeId"],
         "additionalProperties": false
       }
     }

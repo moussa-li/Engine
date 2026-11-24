@@ -45,6 +45,36 @@ namespace EgLab::Platform
              "C:/path/to/model.obj"},
         };
 
+        // ===== ImportGeometryParam =====
+        const ParamFieldDesc kImportGeometryFields[] = {
+            {"filePath", "Geometry File", ParamFieldType::String,
+             sizeof(ImportGeometryParam::filePath), "C:/path/to/model.stp / .brep"},
+            {"kernelName", "Kernel Name", ParamFieldType::String,
+             sizeof(ImportGeometryParam::kernelName), "empty = default kernel (OCCT/Null)"},
+        };
+
+        // ===== GeometryQueryParam =====
+        const ParamFieldDesc kGeometryInfoFields[] = {
+            {"dataNodeId", "Data Node Id", ParamFieldType::UInt64, 0, "0 = resolve by name"},
+            {"name", "Model Name", ParamFieldType::String, 64, "Model name when dataNodeId=0"},
+            {"featureType", "Feature Type", ParamFieldType::UInt32, 0,
+             "0=Vertex 1=Edge 2=Face 3=Solid; default = by elemId"},
+            {"featureId", "Feature Index", ParamFieldType::UInt32, 0,
+             "Feature index within its type"},
+            {"elemId", "Element Id", ParamFieldType::UInt32, 0,
+             "Rendered Tri3 element id; non-zero takes precedence"},
+        };
+
+        // ===== GeometryFeaturesParam =====
+        const ParamFieldDesc kGeometryFeaturesFields[] = {
+            {"dataNodeId", "Data Node Id", ParamFieldType::UInt64, 0, "0 = resolve by name"},
+            {"name", "Model Name", ParamFieldType::String, 64, "Model name when dataNodeId=0"},
+            {"featureType", "Feature Type", ParamFieldType::UInt32, 0,
+             "0=Vertex 1=Edge 2=Face 3=Solid; default = all"},
+            {"offset", "Offset", ParamFieldType::UInt32, 0, "Result offset"},
+            {"limit", "Limit", ParamFieldType::UInt32, 0, "0 = all"},
+        };
+
         // ===== DeleteMeshParam =====
         const ParamFieldDesc kDeleteMeshFields[] = {
             {"dataNodeId", "Data Node Id", ParamFieldType::UInt64, 0,
@@ -131,6 +161,15 @@ namespace EgLab::Platform
             {EventId::NodeVisibility, "NodeVisibility", "Node Visibility", "Mesh", true,
              sizeof(NodeVisibilityParam), kNodeVisibilityFields,
              sizeof(kNodeVisibilityFields) / sizeof(kNodeVisibilityFields[0])},
+            {EventId::GeometryImport, "GeometryImport", "Import Geometry", "Geometry", true,
+             sizeof(ImportGeometryParam), kImportGeometryFields,
+             sizeof(kImportGeometryFields) / sizeof(kImportGeometryFields[0])},
+            {EventId::GetGeometryInfo, "GetGeometryInfo", "Get Geometry Info", "Geometry", true,
+             sizeof(GeometryQueryParam), kGeometryInfoFields,
+             sizeof(kGeometryInfoFields) / sizeof(kGeometryInfoFields[0])},
+            {EventId::ListGeometryFeatures, "ListGeometryFeatures", "List Geometry Features",
+             "Geometry", true, sizeof(GeometryFeaturesParam), kGeometryFeaturesFields,
+             sizeof(kGeometryFeaturesFields) / sizeof(kGeometryFeaturesFields[0])},
             {EventId::CameraPan, "CameraPan", "Pan Camera", "Camera", false, 0, nullptr, 0, true,
              true},
             {EventId::CameraRotate, "CameraRotate", "Rotate Camera", "Camera", false, 0, nullptr,

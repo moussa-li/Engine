@@ -23,6 +23,10 @@ option(BUILD_TESTS "build tests" ON)
 option(BUILD_AI_CLIENT "Build the EgLab AI dialog Electron client (requires Node.js/npm)" ON)
 option(BUILD_COMMON_SHARED "Build Common as a shared library (OFF builds a static library)" OFF)
 option(BUILD_RENDER_SHARED "Build RenderEngine as a shared library (OFF builds a static library)" OFF)
+option(BUILD_GEOMETRY_SHARED "Build GeometryEngine as a shared library (OFF builds a static library)" OFF)
+set(BUILD_GEOMETRY_KERNEL "AUTO" CACHE STRING
+    "Geometry kernel backend for GeometryEngine: AUTO, OCCT or NULL")
+set_property(CACHE BUILD_GEOMETRY_KERNEL PROPERTY STRINGS AUTO OCCT NULL)
 option(BUILD_DOC "generate the documentation with doxygen" OFF)
 
 
@@ -81,6 +85,7 @@ unset(ENGINE_LAB_BUILD_SHARED_LIBS)
 add_subdirectory(Common)
 add_subdirectory(RenderEngine)
 add_subdirectory(MeshEngine)
+add_subdirectory(GeometryEngine)
 add_subdirectory(EnginePlatform)
 
 if(BUILD_AI_CLIENT)
@@ -91,7 +96,7 @@ install(TARGETS EnginePlatform
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-install(TARGETS Common MeshEngine RenderEngine Assets
+install(TARGETS Common MeshEngine RenderEngine GeometryEngine Assets
     EXPORT EngineLabTargets
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -118,6 +123,13 @@ install(DIRECTORY RenderEngine/include/RenderEngine/
         PATTERN "*.h"
         PATTERN "*.hpp"
         PATTERN "GLWrapper.hpp" EXCLUDE
+)
+
+install(DIRECTORY GeometryEngine/include/GeometryEngine/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/GeometryEngine
+    FILES_MATCHING
+        PATTERN "*.h"
+        PATTERN "*.hpp"
 )
 
 set(EngineLab_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/EngineLab")

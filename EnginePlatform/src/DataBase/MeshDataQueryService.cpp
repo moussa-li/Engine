@@ -11,7 +11,11 @@
 #include "Command/CommandIds.hpp"
 #include "Command/CommandQueueName.hpp"
 #include "DataBase/Context.hpp"
+#include "DataBase/GeometryData.hpp"
 #include "DataBase/MeshData.hpp"
+#include "GeometryEngine/Model/GeometryDocument.hpp"
+#include "GeometryEngine/Topology/Topology.hpp"
+#include "GeometryEngine/Topology/TopologyType.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 
 namespace EgLab::Platform
@@ -249,6 +253,22 @@ namespace EgLab::Platform
         return Common::dynamicSharedPtrCast<MeshData>(node);
     }
 
+    Common::SharedPtr<GeometryData> MeshDataQueryService::resolveGeometry(uint64_t dataNodeId,
+                                                                          const char* name) const
+    {
+        auto& context = Context::instance();
+        Common::SharedPtr<DataNode> node;
+        if (dataNodeId != 0)
+        {
+            node = context.getDataNode(dataNodeId);
+        }
+        else if (name != nullptr && name[0] != '\0')
+        {
+            node = context.getDataNode(Common::String(name));
+        }
+        return Common::dynamicSharedPtrCast<GeometryData>(node);
+    }
+
     Common::Return MeshDataQueryService::queryListDataTree()
     {
         const auto dataNodes = Context::instance().getDataTree().getDataNodes();
@@ -281,11 +301,11 @@ namespace EgLab::Platform
             entry.nodeCount = 0;
             entry.elemCount = 0;
 
-            auto meshData = Common::dynamicSharedPtrCast<MeshData>(node);
-            if (meshData)
+            auto geometryData = Common::dynamicSharedPtrCast<GeometryData>(node);
+            if (geometryData)
             {
-                entry.kind = 1;
-                auto mesh = meshData->getMesh();
+                entry.kind = 2;
+                auto mesh = geometryData->getMesh();
                 if (mesh)
                 {
                     entry.nodeCount = static_cast<uint64_t>(mesh->getNodeNumber());
@@ -294,7 +314,21 @@ namespace EgLab::Platform
             }
             else
             {
-                entry.kind = 0;
+                auto meshData = Common::dynamicSharedPtrCast<MeshData>(node);
+                if (meshData)
+                {
+                    entry.kind = 1;
+                    auto mesh = meshData->getMesh();
+                    if (mesh)
+                    {
+                        entry.nodeCount = static_cast<uint64_t>(mesh->getNodeNumber());
+                        entry.elemCount = static_cast<uint64_t>(mesh->getElemNumber());
+                    }
+                }
+                else
+                {
+                    entry.kind = 0;
+                }
             }
 
             std::memcpy(cursor, &entry, sizeof(entry));
@@ -498,5 +532,202 @@ namespace EgLab::Platform
                                                       sizeof(ElementTopoEntry));
         return publishResult(static_cast<uint32_t>(EventId::GetElementsTopology), buffer.data(),
                              payloadSize);
+    }
+
+    namespace
+    {
+        bool isValidGeometryType(uint32_t featureType)
+        {
+            return featureType <= static_cast<uint32_t>(GE::TopologyType::Solid) ||
+                   featureType == 0xFFFFFFFFu;
+        }
+
+        void fillGeometryEntry(const GeometryFeatureInfo& info, GeometryFeatureEntry& entry)
+        {
+            entry.featureId = info.featureId;
+            entry.featureType = info.ref.featureType;
+            entry.geometryType = info.geometryType;
+            entry.parentCount = info.parentCount;
+            entry.childCount = info.childCount;
+            entry.elemId = info.elemId;
+            entry.length = info.length;
+            entry.area = info.area;
+            entry.volume = info.volume;
+            entry.x = info.x;
+            entry.y = info.y;
+            entry.z = info.z;
+            entry.bboxMin[0] = info.bboxMin[0];
+            entry.bboxMin[1] = info.bboxMin[1];
+            entry.bboxMin[2] = info.bboxMin[2];
+            entry.bboxMax[0] = info.bboxMax[0];
+            entry.bboxMax[1] = info.bboxMax[1];
+            entry.bboxMax[2] = info.bboxMax[2];
+            const std::size_t copySize =
+                info.name.size() < sizeof(entry.name) - 1 ? info.name.size()
+                                                          : sizeof(entry.name) - 1;
+            std::memcpy(entry.name, info.name.c_str(), copySize);
+            entry.name[copySize] = '\0';
+        }
+    } // namespace
+
+    Common::Return MeshDataQueryService::queryGeometryInfo(const GeometryQueryParam& param)
+    {
+        GeometryResultHeader header{};
+        header.magic = GEOM_RESULT_MAGIC;
+        header.version = GEOM_RESULT_VERSION;
+        header.offset = 0;
+        header.total = 0;
+        header.returned = 0;
+        header.status = 0;
+
+        auto geometryData = resolveGeometry(param.dataNodeId, param.name);
+        if (!geometryData)
+        {
+            header.status = 1;
+            return publishResult(static_cast<uint32_t>(EventId::GetGeometryInfo), &header,
+                                 sizeof(header));
+        }
+
+        GeometryFeatureInfo info;
+        if (param.elemId != 0)
+        {
+            info = geometryData->getFeatureInfo(param.elemId);
+        }
+        else
+        {
+            if (!isValidGeometryType(param.featureType))
+            {
+                header.status = 4;
+                return publishResult(static_cast<uint32_t>(EventId::GetGeometryInfo), &header,
+                                     sizeof(header));
+            }
+            GeometryFeatureRef ref;
+            ref.featureType = param.featureType;
+            ref.featureIndex = param.featureId;
+            info = geometryData->getFeatureInfo(ref);
+        }
+
+        if (!info.ref.isValid())
+        {
+            header.status = 2;
+            return publishResult(static_cast<uint32_t>(EventId::GetGeometryInfo), &header,
+                                 sizeof(header));
+        }
+
+        Common::DynamicArray<uint8_t> buffer;
+        buffer.resize(sizeof(header) + sizeof(GeometryFeatureEntry));
+        GeometryFeatureEntry entry{};
+        fillGeometryEntry(info, entry);
+
+        header.total = 1;
+        header.returned = 1;
+        std::memcpy(buffer.data(), &header, sizeof(header));
+        std::memcpy(buffer.data() + sizeof(header), &entry, sizeof(entry));
+
+        return publishResult(static_cast<uint32_t>(EventId::GetGeometryInfo), buffer.data(),
+                             static_cast<uint32_t>(buffer.size()));
+    }
+
+    Common::Return MeshDataQueryService::queryGeometryFeatures(const GeometryFeaturesParam& param)
+    {
+        GeometryResultHeader header{};
+        header.magic = GEOM_RESULT_MAGIC;
+        header.version = GEOM_RESULT_VERSION;
+        header.offset = 0;
+        header.total = 0;
+        header.returned = 0;
+        header.status = 0;
+
+        auto geometryData = resolveGeometry(param.dataNodeId, param.name);
+        if (!geometryData)
+        {
+            header.status = 1;
+            return publishResult(static_cast<uint32_t>(EventId::ListGeometryFeatures), &header,
+                                 sizeof(header));
+        }
+
+        if (!isValidGeometryType(param.featureType))
+        {
+            header.status = 4;
+            return publishResult(static_cast<uint32_t>(EventId::ListGeometryFeatures), &header,
+                                 sizeof(header));
+        }
+
+        auto document = geometryData->getDocument();
+        if (!document)
+        {
+            header.status = 3;
+            return publishResult(static_cast<uint32_t>(EventId::ListGeometryFeatures), &header,
+                                 sizeof(header));
+        }
+
+        // 收集匹配的 feature 引用（类型过滤 + 分页）。
+        Common::DynamicArray<GeometryFeatureRef> matches;
+        const uint32_t firstType = param.featureType == 0xFFFFFFFFu
+                                       ? static_cast<uint32_t>(GE::TopologyType::Vertex)
+                                       : param.featureType;
+        const uint32_t lastType = param.featureType == 0xFFFFFFFFu
+                                      ? static_cast<uint32_t>(GE::TopologyType::Solid)
+                                      : param.featureType;
+        for (uint32_t type = firstType; type <= lastType; ++type)
+        {
+            const std::size_t count =
+                document->getFeatureCount(static_cast<GE::TopologyType>(type));
+            for (std::size_t index = 0; index < count; ++index)
+            {
+                GeometryFeatureRef ref;
+                ref.featureType = type;
+                ref.featureIndex = static_cast<uint32_t>(index);
+                matches.pushBack(ref);
+            }
+        }
+
+        header.total = static_cast<uint32_t>(matches.size());
+
+        const uint32_t start = param.offset < matches.size()
+                                   ? param.offset
+                                   : static_cast<uint32_t>(matches.size());
+        uint32_t count = static_cast<uint32_t>(matches.size() - start);
+        if (param.limit != 0 && count > param.limit)
+        {
+            count = param.limit;
+        }
+        if (count > GEOM_MAX_FEATURE_ENTRIES)
+        {
+            count = static_cast<uint32_t>(GEOM_MAX_FEATURE_ENTRIES);
+        }
+        header.returned = count;
+
+        Common::DynamicArray<uint8_t> buffer;
+        buffer.resize(sizeof(header) + static_cast<size_t>(count) * sizeof(GeometryFeatureEntry));
+        std::memcpy(buffer.data(), &header, sizeof(header));
+
+        GeometryFeatureEntry* entries =
+            reinterpret_cast<GeometryFeatureEntry*>(buffer.data() + sizeof(header));
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            const GeometryFeatureInfo info = geometryData->getFeatureInfo(matches[start + i]);
+            GeometryFeatureEntry& entry = entries[i];
+            if (info.ref.isValid())
+            {
+                fillGeometryEntry(info, entry);
+            }
+            else
+            {
+                std::memset(&entry, 0, sizeof(entry));
+                entry.featureType = matches[start + i].featureType;
+                entry.featureId = 0xFFFFFFFFu;
+                entry.elemId = 0xFFFFFFFFu;
+            }
+        }
+
+        return publishResult(static_cast<uint32_t>(EventId::ListGeometryFeatures), buffer.data(),
+                             static_cast<uint32_t>(buffer.size()));
+    }
+
+    Common::Return MeshDataQueryService::publishGeometryImport(const GeometryImportResult& result)
+    {
+        return publishResult(static_cast<uint32_t>(EventId::GeometryImport), &result,
+                             sizeof(result));
     }
 } // namespace EgLab::Platform

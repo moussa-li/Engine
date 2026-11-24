@@ -4,6 +4,7 @@
 #include "Command/IdList.hpp"
 #include "DataBase/Context.hpp"
 #include "DataBase/DataTree.hpp"
+#include "DataBase/GeometryData.hpp"
 #include "DataBase/MeshData.hpp"
 #include "Work/RenderWork.hpp"
 #include "imgui.h"
@@ -93,6 +94,15 @@ namespace EgLab::Platform
             if (ImGui::MenuItem("Fit View"))
             {
                 RenderWork::instance().fitView(mesh);
+            }
+
+            if (dynamic_cast<GeometryData*>(&meshData) != nullptr)
+            {
+                if (ImGui::MenuItem("Geometry Info"))
+                {
+                    Context::instance().getPanelManager().showPanel(
+                        Common::String("GeometryInfo"));
+                }
             }
 
             ImGui::PushID(&meshData);

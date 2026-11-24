@@ -12,6 +12,7 @@ The platform is organized as a small dependency stack: reusable data and utility
 | --- | --- |
 | `Common` | Foundation utilities: vectors, matrices, smart pointers, containers, strings, logging, clocks, allocators, and `BBox`. |
 | `MeshEngine` | Mesh data structures and mesh I/O. It currently includes `Mesh`, `Node`, `Elem`, iterators, and a `GmshImporter`. |
+| `GeometryEngine` | B-Rep topology/geometry model with a kernel-agnostic adapter layer and an OpenCASCADE 7.5 STEP/BREP importer. |
 | `RenderEngine` | OpenGL rendering layer: windows, cameras, shaders, vertex/index buffers, scenes, render primitives, and render orchestration. |
 | `EnginePlatform` | Executable desktop application built with GLFW, GLEW, Dear ImGui, and ImGuiFileDialog. |
 
@@ -20,11 +21,12 @@ The dependency direction is deliberately one-way:
 ```text
 Common
   |\
-  | MeshEngine
-  |     |
+  | +-- MeshEngine
+  | +-- GeometryEngine ----> (optional) OpenCASCADE 7.5
+  |
   +-- RenderEngine ----> OpenGL / GLFW / GLEW
-     |
-     +--------> EnginePlatform ----> Dear ImGui
+        |
+        +----> EnginePlatform ----> Dear ImGui
 ```
 
 ## Platform capabilities
@@ -69,7 +71,35 @@ cmake --preset win-ninja-debug
 cmake --build build/win-ninja-debug --target EnginePlatform
 ```
 
-The CMake configuration also exposes library targets such as `Common`, `MeshEngine`, and `RenderEngine`.
+The CMake configuration also exposes library targets such as `Common`, `MeshEngine`, `RenderEngine`, and `GeometryEngine`.
+
+### Geometry kernel selection
+
+`GeometryEngine` builds with a `Null` kernel adapter by default, so the module compiles and links
+without any third-party geometry kernel. The `win-ninja-relwithdebinfo-occt` preset enables the
+OpenCASCADE 7.5 adapter; it expects the OCCT 7.5 prebuilt package under `3rd/occt-7.5.0`:
+
+```powershell
+cmake --preset win-ninja-relwithdebinfo-occt
+cmake --build --preset win-ninja-relwithdebinfo-occt --target EnginePlatform geometry_test
+```
+
+The preset pins `BUILD_GEOMETRY_KERNEL=OCCT`, `OpenCASCADE_DIR` and
+`OpenCASCADE_THIRDPARTY_DLL_DIRS` (the bundled TBB `vc14` bin directory required by `TKernel.dll`).
+If OCCT lives elsewhere, edit those two cache variables in
+[CMakePresets.json](CMakePresets.json). `3rd/occt-7.5.0/` is git-ignored, so install the package
+locally with the official `opencascade-7.5.0-vc14-64.exe` installer.
+
+`BUILD_GEOMETRY_KERNEL` also accepts `AUTO` (default; probes OpenCASCADE and falls back to `NULL`)
+and `NULL`. The adapter links only the OCCT toolkits it uses, and on Windows the OCCT runtime DLLs
+(plus the TBB DLLs) are copied next to the executables. The OCCT import test is opt-in: set
+`EGLAB_GEOMETRY_TEST_STEP` to a `.stp`/`.brep` file before running `geometry_test`.
+
+OpenCASCADE is consumed as prebuilt libraries (LGPL-2.1 with exception, dynamically linked) and is
+never modified. The validated baseline is OCCT 7.5.0; the STEP toolkit is resolved as `TKSTEP`
+(7.5 and earlier) or `TKDESTEP` (later releases). Because the prebuilt packages are release-only,
+build `GeometryEngine` with a release-like configuration (`RelWithDebInfo` or `Release`); a Debug
+(`/MDd`) build would mix CRTs against the release OCCT binaries.
 
 ## Install and use from another CMake project
 
@@ -90,7 +120,7 @@ add_executable(MyApp main.cpp)
 target_link_libraries(MyApp PRIVATE EngineLab::RenderEngine)
 ```
 
-The primary targets are `EngineLab::Common`, `EngineLab::MeshEngine`, and `EngineLab::RenderEngine`; `EngineLab::Assets` is also exported for `Common`'s resource dependency. Consumers can link `EngineLab::RenderEngine` directly without separately finding or linking GLFW or GLEW.
+The primary targets are `EngineLab::Common`, `EngineLab::MeshEngine`, `EngineLab::RenderEngine`, and `EngineLab::GeometryEngine`; `EngineLab::Assets` is also exported for `Common`'s resource dependency. Consumers can link `EngineLab::RenderEngine` directly without separately finding or linking GLFW or GLEW.
 
 ## Run the engine platform
 
@@ -108,11 +138,14 @@ Configure with tests enabled, then build and run the test targets:
 
 ```powershell
 cmake --preset clang-debug -DBUILD_TESTS=ON
-cmake --build build/clang-debug --target common_test engine_tests mesh_test
+cmake --build build/clang-debug --target common_test engine_tests mesh_test geometry_test
 ctest --test-dir build/clang-debug --output-on-failure
 ```
 
-The render tests require a usable OpenGL context. On headless machines or CI workers without graphics initialization, common and mesh tests can be run independently from the platform executable.
+The render tests require a usable OpenGL context. On headless machines or CI workers without graphics initialization, common, mesh, and geometry tests can be run independently from the platform executable.
+
+The OCCT import test is opt-in: set `EGLAB_GEOMETRY_TEST_STEP` to a `.stp`/`.step`/`.brep` file to
+import it and verify topology and tessellation counts.
 
 ## Integration overview
 
@@ -135,6 +168,37 @@ if (mesh != nullptr) {
 }
 ```
 
+### Import and inspect B-Rep geometry
+
+`GeometryEngine` converts STEP/BREP files into its own neutral topology model. The third-party
+kernel stays behind `IGeometryKernelFactory` / `IGeometryImporter` and is selected by name through
+`GeometryKernelRegistry`, so supporting OCCT 8 or Parasolid later only requires a new adapter.
+
+```cpp
+#include "GeometryEngine/IO/GeometryImporter.hpp"
+#include "GeometryEngine/Model/GeometryDocument.hpp"
+
+EgLab::GE::GeometryDocument document;
+EgLab::GE::GeometryImporter importer("OCCT");
+const auto report = importer.importFile("assets/models/bracket.stp", document);
+
+const auto solid = document.getFeature(EgLab::GE::TopologyType::Solid, 0);
+const auto &mesh = solid.getMesh();
+for (std::size_t i = 0; i < mesh.getNodeCount(); ++i) {
+    const auto &position = mesh.getNodes()[i]; // x / y / z
+}
+for (std::size_t e = 0; e < mesh.getElemCount(); ++e) {
+    // getElemSizes()[e] node indices start at a running offset in getElemNodeIndices()
+}
+```
+
+Each topology node owns its `id`, `name`, `children` (solid -> face -> edge -> vertex) and
+`parents`, while the matching `Geometry` stores length/area/volume, a bounding box, and the
+renderable tessellation exposed by `GeometryFeature::getMesh()`. Every OCCT header, type, and
+namespace stays inside `GeometryEngine/src/Kernel/Occt`; nothing kernel-specific appears under
+`GeometryEngine/include`. Consumers choose the kernel (for example from `EgPlatform.ini`) and pass
+its name to `GeometryImporter`.
+
 ### Add render primitives to a scene
 
 `RenderEngine` accepts a shader and a render primitive, then maintains scene-wide bounds for camera setup:
@@ -154,6 +218,7 @@ renderer.draw(scene, camera);
 ```text
 Common/          Core containers, math, memory, logging, and utilities
 MeshEngine/      Mesh data model, iterators, importers, and geometry algorithms
+GeometryEngine/  B-Rep topology/geometry model and kernel adapters (OCCT, Null)
 RenderEngine/    OpenGL resources, camera, scene, shaders, and primitives
 EnginePlatform/  Runnable GLFW + ImGui application
 assets/          Models, shaders, and textures used by examples
@@ -165,10 +230,11 @@ cmake/           Shared CMake helpers
 ## Architecture path
 
 1. Use `Common` for shared data structures, math, memory, and utility services.
-2. Use `MeshEngine/MeshData` and its importers to represent and traverse geometry.
-3. Convert mesh data into `RenderEngine` primitives and register them in a `Scene`.
-4. Use `Renderer`, `Camera`, and shader resources to draw the scene.
-5. Embed the platform layer when an interactive desktop UI or tooling workflow is needed.
+2. Use `GeometryEngine` for B-Rep topology, per-feature geometry, and STEP/BREP import.
+3. Use `MeshEngine/MeshData` and its importers to represent and traverse geometry.
+4. Convert mesh data into `RenderEngine` primitives and register them in a `Scene`.
+5. Use `Renderer`, `Camera`, and shader resources to draw the scene.
+6. Embed the platform layer when an interactive desktop UI or tooling workflow is needed.
 
 ## Roadmap
 

@@ -284,6 +284,14 @@ namespace EgLab::Platform
                 }
                 ImGui::EndMenu();
             }
+            if (animatedBeginMenu("Geometry"))
+            {
+                if (ImGui::MenuItem("Geometry Info"))
+                {
+                    requestShowPanel("GeometryInfo");
+                }
+                ImGui::EndMenu();
+            }
             if (animatedBeginMenu("Selection"))
             {
                 bool boxSelectionEnabled = UIWork::instance().isBoxSelectionEnabled();

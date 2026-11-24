@@ -7,6 +7,15 @@ tools:
   - edit
   - shell
 model: deepseek-flash
+allowed_paths:
+  - "AiClient"
+  - "test"
+forbidden_paths:
+  - "MeshEngine"
+  - "RenderEngine"
+  - "GeometryEngine"
+  - "Common"
+  - "EnginePlatform/src"
 ---
 
 ### 🎯 角色与目标

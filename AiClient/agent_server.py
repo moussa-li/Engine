@@ -566,6 +566,112 @@ class NativeCommandBridge:
         return {"ok": True, "result": dict(header, elements=elements)}
 
     @staticmethod
+    def _parse_geometry_header(data):
+        """解析几何查询结果公共头（32B，magic=0x4D4F4547 'GEOM'）。"""
+        if len(data) < 32:
+            return None, {"ok": False, "error": "几何查询结果数据不完整"}
+        magic, version, status, total, offset, returned, _, _ = struct.unpack_from(
+            "<IIIIIIII", data, 0)
+        if magic != 0x4D4F4547:
+            return None, {"ok": False, "error": "几何结果 magic 校验失败: 0x%08X" % magic}
+        if version != 1:
+            return None, {"ok": False, "error": "几何结果 version 不支持: %d" % version}
+        status_msgs = {
+            1: "数据节点不存在或非 GeometryData",
+            2: "特征/elemId 不存在或参数非法",
+            3: "几何/Tessellation 不可用",
+            4: "featureType 非法",
+        }
+        if status != 0:
+            return None, {"ok": False,
+                          "error": "%s（status=%d）" % (status_msgs.get(status, "未知错误"), status)}
+        header = {"status": "ok", "total": int(total), "offset": int(offset),
+                  "returned": int(returned)}
+        return header, None
+
+    @staticmethod
+    def _parse_geometry_entry(data, off):
+        """解析单个 GeometryFeatureEntry（152B）。"""
+        feature_id, feature_type, geometry_type, parent_count, child_count, elem_id = \
+            struct.unpack_from("<IIIIII", data, off)
+        length, area, volume, x, y, z = struct.unpack_from("<6d", data, off + 24)
+        bbox_min = struct.unpack_from("<3f", data, off + 72)
+        bbox_max = struct.unpack_from("<3f", data, off + 84)
+        name = struct.unpack_from("<56s", data, off + 96)[0]
+        return {
+            "featureId": int(feature_id),
+            "featureType": int(feature_type),
+            "geometryType": int(geometry_type),
+            "parentCount": int(parent_count),
+            "childCount": int(child_count),
+            "elemId": int(elem_id),
+            "length": float(length),
+            "area": float(area),
+            "volume": float(volume),
+            "center": [float(x), float(y), float(z)],
+            "bboxMin": list(bbox_min),
+            "bboxMax": list(bbox_max),
+            "name": name.rstrip(b"\x00").decode("utf-8", errors="replace"),
+        }
+
+    @staticmethod
+    def _parse_geometry_info(data):
+        header, err = NativeCommandBridge._parse_geometry_header(data)
+        if err:
+            return err
+        if header["returned"] < 1 or len(data) < 32 + 152:
+            return {"ok": False, "error": "几何特征信息结果不完整"}
+        feature = NativeCommandBridge._parse_geometry_entry(data, 32)
+        return {"ok": True, "result": dict(header, feature=feature)}
+
+    @staticmethod
+    def _parse_geometry_features(data):
+        header, err = NativeCommandBridge._parse_geometry_header(data)
+        if err:
+            return err
+        features = []
+        for i in range(header["returned"]):
+            off = 32 + i * 152
+            if off + 152 > len(data):
+                break
+            features.append(NativeCommandBridge._parse_geometry_entry(data, off))
+        return {"ok": True, "result": dict(header, features=features)}
+
+    @staticmethod
+    def _parse_geometry_import(data):
+        """解析 GeometryImportResult（72B）。"""
+        if len(data) < 72:
+            return {"ok": False, "error": "几何导入结果数据不完整"}
+        magic, version, status, flags, data_node_id, vertex_count, edge_count, face_count, \
+            solid_count, triangle_count, _reserved, bmin_x, bmin_y, bmin_z, bmax_x, bmax_y, \
+            bmax_z = struct.unpack_from("<IIIIQ6I6f", data, 0)
+        if magic != 0x4D4F4547:
+            return {"ok": False, "error": "几何导入结果 magic 校验失败: 0x%08X" % magic}
+        status_msgs = {
+            1: "入参非法（空路径/不支持扩展名/文件不存在）",
+            2: "几何内核导入失败",
+            3: "转换失败（无三角面）",
+            4: "数据节点注册失败",
+        }
+        if status != 0:
+            return {"ok": False,
+                    "error": "%s（status=%d）" % (status_msgs.get(status, "未知错误"), status)}
+        return {
+            "ok": True,
+            "result": {
+                "status": "imported",
+                "dataNodeId": int(data_node_id),
+                "vertexCount": int(vertex_count),
+                "edgeCount": int(edge_count),
+                "faceCount": int(face_count),
+                "solidCount": int(solid_count),
+                "triangleCount": int(triangle_count),
+                "bboxMin": [float(bmin_x), float(bmin_y), float(bmin_z)],
+                "bboxMax": [float(bmax_x), float(bmax_y), float(bmax_z)],
+            },
+        }
+
+    @staticmethod
     def _parse_query_result(event_id, data):
         parser = {
             200011: NativeCommandBridge._parse_list_data_tree,
@@ -573,6 +679,8 @@ class NativeCommandBridge:
             200013: NativeCommandBridge._parse_mesh_ids,
             200014: NativeCommandBridge._parse_nodes_xyz,
             200015: NativeCommandBridge._parse_elements_topo,
+            200021: NativeCommandBridge._parse_geometry_info,
+            200022: NativeCommandBridge._parse_geometry_features,
         }.get(event_id)
         if parser is None:
             return {"ok": False, "error": "未知查询结果 eventId: %d" % event_id}
@@ -678,6 +786,31 @@ class NativeCommandBridge:
                         mask |= 1 << (4 + index)
             body = struct.pack("<IIIIf12f", mask, enabled, show_grid, placement, scale, *colors)
             return 400001, struct.pack("<I", 68) + body
+        if name == "ImportGeometry":
+            path = (args.get("filePath") or "").encode("utf-8")
+            kernel = (args.get("kernelName") or "").encode("utf-8")
+            body = struct.pack("<512s64s", path.ljust(512, b"\x00")[:512],
+                               kernel.ljust(64, b"\x00")[:64])
+            return 200020, struct.pack("<I", 576) + body
+        if name == "GetGeometryInfo":
+            node = int(args.get("dataNodeId") or 0)
+            model_name = (args.get("name") or "").encode("utf-8")
+            # featureType/featureId 缺省 0xFFFFFFFF，elemId 缺省 0；用 in 判断避免把 0 当缺省。
+            feature_type = int(args["featureType"]) if "featureType" in args else 0xFFFFFFFF
+            feature_id = int(args["featureId"]) if "featureId" in args else 0xFFFFFFFF
+            elem_id = int(args["elemId"]) if "elemId" in args else 0
+            body = struct.pack("<Q64sIIII", node, model_name.ljust(64, b"\x00")[:64],
+                               feature_type, feature_id, elem_id, 0)
+            return 200021, struct.pack("<I", 88) + body
+        if name == "ListGeometryFeatures":
+            node = int(args.get("dataNodeId") or 0)
+            model_name = (args.get("name") or "").encode("utf-8")
+            feature_type = int(args["featureType"]) if "featureType" in args else 0xFFFFFFFF
+            offset = int(args["offset"]) if "offset" in args else 0
+            limit = int(args["limit"]) if "limit" in args else 0
+            body = struct.pack("<Q64sIIII", node, model_name.ljust(64, b"\x00")[:64],
+                               feature_type, offset, limit, 0)
+            return 200022, struct.pack("<I", 88) + body
         return None
 
     def call(self, name, arguments):
@@ -697,13 +830,16 @@ class NativeCommandBridge:
         if not self._push(event_id, payload):
             return {"ok": False, "error": "EnginePlatform 命令队列已满，请稍后重试"}
         query_commands = {"GetMeshData", "ListDataTreeNodes", "GetMeshNodes",
-                          "GetMeshElements", "GetNodesXYZ", "GetElementsTopology"}
+                          "GetMeshElements", "GetNodesXYZ", "GetElementsTopology",
+                          "ImportGeometry", "GetGeometryInfo", "ListGeometryFeatures"}
         if name in query_commands:
             data, err = self._read_result(pid, event_id)
             if err:
                 return {"ok": False, "error": err}
             if name == "GetMeshData":
                 return self._parse_mesh_result(data)
+            if name == "ImportGeometry":
+                return self._parse_geometry_import(data)
             return self._parse_query_result(event_id, data)
         return {"ok": True,
                 "result": {"status": "dispatched", "eventId": event_id, "command": name}}

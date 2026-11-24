@@ -450,6 +450,8 @@ namespace EgLab::Platform
         {
             hasPickedMesh = _meshSelector->tryGetPickedMesh(pickedMesh);
         }
+        pickedInfo.meshId =
+            hasPickedMesh ? reinterpret_cast<uint64_t>(pickedMesh.get()) : 0;
 
         std::lock_guard<std::mutex> lock(_pickInfoSubscriptionsMutex);
         _lastPublishedPickInfo = pickedInfo;

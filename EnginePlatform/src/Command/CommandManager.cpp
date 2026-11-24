@@ -21,6 +21,9 @@
 #include "Command/ICommand.hpp"
 #include "Command/IdList.hpp"
 #include "Command/ImportMeshCmd.hpp"
+#include "Command/ImportGeometryCmd.hpp"
+#include "Command/GetGeometryInfoCmd.hpp"
+#include "Command/ListGeometryFeaturesCmd.hpp"
 #include "Command/LocateElementsCmd.hpp"
 #include "Command/ElementsVisibilityCmd.hpp"
 #include "Command/NodeVisibilityCmd.hpp"
@@ -219,6 +222,24 @@ namespace EgLab::Platform
                 return Common::makeShared<ImportMeshCmd>(param);
             };
 
+            _creator[EventId::GeometryImport] = [](const PacketPOD& pod) {
+                ImportGeometryParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<ImportGeometryCmd>(param);
+            };
+
+            _creator[EventId::GetGeometryInfo] = [](const PacketPOD& pod) {
+                GeometryQueryParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<GetGeometryInfoCmd>(param);
+            };
+
+            _creator[EventId::ListGeometryFeatures] = [](const PacketPOD& pod) {
+                GeometryFeaturesParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<ListGeometryFeaturesCmd>(param);
+            };
+
             _creator[EventId::Highlight] = [](const PacketPOD& pod) {
                 HighlightParam param{};
                 std::memcpy(&param, pod.data, sizeof(param));
@@ -241,6 +262,96 @@ namespace EgLab::Platform
                 param.fileDir[copySize] = '\0';
 
                 pod.dataSize = sizeof(ImportMeshParam);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
+            _packetCreator[EventId::GeometryImport] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                ImportGeometryParam param{};
+                if (packet.contains("filePath"))
+                {
+                    const Common::String filePath = packet.getData<Common::String>("filePath");
+                    const size_t copySize = std::min(filePath.size(), sizeof(param.filePath) - 1);
+                    std::memcpy(param.filePath, filePath.c_str(), copySize);
+                    param.filePath[copySize] = '\0';
+                }
+                if (packet.contains("kernelName"))
+                {
+                    const Common::String kernelName =
+                        packet.getData<Common::String>("kernelName");
+                    const size_t copySize =
+                        std::min(kernelName.size(), sizeof(param.kernelName) - 1);
+                    std::memcpy(param.kernelName, kernelName.c_str(), copySize);
+                    param.kernelName[copySize] = '\0';
+                }
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
+            _packetCreator[EventId::GetGeometryInfo] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                GeometryQueryParam param{};
+                param.featureType = 0xFFFFFFFFu;
+                param.featureId = 0xFFFFFFFFu;
+                param.elemId = 0;
+                if (packet.contains("dataNodeId"))
+                {
+                    param.dataNodeId = packet.getData<uint64_t>("dataNodeId");
+                }
+                if (packet.contains("name"))
+                {
+                    const Common::String name = packet.getData<Common::String>("name");
+                    const size_t copySize = std::min(name.size(), sizeof(param.name) - 1);
+                    std::memcpy(param.name, name.c_str(), copySize);
+                    param.name[copySize] = '\0';
+                }
+                if (packet.contains("featureType"))
+                {
+                    param.featureType = packet.getData<uint32_t>("featureType");
+                }
+                if (packet.contains("featureId"))
+                {
+                    param.featureId = packet.getData<uint32_t>("featureId");
+                }
+                if (packet.contains("elemId"))
+                {
+                    param.elemId = packet.getData<uint32_t>("elemId");
+                }
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
+            _packetCreator[EventId::ListGeometryFeatures] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                GeometryFeaturesParam param{};
+                param.featureType = 0xFFFFFFFFu;
+                if (packet.contains("dataNodeId"))
+                {
+                    param.dataNodeId = packet.getData<uint64_t>("dataNodeId");
+                }
+                if (packet.contains("name"))
+                {
+                    const Common::String name = packet.getData<Common::String>("name");
+                    const size_t copySize = std::min(name.size(), sizeof(param.name) - 1);
+                    std::memcpy(param.name, name.c_str(), copySize);
+                    param.name[copySize] = '\0';
+                }
+                if (packet.contains("featureType"))
+                {
+                    param.featureType = packet.getData<uint32_t>("featureType");
+                }
+                if (packet.contains("offset"))
+                {
+                    param.offset = packet.getData<uint32_t>("offset");
+                }
+                if (packet.contains("limit"))
+                {
+                    param.limit = packet.getData<uint32_t>("limit");
+                }
+                pod.dataSize = sizeof(param);
                 std::memcpy(pod.data, &param, sizeof(param));
                 return pod;
             };
@@ -451,6 +562,9 @@ namespace EgLab::Platform
             _subscriber.subscrib((uint32_t)EventId::ElementsVisibility);
             _subscriber.subscrib((uint32_t)EventId::NodeVisibility);
             _subscriber.subscrib((uint32_t)EventId::UpdateMesh);
+            _subscriber.subscrib((uint32_t)EventId::GeometryImport);
+            _subscriber.subscrib((uint32_t)EventId::GetGeometryInfo);
+            _subscriber.subscrib((uint32_t)EventId::ListGeometryFeatures);
 
             if (_isRunning == true) return;
             _isRunning = true;

@@ -7,6 +7,13 @@ tools:
   - edit
   - shell
 model: deepseek-flash
+allowed_paths:
+  - "Common"
+  - "test"
+forbidden_paths:
+  - "MeshEngine/src"
+  - "RenderEngine/src"
+  - "AiClient"
 ---
 
 ### 🎯 角色与目标

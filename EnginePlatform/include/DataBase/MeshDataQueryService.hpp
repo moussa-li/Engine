@@ -1,17 +1,19 @@
 #pragma once
 
+#include "Command/CommandParam.hpp"
 #include "Common/Protocol.hpp"
 #include "Common/Publisher.hpp"
 #include "Common/Return.hpp"
 #include "Common/SharedPtr.hpp"
 #include "Common/Singleton.hpp"
-#include "Command/CommandParam.hpp"
 #include "DataBase/DataNode.hpp"
+#include "DataBase/GeometryDataResultPOD.hpp"
 #include "DataBase/MeshDataResultPOD.hpp"
 
 namespace EgLab::Platform
 {
     class MeshData;
+    class GeometryData;
 
     class MeshDataQueryService : public Common::Singleton<MeshDataQueryService>
     {
@@ -29,6 +31,12 @@ namespace EgLab::Platform
         // 精确查询：按单元 id 查询拓扑（类型 + 节点 id）。
         Common::Return queryElementsTopology(const MeshElementsQueryParam& param);
 
+        // 几何特征查询（GeometryData）。结果复用同一 MeshDataResult-<pid> 队列，
+        // channel 分别为 GetGeometryInfo / ListGeometryFeatures / GeometryImport。
+        Common::Return queryGeometryInfo(const GeometryQueryParam& param);
+        Common::Return queryGeometryFeatures(const GeometryFeaturesParam& param);
+        Common::Return publishGeometryImport(const GeometryImportResult& result);
+
     private:
         MeshDataQueryService();
         friend class Common::Singleton<MeshDataQueryService>;
@@ -39,6 +47,8 @@ namespace EgLab::Platform
 
         // 按 dataNodeId 或 name 解析 MeshData；失败返回 nullptr。
         Common::SharedPtr<MeshData> resolveMesh(uint64_t dataNodeId, const char* name) const;
+        // 按 dataNodeId 或 name 解析 GeometryData；失败返回 nullptr。
+        Common::SharedPtr<GeometryData> resolveGeometry(uint64_t dataNodeId, const char* name) const;
         Common::Return publishResult(uint32_t eventId, const void* data, uint32_t size);
 
         Common::MemoryQueue _resultQueue;

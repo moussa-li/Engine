@@ -425,3 +425,6 @@ AiClient/electron/dist/
 AiClient/electron/node_modules/
 AiClient/electron/python/
 AiClient/electron/python-embed.zip
+
+# OCCT 7.5 prebuilt package (large binary dependency; install locally for the *-occt preset)
+3rd/occt-7.5.0/

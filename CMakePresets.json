@@ -78,6 +78,18 @@
             }
         },
         {
+            "name": "win-ninja-relwithdebinfo-occt",
+            "displayName": "Ninja MSVC RelWithDebInfo + OpenCASCADE 7.5",
+            "description": "GeometryEngine built with the OCCT 7.5 kernel adapter. Expects the OCCT 7.5 prebuilt package under 3rd/occt-7.5.0 (adjust OpenCASCADE_DIR / OpenCASCADE_THIRDPARTY_DLL_DIRS if installed elsewhere). Prebuilt OCCT binaries are release-only, so use a release-like MSVC config (/MD); a Debug (/MDd) build would mix CRTs and crash.",
+            "inherits": "win-ninja-relwithdebinfo",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "BUILD_GEOMETRY_KERNEL": "OCCT",
+                "OpenCASCADE_DIR": "${sourceDir}/3rd/occt-7.5.0/opencascade-7.5.0/cmake",
+                "OpenCASCADE_THIRDPARTY_DLL_DIRS": "${sourceDir}/3rd/occt-7.5.0/tbb_2017.0.100/bin/intel64/vc14"
+            }
+        },
+        {
             "name": "使用工具链文件配置预设",
             "displayName": "使用工具链文件配置预设",
             "description": "设置 Ninja 生成器、版本和安装目录",
@@ -109,6 +121,11 @@
             "name": "win-ninja-relwithdebinfo",
             "displayName": "Ninja using MSVC RelWithDebInfo",
             "configurePreset": "win-ninja-relwithdebinfo"
+        },
+        {
+            "name": "win-ninja-relwithdebinfo-occt",
+            "displayName": "Ninja MSVC RelWithDebInfo + OpenCASCADE 7.5",
+            "configurePreset": "win-ninja-relwithdebinfo-occt"
         }
     ],
     "testPresets": [

@@ -76,6 +76,41 @@ namespace EgLab::Platform
         uint32_t* elemIds;
     };
 
+    // ===== Geometry（几何引擎导入与特征查询） =====
+    constexpr size_t GEOMETRY_FILE_PATH_CAPACITY = 512;
+    constexpr size_t GEOMETRY_KERNEL_NAME_CAPACITY = 64;
+    constexpr size_t GEOMETRY_QUERY_NAME_CAPACITY = 64;
+
+    // ImportGeometry：从 STEP/BREP 文件导入 B-Rep 为 GeometryData。
+    struct ImportGeometryParam
+    {
+        char filePath[GEOMETRY_FILE_PATH_CAPACITY];     // off 0, 512B, UTF-8, 0 结尾
+        char kernelName[GEOMETRY_KERNEL_NAME_CAPACITY]; // off 512, 64B; 空串 => 默认内核
+    };
+
+    // GetGeometryInfo：featureType 用 GE::TopologyType 数值(0=V 1=E 2=F 3=S)，
+    // 0xFFFFFFFF 表示改由 elemId 反查；elemId 非 0 时优先于 featureType/featureId。
+    struct GeometryQueryParam
+    {
+        uint64_t dataNodeId; // off 0; 0 = 按 name 查找
+        char name[GEOMETRY_QUERY_NAME_CAPACITY]; // off 8
+        uint32_t featureType; // off 72
+        uint32_t featureId;   // off 76; feature index
+        uint32_t elemId;      // off 80; 渲染 Tri3 elemId；非 0 时优先
+        uint32_t reserved;    // off 84; 恒为 0
+    };
+
+    // ListGeometryFeatures：featureType 0xFFFFFFFF 表示全部类型；分页由 offset/limit 控制。
+    struct GeometryFeaturesParam
+    {
+        uint64_t dataNodeId; // off 0; 0 = 按 name 查找
+        char name[GEOMETRY_QUERY_NAME_CAPACITY]; // off 8
+        uint32_t featureType; // off 72; 0xFFFFFFFF = 全部
+        uint32_t offset;      // off 76
+        uint32_t limit;       // off 80; 0 = 全部
+        uint32_t reserved;    // off 84; 恒为 0
+    };
+
     // ===== SetCamera =====
     enum class CameraMode : uint32_t
     {
@@ -211,5 +246,17 @@ namespace EgLab::Platform
                   "MeshNodesQueryParam must be trivially copyable");
     static_assert(std::is_trivially_copyable<MeshElementsQueryParam>::value,
                   "MeshElementsQueryParam must be trivially copyable");
+    static_assert(std::is_trivially_copyable<ImportGeometryParam>::value,
+                  "ImportGeometryParam must be trivially copyable");
+    static_assert(sizeof(ImportGeometryParam) == 576,
+                  "ImportGeometryParam must be exactly 576 bytes");
+    static_assert(std::is_trivially_copyable<GeometryQueryParam>::value,
+                  "GeometryQueryParam must be trivially copyable");
+    static_assert(sizeof(GeometryQueryParam) == 88,
+                  "GeometryQueryParam must be exactly 88 bytes");
+    static_assert(std::is_trivially_copyable<GeometryFeaturesParam>::value,
+                  "GeometryFeaturesParam must be trivially copyable");
+    static_assert(sizeof(GeometryFeaturesParam) == 88,
+                  "GeometryFeaturesParam must be exactly 88 bytes");
 
 } // namespace EgLab::Platform
