@@ -246,6 +246,26 @@ namespace EgLab::RE
         return true;
     }
 
+    bool MeshSelector::acceptsPick(const Common::SharedPtr<RenderPrimitive>& primitive,
+                                   IdxType pickedIndex) const
+    {
+        (void)primitive;
+        (void)pickedIndex;
+        return true;
+    }
+
+    bool MeshSelector::tryGetMeshByPrimitive(const Common::SharedPtr<RenderPrimitive>& primitive,
+                                             Common::SharedPtr<ME::Mesh>& mesh) const
+    {
+        const MeshRegistration* registration = findRegistration(primitive);
+        if (registration == nullptr || !registration->mesh)
+        {
+            return false;
+        }
+        mesh = registration->mesh;
+        return true;
+    }
+
     bool MeshSelector::tryGetPickedMesh(Common::SharedPtr<ME::Mesh>& mesh) const
     {
         if (_lastPickedMesh == nullptr)

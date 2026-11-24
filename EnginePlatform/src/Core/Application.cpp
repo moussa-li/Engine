@@ -7,6 +7,7 @@
 #include "Core/IniManager.hpp"
 #include "Core/MainMenuBar.hpp"
 #include "Core/PidRegistry.hpp"
+#include "DataBase/GeometryFeatureMask.hpp"
 #include "GLFW/glfw3.h"
 #include "RenderEngine/Core/OrbitCameraController.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"
@@ -131,6 +132,11 @@ namespace EgLab::Platform
             GeometryDisplayModeInfo::isValid(static_cast<uint32_t>(savedGeometryMode))
                 ? static_cast<uint32_t>(savedGeometryMode)
                 : static_cast<uint32_t>(GeometryDisplayMode::Mesh));
+
+        RenderWork::instance().setGeometryPickFilter(
+            static_cast<uint32_t>(ini.getInt("geometry.pickFilter",
+                                             static_cast<int>(GEOMETRY_FEATURE_MASK_ALL))) &
+            GEOMETRY_FEATURE_MASK_ALL);
 
         // 周期性读取注册表中的活动进程 PID，供主菜单实时高亮当前进程。
         const int pidIntervalMs = ini.getInt("registry.pidIntervalMs", 300);

@@ -119,6 +119,14 @@ namespace EgLab::Platform
         uint32_t reserved; // off 4; 恒为 0
     };
 
+    // SetGeometryPickFilter：几何拾取/框选的特征类型过滤（bit0=Vertex bit1=Edge
+    // bit2=Face bit3=Solid）。作用于场景内全部导入的 B-Rep 几何模型。
+    struct GeometryPickFilterParam
+    {
+        uint32_t mask;     // off 0; bit0=Vertex bit1=Edge bit2=Face bit3=Solid
+        uint32_t reserved; // off 4; 恒为 0
+    };
+
     // ===== SetCamera =====
     enum class CameraMode : uint32_t
     {
@@ -270,5 +278,9 @@ namespace EgLab::Platform
                   "GeometryRenderModeParam must be trivially copyable");
     static_assert(sizeof(GeometryRenderModeParam) == 8,
                   "GeometryRenderModeParam must be exactly 8 bytes");
+    static_assert(std::is_trivially_copyable<GeometryPickFilterParam>::value,
+                  "GeometryPickFilterParam must be trivially copyable");
+    static_assert(sizeof(GeometryPickFilterParam) == 8,
+                  "GeometryPickFilterParam must be exactly 8 bytes");
 
 } // namespace EgLab::Platform

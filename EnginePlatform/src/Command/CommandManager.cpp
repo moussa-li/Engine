@@ -25,6 +25,7 @@
 #include "Command/GetGeometryInfoCmd.hpp"
 #include "Command/ListGeometryFeaturesCmd.hpp"
 #include "Command/SetGeometryRenderModeCmd.hpp"
+#include "Command/SetGeometryPickFilterCmd.hpp"
 #include "Command/LocateElementsCmd.hpp"
 #include "Command/ElementsVisibilityCmd.hpp"
 #include "Command/NodeVisibilityCmd.hpp"
@@ -247,6 +248,12 @@ namespace EgLab::Platform
                 return Common::makeShared<SetGeometryRenderModeCmd>(param);
             };
 
+            _creator[EventId::SetGeometryPickFilter] = [](const PacketPOD& pod) {
+                GeometryPickFilterParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<SetGeometryPickFilterCmd>(param);
+            };
+
             _creator[EventId::Highlight] = [](const PacketPOD& pod) {
                 HighlightParam param{};
                 std::memcpy(&param, pod.data, sizeof(param));
@@ -369,6 +376,18 @@ namespace EgLab::Platform
                 if (packet.contains("mode"))
                 {
                     param.mode = packet.getData<uint32_t>("mode");
+                }
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
+            _packetCreator[EventId::SetGeometryPickFilter] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                GeometryPickFilterParam param{};
+                if (packet.contains("mask"))
+                {
+                    param.mask = packet.getData<uint32_t>("mask");
                 }
                 pod.dataSize = sizeof(param);
                 std::memcpy(pod.data, &param, sizeof(param));
@@ -585,6 +604,7 @@ namespace EgLab::Platform
             _subscriber.subscrib((uint32_t)EventId::GetGeometryInfo);
             _subscriber.subscrib((uint32_t)EventId::ListGeometryFeatures);
             _subscriber.subscrib((uint32_t)EventId::SetGeometryRenderMode);
+            _subscriber.subscrib((uint32_t)EventId::SetGeometryPickFilter);
 
             if (_isRunning == true) return;
             _isRunning = true;

@@ -217,6 +217,25 @@ namespace EgLab::RE
         {
             return false;
         }
+        return isPrimitiveKindEnabled(primitive);
+    }
+
+    bool Renderer::isPrimitivePickable(const Common::SharedPtr<RenderPrimitive> &primitive) const
+    {
+        if (!primitive)
+        {
+            return false;
+        }
+        if (!primitive->isPickable())
+        {
+            return false;
+        }
+        return isPrimitiveKindEnabled(primitive);
+    }
+
+    bool Renderer::isPrimitiveKindEnabled(
+        const Common::SharedPtr<RenderPrimitive> &primitive) const
+    {
         if (dynamic_cast<const RenderNode *>(primitive.get()) != nullptr)
         {
             return _renderNodesEnabled;

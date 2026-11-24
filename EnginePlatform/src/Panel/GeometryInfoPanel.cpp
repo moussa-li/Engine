@@ -2,12 +2,24 @@
 
 #include <sstream>
 
+#include "Command/CommandManager.hpp"
+#include "Core/IniManager.hpp"
 #include "Work/RenderWork.hpp"
 #include "imgui.h"
 
 namespace EgLab::Platform
 {
-    GeometryInfoPanel::GeometryInfoPanel() = default;
+    namespace
+    {
+        constexpr const char* GEOMETRY_PICK_FILTER_KEY = "geometry.pickFilter";
+    } // namespace
+
+    GeometryInfoPanel::GeometryInfoPanel()
+    {
+        const int savedMask = IniManager::instance().getInt(
+            GEOMETRY_PICK_FILTER_KEY, static_cast<int>(GEOMETRY_FEATURE_MASK_ALL));
+        _pickFilter = static_cast<uint32_t>(savedMask) & GEOMETRY_FEATURE_MASK_ALL;
+    }
 
     GeometryInfoPanel::~GeometryInfoPanel()
     {
@@ -91,14 +103,22 @@ namespace EgLab::Platform
         while (RenderWork::instance().tryReceivePickInfo(_pickInfoSubscriptionId, pickedInfo))
         {
             _pickedInfo = pickedInfo;
-            if (pickedInfo.kind == PickedMeshKind::ElementFace)
+            if (pickedInfo.kind == PickedMeshKind::ElementFace ||
+                pickedInfo.kind == PickedMeshKind::ElementEdge)
             {
                 auto geometryData = GeometryData::findByMesh(pickedInfo.meshId);
                 if (geometryData)
                 {
-                    _featureInfo = geometryData->getFeatureInfo(pickedInfo.entityId);
+                    // Resolve the same feature the pick selector reported, so a hit on a
+                    // filtered-out face shows the solid that stands in for it.
+                    const GeometryFeatureRef feature =
+                        geometryData->getFeatureByElement(pickedInfo.entityId);
+                    const GeometryFeatureRef resolved =
+                        geometryData->resolveByMask(feature, _pickFilter);
+                    _featureInfo = geometryData->getFeatureInfo(resolved);
                     if (_featureInfo.ref.isValid())
                     {
+                        _featureInfo.elemId = pickedInfo.entityId;
                         _hasPickedInfo = true;
                     }
                     else
@@ -111,6 +131,63 @@ namespace EgLab::Platform
                     _hoverStatus = Common::String("picked mesh is not a geometry model");
                 }
             }
+        }
+    }
+
+    void GeometryInfoPanel::applyPickFilter(uint32_t mask)
+    {
+        _pickFilter = mask & GEOMETRY_FEATURE_MASK_ALL;
+        IniManager::instance().setInt(GEOMETRY_PICK_FILTER_KEY, static_cast<int>(_pickFilter));
+
+        EventPacket packet;
+        packet.setData("mask", _pickFilter);
+        CommandManager::instance().call(EventId::SetGeometryPickFilter, Common::move(packet));
+    }
+
+    void GeometryInfoPanel::renderPickFilter()
+    {
+        // Mirror the live mask so changes made through the command (for example by an AI
+        // client) are reflected here.
+        _pickFilter = RenderWork::instance().getGeometryPickFilter();
+
+        ImGui::TextUnformatted("Pick filter (feature types)");
+        const struct
+        {
+            uint32_t bit;
+            const char* label;
+            const char* hint;
+        } options[] = {
+            {GEOMETRY_FEATURE_MASK_VERTEX, "Vertex", "Vertex features"},
+            {GEOMETRY_FEATURE_MASK_EDGE, "Edge", "Edge features"},
+            {GEOMETRY_FEATURE_MASK_FACE, "Face",
+             "Face features (the tessellated mesh resolves to faces)"},
+            {GEOMETRY_FEATURE_MASK_SOLID, "Solid",
+             "With Face disabled, a face hit is promoted to the solid that owns it"},
+        };
+
+        for (const auto& option : options)
+        {
+            bool enabled = (_pickFilter & option.bit) != 0;
+            if (ImGui::Checkbox(option.label, &enabled))
+            {
+                applyPickFilter(enabled ? (_pickFilter | option.bit) : (_pickFilter & ~option.bit));
+            }
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::SetTooltip("%s", option.hint);
+            }
+            ImGui::SameLine();
+        }
+        ImGui::NewLine();
+
+        if (_pickFilter == 0)
+        {
+            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f),
+                               "No feature type is enabled: geometry picking is disabled.");
+        }
+        else
+        {
+            ImGui::Text("Active: %s", GeometryFeatureMaskInfo::toString(_pickFilter).c_str());
         }
     }
 
@@ -127,7 +204,11 @@ namespace EgLab::Platform
         }
 
         ImGui::Checkbox("Hover feature info", &_showHoverInfo);
-        ImGui::TextWrapped("Hover a rendered face to inspect its B-Rep feature.");
+        ImGui::TextWrapped("Hover a rendered face to inspect its B-Rep feature. Picking always "
+                           "resolves to a complete feature, never to a single triangle.");
+        ImGui::Separator();
+
+        renderPickFilter();
         ImGui::Separator();
 
         updatePickedInfo();

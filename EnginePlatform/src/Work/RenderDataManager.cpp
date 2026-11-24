@@ -448,8 +448,10 @@ namespace EgLab::Platform
         RE::ScenePicker picker;
         const RE::PickOutcome outcome =
             picker.pick(_scene, context, event.kinds, _visibilityFilter);
-        if (!outcome.valid())
+        if (!outcome.valid() ||
+            (_meshSelector && !_meshSelector->acceptsPick(outcome.primitive, outcome.index)))
         {
+            // No hit, or the hit belongs to a geometry feature filtered out by the pick mask.
             clearPickHighlight();
             notifyPickCleared();
             return;
@@ -947,7 +949,10 @@ namespace EgLab::Platform
         Common::SharedPtr<ME::Mesh> mesh;
         Common::DynamicArray<uint32_t> nodeIds;
         Common::DynamicArray<uint32_t> elementIds;
-        if (outcome.valid() && _meshSelector)
+        const bool accepted =
+            outcome.valid() && _meshSelector &&
+            _meshSelector->acceptsPick(outcome.primitive, outcome.index);
+        if (outcome.valid() && accepted && _meshSelector)
         {
             // Reuse the highlight expansion so a face pick selects the whole element face.
             Common::DynamicArray<RE::IdxType> indices =
@@ -1672,9 +1677,10 @@ namespace EgLab::Platform
             return;
         }
 
-        // EdgeOnly hides the shaded faces; picking follows the same flag through the
-        // renderer visibility filter, so faces are not picked while they are not drawn.
+        // EdgeOnly hides the shaded faces but keeps them pickable: geometry picking must
+        // resolve the feature under the cursor even when only the wireframe is drawn.
         newFace->setVisible(displayMode != GeometryDisplayMode::EdgeOnly);
+        newFace->setPickable(true);
 
         newFace->setColor(getMeshBaseColor(mesh));
         newFace->setFaceShrink(_faceShrink);

@@ -7,6 +7,7 @@
 #include "Common/SharedPtr.hpp"
 #include "Common/String.hpp"
 #include "DataBase/MeshData.hpp"
+#include "GeometryEngine/Model/GeometryElementMap.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 
 namespace EgLab::GE
@@ -17,16 +18,7 @@ namespace EgLab::GE
 namespace EgLab::Platform
 {
     /// Identifies one feature inside a GeometryData topology.
-    struct GeometryFeatureRef
-    {
-        uint32_t featureType{0xFFFFFFFFu};  // GE::TopologyType; 0xFFFFFFFF = invalid
-        uint32_t featureIndex{0xFFFFFFFFu}; // GE::IdxType; 0xFFFFFFFF = invalid
-
-        bool isValid() const
-        {
-            return featureType != 0xFFFFFFFFu && featureIndex != 0xFFFFFFFFu;
-        }
-    };
+    using GeometryFeatureRef = GE::FeatureRef;
 
     /// Flattened, index-only description of one topological feature.
     struct GeometryFeatureInfo
@@ -75,6 +67,19 @@ namespace EgLab::Platform
         /// 无效 elemId 返回 GeometryFeatureRef{}（两个 0xFFFFFFFF）。
         GeometryFeatureRef getFeatureByElement(uint32_t elemId) const;
 
+        /// 特征 -> 渲染单元（elemId）映射；特征级拾取/框选使用。发布后只读。
+        const GE::GeometryElementMap& getElementMap() const;
+
+        /// 返回 ref 的指定类型的父特征（沿拓扑层级向上查找）；无父特征时返回无效引用。
+        GeometryFeatureRef findParentFeature(const GeometryFeatureRef& ref,
+                                             GE::TopologyType parentType) const;
+
+        /// 按特征类型掩码过滤 ref：
+        /// - ref 的类型被允许时原样返回；
+        /// - Face 被禁用但 Solid 被允许时，上溯到所属 Solid 并返回该 Solid；
+        /// - 其余情况返回无效引用。
+        GeometryFeatureRef resolveByMask(const GeometryFeatureRef& ref, uint32_t mask) const;
+
         GeometryFeatureInfo getFeatureInfo(const GeometryFeatureRef& ref) const;
 
         /// 便捷重载：先按 elemId 反查特征，再填充信息并把 elemId 回填。
@@ -88,6 +93,7 @@ namespace EgLab::Platform
         Common::SharedPtr<GE::GeometryDocument> _document;    // 构造后不可变
         Common::String _sourcePath;                           // 构造后不可变
         Common::DynamicArray<GeometryFeatureRef> _elementFeatures; // 由 _geometryMutex 保护
+        GE::GeometryElementMap _elementMap;                        // 由 _geometryMutex 保护
     };
 
 } // namespace EgLab::Platform

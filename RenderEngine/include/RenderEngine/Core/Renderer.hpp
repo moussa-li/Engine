@@ -61,9 +61,15 @@ namespace EgLab::RE
         void draw(const Common::SharedPtr<Scene> &scene,
                   const Common::SharedPtr<Camera> &camera) const;
 
-        /// @brief Reports whether a primitive is enabled by the node/edge/face render switches.
+        /// @brief Reports whether a primitive is drawn and enabled by the render switches.
         /// @param primitive Primitive to test.
         bool isPrimitiveVisible(const Common::SharedPtr<RenderPrimitive> &primitive) const;
+
+        /// @brief Reports whether picking may consider the primitive.
+        /// @details Differs from isPrimitiveVisible() for primitives that are hidden but still
+        ///          pickable, such as geometry faces in the wireframe display mode.
+        /// @param primitive Primitive to test.
+        bool isPrimitivePickable(const Common::SharedPtr<RenderPrimitive> &primitive) const;
 
         /// @brief Sets the renderer background color.
         /// @param color RGBA background color.
@@ -118,6 +124,7 @@ namespace EgLab::RE
                         const Common::BBox<Scalar, 3> &bounds) const;
         void loadLight(const Common::SharedPtr<Shader> &shader,
                        const Common::SharedPtr<Camera> &camera) const;
+        bool isPrimitiveKindEnabled(const Common::SharedPtr<RenderPrimitive> &primitive) const;
 
     private:
         Common::DynamicArray<RenderViewport> _viewports;

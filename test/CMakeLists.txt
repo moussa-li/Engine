@@ -41,39 +41,6 @@ add_executable(geometry_test
     test_main.cpp
 )
 
-# Temporary diagnostic target (removed after debugging Gangti.stp).
-add_executable(geometry_probe probe_geometry.cpp)
-target_include_directories(geometry_probe PRIVATE
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/RenderEngine/include
-    ${CMAKE_SOURCE_DIR}/MeshEngine/include
-    ${CMAKE_SOURCE_DIR}/GeometryEngine/include
-    ${CMAKE_SOURCE_DIR}/Common/include
-)
-target_link_libraries(geometry_probe PRIVATE
-    Common
-    MeshEngine
-    RenderEngine
-    GeometryEngine
-    glfw
-    glew_s
-)
-
-if(WIN32)
-    add_executable(geometry_import_sender
-        geometry_import_sender.cpp
-    )
-
-    target_include_directories(geometry_import_sender PRIVATE
-        ${CMAKE_SOURCE_DIR}
-        ${CMAKE_SOURCE_DIR}/EnginePlatform/include
-    )
-
-    target_link_libraries(geometry_import_sender PRIVATE
-        Common
-    )
-endif()
-
 if(WIN32)
     add_executable(command_cross_process_test
         test_command_cross_process.cpp

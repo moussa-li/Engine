@@ -362,15 +362,31 @@ namespace EgLab::RE
         void setVisible(bool visible)
         {
             _visible = visible;
+            _pickable = visible;
         }
 
-        /// @brief Reports whether the primitive participates in drawing and picking.
+        /// @brief Reports whether the primitive participates in drawing.
         bool isVisible() const
         {
             return _visible;
         }
 
+        /// @brief Overrides picking independently of drawing.
+        /// @details Hidden geometry faces stay pickable so a wireframe view still resolves the
+        ///          feature under the cursor.
+        void setPickable(bool pickable)
+        {
+            _pickable = pickable;
+        }
+
+        /// @brief Reports whether picking may consider the primitive.
+        bool isPickable() const
+        {
+            return _pickable;
+        }
+
     private:
         bool _visible{true};
+        bool _pickable{true};
     };
 } // namespace EgLab::RE

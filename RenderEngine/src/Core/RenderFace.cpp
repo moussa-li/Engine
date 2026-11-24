@@ -10,6 +10,14 @@
 
 namespace EgLab::RE
 {
+    namespace
+    {
+        // The highlight re-draws geometry the scene already rendered, so it is pushed towards
+        // the viewer to avoid z-fighting with its source primitive.
+        constexpr float kHighlightOffsetFactor = -1.0f;
+        constexpr float kHighlightOffsetUnits = -4.0f;
+    } // namespace
+
     RenderFace::~RenderFace()
     {
         if (_colorSSBO != 0 && glfwGetCurrentContext() != nullptr)
@@ -235,7 +243,7 @@ namespace EgLab::RE
         glDepthFunc(GL_LEQUAL);
         glDepthMask(GL_FALSE);
         glEnable(GL_POLYGON_OFFSET_FILL);
-        glPolygonOffset(-1.0f, -1.0f);
+        glPolygonOffset(kHighlightOffsetFactor, kHighlightOffsetUnits);
 
         shader->bind();
         shader->setUniform1i("isPureColor", 1);
@@ -470,7 +478,7 @@ namespace EgLab::RE
         glDepthFunc(GL_LEQUAL);
         glDepthMask(GL_FALSE);
         glEnable(GL_POLYGON_OFFSET_FILL);
-        glPolygonOffset(-1.0f, -1.0f);
+        glPolygonOffset(kHighlightOffsetFactor, kHighlightOffsetUnits);
 
         shader->bind();
         shader->setUniform1i("isPureColor", 1);

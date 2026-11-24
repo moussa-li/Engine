@@ -256,11 +256,16 @@ namespace EgLab::RE
         GLint previousDepthFunction = GL_LESS;
         GLboolean previousDepthMask = GL_TRUE;
         GLfloat previousLineWidth = 1.0f;
+        GLfloat previousDepthRange[2] = {0.0f, 1.0f};
         glGetIntegerv(GL_DEPTH_FUNC, &previousDepthFunction);
         glGetBooleanv(GL_DEPTH_WRITEMASK, &previousDepthMask);
         glGetFloatv(GL_LINE_WIDTH, &previousLineWidth);
+        glGetFloatv(GL_DEPTH_RANGE, previousDepthRange);
         glDepthFunc(GL_LEQUAL);
         glDepthMask(GL_FALSE);
+        // Lines ignore glPolygonOffset, so the near depth range is squeezed instead:
+        // highlighted segments land slightly closer than the surface they lie on.
+        glDepthRange(0.0, 0.999f);
 
         shader->bind();
         shader->setUniform4f("u_Color", Common::Vector4f(1.0f, 0.28f, 0.04f, 1.0f));
@@ -297,6 +302,7 @@ namespace EgLab::RE
         _indexBuffer->unBind();
         shader->unBind();
 
+        glDepthRange(previousDepthRange[0], previousDepthRange[1]);
         glLineWidth(previousLineWidth);
         glDepthMask(previousDepthMask);
         glDepthFunc(static_cast<GLenum>(previousDepthFunction));

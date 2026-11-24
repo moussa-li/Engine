@@ -59,9 +59,24 @@ namespace EgLab::RE
         /// @param indices Primitive element indices reported by the rectangle pick.
         /// @param resolution Receives the owning mesh and the resolved node/element ids.
         /// @return true when the primitive belongs to a registered mesh.
-        bool resolveRectSelection(const Common::SharedPtr<RenderPrimitive>& primitive,
-                                  const Common::DynamicArray<IdxType>& indices,
-                                  RectSelectionResolution& resolution) const;
+        virtual bool resolveRectSelection(const Common::SharedPtr<RenderPrimitive>& primitive,
+                                          const Common::DynamicArray<IdxType>& indices,
+                                          RectSelectionResolution& resolution) const;
+
+        /// @brief Reports whether a primitive hit may be reported as a pick or selection.
+        /// @details Derived selectors override this to filter hits, for example by the type of
+        ///          the domain entity that owns the primitive element.
+        /// @param primitive Primitive that produced the hit.
+        /// @param pickedIndex Index returned by the primitive pick operation.
+        virtual bool acceptsPick(const Common::SharedPtr<RenderPrimitive>& primitive,
+                                 IdxType pickedIndex) const;
+
+        /// @brief Returns the mesh that owns the given primitive.
+        /// @param primitive Primitive to look up.
+        /// @param mesh Receives the owning mesh.
+        /// @return true when the primitive belongs to a registered mesh.
+        bool tryGetMeshByPrimitive(const Common::SharedPtr<RenderPrimitive>& primitive,
+                                   Common::SharedPtr<ME::Mesh>& mesh) const;
 
         /// @brief Removes the registration for a mesh.
         /// @param mesh Address of the mesh to unregister.
@@ -75,7 +90,7 @@ namespace EgLab::RE
         /// @brief Releases this selector and its registrations.
         ~MeshSelector();
 
-    private:
+    protected:
         struct MeshRegistration
         {
             Common::SharedPtr<ME::Mesh> mesh;
@@ -88,6 +103,7 @@ namespace EgLab::RE
         const MeshRegistration* findRegistration(
             const Common::SharedPtr<RenderPrimitive>& primitive) const;
 
+    private:
         Common::DynamicArray<MeshRegistration> _registrations;
         PickInfoCallback _pickInfoCallback;
         PrimitivePickInfo _lastPickInfo;

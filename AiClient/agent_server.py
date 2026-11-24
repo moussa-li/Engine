@@ -814,6 +814,9 @@ class NativeCommandBridge:
         if name == "SetGeometryRenderMode":
             mode = int(args.get("mode") or 0)
             return 200023, struct.pack("<I", 8) + struct.pack("<II", mode, 0)
+        if name == "SetGeometryPickFilter":
+            mask = int(args.get("mask") or 0) & 0x0F
+            return 200024, struct.pack("<I", 8) + struct.pack("<II", mask, 0)
         return None
 
     def call(self, name, arguments):

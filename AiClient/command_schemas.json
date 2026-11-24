@@ -611,6 +611,26 @@
         "required": ["mode"],
         "additionalProperties": false
       }
+    },
+    {
+      "name": "SetGeometryPickFilter",
+      "eventId": 200024,
+      "category": "Geometry",
+      "summary": "设置几何拾取/框选的特征类型过滤",
+      "description": "限定哪些 B-Rep 特征类型可以被拾取与框选（作用于场景内全部几何模型）。位掩码：bit0=Vertex bit1=Edge bit2=Face bit3=Solid，15=全部。仅禁用 Face 且启用 Solid 时，命中面会上溯为所属 Solid。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mask": {
+            "type": "integer",
+            "description": "特征类型掩码：bit0=Vertex bit1=Edge bit2=Face bit3=Solid，取值 0..15。",
+            "minimum": 0,
+            "maximum": 15
+          }
+        },
+        "required": ["mask"],
+        "additionalProperties": false
+      }
     }
   ],
   "excluded": [

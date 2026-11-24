@@ -131,18 +131,20 @@ namespace EgLab::Platform
         _renderer = renderer;
         if (_renderer)
         {
-            _meshSelector = Common::makeShared<RE::MeshSelector>();
+            _geometrySelector = Common::makeShared<GeometryMeshSelector>();
+            _meshSelector = _geometrySelector;
             _meshSelector->registerPickInfoCallback(
                 [this](const RE::PrimitivePickInfo& info) { publishPickInfo(info); });
             _renderData.bindMeshSelector(_meshSelector);
             _renderData.bindRenderer(_renderer);
             _renderData.bindVisibilityFilter(
                 [this](const Common::SharedPtr<RE::RenderPrimitive>& primitive) {
-                    return _renderer != nullptr && _renderer->isPrimitiveVisible(primitive);
+                    return _renderer != nullptr && _renderer->isPrimitivePickable(primitive);
                 });
         }
         else
         {
+            _geometrySelector = nullptr;
             _meshSelector = nullptr;
             _renderData.bindMeshSelector(nullptr);
             _renderData.bindRenderer(nullptr);
@@ -178,6 +180,7 @@ namespace EgLab::Platform
     {
         stop();
 
+        _geometrySelector = nullptr;
         _meshSelector = nullptr;
         _renderData.releaseResources();
 
@@ -822,6 +825,22 @@ namespace EgLab::Platform
         auto event = Common::makeShared<GeometryDisplayModeEvent>();
         event->mode = mode;
         queueRenderEvent(event);
+    }
+
+    void RenderWork::setGeometryPickFilter(uint32_t mask)
+    {
+        // The selector stores the mask atomically, so picking on the render thread always sees
+        // a complete value and no render event round trip is needed.
+        if (_geometrySelector)
+        {
+            _geometrySelector->setFeatureTypeMask(mask);
+        }
+    }
+
+    uint32_t RenderWork::getGeometryPickFilter() const
+    {
+        return _geometrySelector ? _geometrySelector->getFeatureTypeMask()
+                                 : GEOMETRY_FEATURE_MASK_ALL;
     }
 
     void RenderWork::setReferencePlaneSettings(const SetReferencePlaneParam& params)

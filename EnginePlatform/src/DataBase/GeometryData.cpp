@@ -4,6 +4,7 @@
 
 #include "DataBase/Context.hpp"
 #include "DataBase/DataTree.hpp"
+#include "DataBase/GeometryFeatureMask.hpp"
 #include "GeometryEngine/Model/GeometryDocument.hpp"
 #include "GeometryEngine/Model/GeometryFeature.hpp"
 
@@ -60,6 +61,79 @@ namespace EgLab::Platform
         {
             _elementFeatures.pushBack(refs[index]);
         }
+
+        _elementMap.clear();
+        if (_document)
+        {
+            if (_elementMap.build(*_document, _elementFeatures) != Common::Return::Succeed)
+            {
+                _elementMap.clear();
+            }
+        }
+    }
+
+    const GE::GeometryElementMap& GeometryData::getElementMap() const
+    {
+        return _elementMap;
+    }
+
+    GeometryFeatureRef GeometryData::findParentFeature(const GeometryFeatureRef& ref,
+                                                       GE::TopologyType parentType) const
+    {
+        if (!ref.isValid() ||
+            static_cast<uint32_t>(parentType) >= GE::TOPOLOGY_TYPE_COUNT)
+        {
+            return GeometryFeatureRef();
+        }
+
+        std::lock_guard<std::mutex> lock(_geometryMutex);
+        if (!_document)
+        {
+            return GeometryFeatureRef();
+        }
+
+        // Parents of a node are indices into the array of the next higher dimension.
+        GE::TopologyType type = ref.getType();
+        GE::IdxType index = ref.featureIndex;
+        while (static_cast<uint32_t>(type) < static_cast<uint32_t>(parentType))
+        {
+            const GE::GeometryFeature feature = _document->getFeature(type, index);
+            if (!feature.isValid() || feature.getParents().empty())
+            {
+                return GeometryFeatureRef();
+            }
+            type = static_cast<GE::TopologyType>(static_cast<uint32_t>(type) + 1);
+            index = feature.getParents()[0];
+        }
+
+        if (type != parentType)
+        {
+            return GeometryFeatureRef();
+        }
+        return GeometryFeatureRef(type, index);
+    }
+
+    GeometryFeatureRef GeometryData::resolveByMask(const GeometryFeatureRef& ref,
+                                                   uint32_t mask) const
+    {
+        if (!ref.isValid())
+        {
+            return GeometryFeatureRef();
+        }
+        if (GeometryFeatureMaskInfo::isEnabled(mask, ref.featureType))
+        {
+            return ref;
+        }
+
+        // A face hit stands for the solid that owns it, so filtering faces out while keeping
+        // solids enabled turns every hover into a whole-solid pick.
+        if (ref.getType() == GE::TopologyType::Face &&
+            GeometryFeatureMaskInfo::isEnabled(mask, static_cast<uint32_t>(GE::TopologyType::Solid)))
+        {
+            return findParentFeature(ref, GE::TopologyType::Solid);
+        }
+
+        return GeometryFeatureRef();
     }
 
     GeometryFeatureRef GeometryData::getFeatureByElement(uint32_t elemId) const

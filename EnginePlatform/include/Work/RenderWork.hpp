@@ -16,6 +16,7 @@
 #include "Common/Subscriber.hpp"
 #include "Common/UniquePtr.hpp"
 #include "Common/Vector.hpp"
+#include "DataBase/GeometryMeshSelector.hpp"
 #include "RenderEngine/Core/Definites.hpp"
 #include "RenderEngine/Core/PickManager.hpp"
 #include "RenderEngine/Core/Selector.hpp"
@@ -179,6 +180,9 @@ namespace EgLab::Platform
         void setFaceShrink(float shrink);
         // Switches how imported B-Rep geometry is drawn: 0=mesh, 1=face outline, 2=edges only.
         void setGeometryDisplayMode(uint32_t mode);
+        // Restricts which B-Rep feature types may be picked/selected (GEOMETRY_FEATURE_MASK_*).
+        void setGeometryPickFilter(uint32_t mask);
+        uint32_t getGeometryPickFilter() const;
         // Applies a partial reference-plane update on the render thread.
         void setReferencePlaneSettings(const SetReferencePlaneParam& params);
         void setHEMeshHighlight(const Common::SharedPtr<ME::HEMesh>& mesh, uint32_t vertexIndex,
@@ -229,6 +233,7 @@ namespace EgLab::Platform
         Common::SharedPtr<EgLab::RE::Scene> _scene;
         Common::SharedPtr<EgLab::RE::Camera> _camera;
         Common::SharedPtr<EgLab::RE::MeshSelector> _meshSelector;
+        Common::SharedPtr<GeometryMeshSelector> _geometrySelector;
         RE::PickManager _pickManager;
         std::mutex _pendingPickMutex;
         PendingPick _pendingPick;

@@ -73,6 +73,21 @@ cmake --build build/win-ninja-debug --target EnginePlatform
 
 The CMake configuration also exposes library targets such as `Common`, `MeshEngine`, `RenderEngine`, and `GeometryEngine`.
 
+> **Localized MSVC + Ninja:** on a non-English Visual Studio installation (for example a
+> Chinese-only language pack) `cl` prints a localized `/showIncludes` notice. CMake writes that
+> prefix into `CMakeFiles/rules.ninja` and Ninja fails to match it, so **no header dependencies are
+> recorded** and incremental builds silently reuse stale object files (mismatched class layouts can
+> crash at runtime). Configure once with the console code page the compiler speaks, then build
+> normally:
+>
+> ```powershell
+> cmd /c "chcp 936 && cmake --preset win-ninja-relwithdebinfo-occt"
+> cmake --build --preset win-ninja-relwithdebinfo-occt
+> ```
+>
+> Verify with `ninja -t deps <some>.obj` — it must report a non-zero `#deps` count. Installing the
+> English language pack for Visual Studio removes the problem entirely.
+
 ### Geometry kernel selection
 
 `GeometryEngine` builds with a `Null` kernel adapter by default, so the module compiles and links
@@ -211,11 +226,28 @@ or through the `SetGeometryRenderMode` command:
 | --- | --- | --- |
 | Mesh | 0 | Shaded faces with the dense triangle wireframe (the regular mesh look). |
 | Face outline | 1 | Shaded faces, but only each face's outer frame is drawn; normals are smoothed per mesh node so curved faces shade smoothly while B-Rep face boundaries stay sharp. |
-| Edges only | 2 | Faces are not rendered (and not pickable); only the geometry outline lines are drawn. |
+| Edges only | 2 | Faces are not rendered, but they stay pickable so hovering still resolves the B-Rep feature; only the geometry outline lines are drawn. |
 
 The mode applies to imported geometry models only; regular meshes keep their existing appearance.
 `Geometry Render Settings` dispatches `SetGeometryRenderMode` through `CommandManager`, so AI
 clients can drive the same modes.
+
+#### Geometry picking and selection
+
+Geometry models are picked at B-Rep feature level, never at triangle level:
+
+* A hit on a tessellated triangle is resolved to the feature that owns it (`GeometryElementMap`
+  maps `elemId → FeatureRef` and back), and **all** triangles of that feature are highlighted, so
+  hovering a face highlights the whole face.
+* `Geometry Info` exposes the pick filter (persisted as `geometry.pickFilter`, dispatched as the
+  `SetGeometryPickFilter` command, `mask` bit0=Vertex bit1=Edge bit2=Face bit3=Solid). A hit whose
+  feature type is disabled is rejected, so the cursor falls through to whatever is behind it. With
+  `Face` disabled and `Solid` enabled, a face hit is promoted to the solid that contains it and the
+  whole solid is highlighted and reported.
+* Highlights are depth-offset so they stay visible on the surface they duplicate: face highlights
+  use `glPolygonOffset(-1, -4)`, line highlights squeeze the near depth range.
+* Rectangle selection expands every covered triangle to its complete feature and honours the same
+  filter, so a box selected across a face always selects whole faces.
 
 ### Add render primitives to a scene
 

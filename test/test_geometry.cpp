@@ -10,6 +10,7 @@
 #include "GeometryEngine/IO/GeometryImporter.hpp"
 #include "GeometryEngine/Kernel/GeometryKernelRegistry.hpp"
 #include "GeometryEngine/Model/GeometryDocument.hpp"
+#include "GeometryEngine/Model/GeometryElementMap.hpp"
 #include "GeometryEngine/Topology/Topology.hpp"
 
 namespace
@@ -210,5 +211,54 @@ namespace
         }
     }
 #endif
+
+    TEST(GeometryElementMap, resolvesElementsToFeaturesAndBack)
+    {
+        GE::GeometryDocument document;
+        const auto solid = document.createFeature(GE::TopologyType::Solid, Common::String("Body"));
+        const auto face0 = document.createFeature(GE::TopologyType::Face, Common::String("Face_0"));
+        const auto face1 = document.createFeature(GE::TopologyType::Face, Common::String("Face_1"));
+        ASSERT_NE(solid, GE::INVALID_IDX);
+        ASSERT_NE(face0, GE::INVALID_IDX);
+        ASSERT_NE(face1, GE::INVALID_IDX);
+        ASSERT_TRUE(document.linkFeatures(GE::TopologyType::Solid, solid, GE::TopologyType::Face,
+                                          face0) == Common::Return::Succeed);
+        ASSERT_TRUE(document.linkFeatures(GE::TopologyType::Solid, solid, GE::TopologyType::Face,
+                                          face1) == Common::Return::Succeed);
+
+        // Two triangles for Face_0, one for Face_1.
+        Common::DynamicArray<GE::FeatureRef> elementFeatures;
+        elementFeatures.pushBack(GE::FeatureRef(GE::TopologyType::Face, face0));
+        elementFeatures.pushBack(GE::FeatureRef(GE::TopologyType::Face, face0));
+        elementFeatures.pushBack(GE::FeatureRef(GE::TopologyType::Face, face1));
+
+        GE::GeometryElementMap map;
+        ASSERT_TRUE(map.build(document, elementFeatures) == Common::Return::Succeed);
+        EXPECT_EQ(map.getElementCount(), 3u);
+
+        // Element ids are 1-based, id 0 and ids past the table stay unresolved.
+        EXPECT_TRUE(map.getElementFeature(1) == elementFeatures[0]);
+        EXPECT_TRUE(map.getElementFeature(3) == elementFeatures[2]);
+        EXPECT_FALSE(map.getElementFeature(0).isValid());
+        EXPECT_FALSE(map.getElementFeature(4).isValid());
+
+        Common::DynamicArray<GE::IdType> elements;
+        map.collectElements(GE::FeatureRef(GE::TopologyType::Face, face0), elements);
+        ASSERT_EQ(elements.size(), 2u);
+        EXPECT_EQ(elements[0], 1u);
+        EXPECT_EQ(elements[1], 2u);
+
+        // An aggregate feature contributes the elements of the faces it contains.
+        elements.clear();
+        map.collectElements(GE::FeatureRef(GE::TopologyType::Solid, solid), elements);
+        ASSERT_EQ(elements.size(), 3u);
+        EXPECT_EQ(elements[0], 1u);
+        EXPECT_EQ(elements[1], 2u);
+        EXPECT_EQ(elements[2], 3u);
+
+        elements.clear();
+        map.collectElements(GE::FeatureRef(GE::TopologyType::Face, 7), elements);
+        EXPECT_TRUE(elements.empty());
+    }
 
 } // namespace

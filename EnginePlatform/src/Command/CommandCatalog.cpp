@@ -81,6 +81,12 @@ namespace EgLab::Platform
              "0=Mesh (faces + triangle wireframe) 1=FaceOutline (faces + face frame) 2=EdgeOnly (no faces)"},
         };
 
+        // ===== GeometryPickFilterParam =====
+        const ParamFieldDesc kGeometryPickFilterFields[] = {
+            {"mask", "Feature Type Mask", ParamFieldType::UInt32, 0,
+             "Bit mask of pickable B-Rep feature types: bit0=Vertex bit1=Edge bit2=Face bit3=Solid (15 = all)"},
+        };
+
         // ===== DeleteMeshParam =====
         const ParamFieldDesc kDeleteMeshFields[] = {
             {"dataNodeId", "Data Node Id", ParamFieldType::UInt64, 0,
@@ -179,6 +185,9 @@ namespace EgLab::Platform
             {EventId::SetGeometryRenderMode, "SetGeometryRenderMode", "Set Geometry Render Mode",
              "Geometry", true, sizeof(GeometryRenderModeParam), kGeometryRenderModeFields,
              sizeof(kGeometryRenderModeFields) / sizeof(kGeometryRenderModeFields[0])},
+            {EventId::SetGeometryPickFilter, "SetGeometryPickFilter", "Set Geometry Pick Filter",
+             "Geometry", true, sizeof(GeometryPickFilterParam), kGeometryPickFilterFields,
+             sizeof(kGeometryPickFilterFields) / sizeof(kGeometryPickFilterFields[0])},
             {EventId::CameraPan, "CameraPan", "Pan Camera", "Camera", false, 0, nullptr, 0, true,
              true},
             {EventId::CameraRotate, "CameraRotate", "Rotate Camera", "Camera", false, 0, nullptr,

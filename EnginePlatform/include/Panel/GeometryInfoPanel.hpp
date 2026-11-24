@@ -3,6 +3,7 @@
 #include "Common/SharedPtr.hpp"
 #include "Common/String.hpp"
 #include "DataBase/GeometryData.hpp"
+#include "DataBase/GeometryFeatureMask.hpp"
 #include "Panel/IPanel.hpp"
 #include "RenderEngine/Core/PickManager.hpp"
 #include "Work/RenderWork.hpp"
@@ -38,11 +39,14 @@ namespace EgLab::Platform
         void releasePickRequest();
 
         void updatePickedInfo();
+        void renderPickFilter();
+        void applyPickFilter(uint32_t mask);
         static Common::String featureTypeName(uint32_t type);
         static Common::String geometryTypeName(uint32_t type);
 
     private:
         bool _showHoverInfo{true};
+        uint32_t _pickFilter{GEOMETRY_FEATURE_MASK_ALL};
         PickInfoSubscriptionId _pickInfoSubscriptionId{0};
         bool _hasPickedInfo{false};
         PickedMeshInfo _pickedInfo;
