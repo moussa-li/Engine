@@ -1,5 +1,7 @@
 #include "test_mesh.h"
 
+#include <chrono>
+
 #include "Common/DynamicArray.hpp"
 #include "Common/SharedPtr.hpp"
 #include "MeshEngine/Algorithm/ExtractSilhouette.hpp"
@@ -520,4 +522,41 @@ TEST_F(TestMesh, midSurfGen)
     EgLab::ME::GmshImporter importer(EgLab::getTestDataDir("daodan.msh"));
 
     auto mesh = importer.getMesh();
+}
+
+TEST_F(TestMesh, extractSurfaceStaysQuasiLinearForLargeOrderedMesh)
+{
+    // GeometryMeshConverter appends triangle nodes with monotonically increasing ids, so the
+    // element faces handed to the surface sorter are already ordered. That used to drive the
+    // sorter into its quadratic worst case and dominated geometry import time.
+    const int triangleCount = 30000;
+    auto mesh = EgLab::Common::makeShared<EgLab::ME::Mesh>();
+    EgLab::ME::IdType nextNodeId = 1;
+    for (int triangle = 0; triangle < triangleCount; ++triangle)
+    {
+        EgLab::ME::Elem elem;
+        elem.setId(static_cast<EgLab::ME::IdType>(triangle + 1));
+        elem.setType(EgLab::ME::ElemType::Tri3);
+        for (int corner = 0; corner < 3; ++corner)
+        {
+            EgLab::ME::Node node;
+            node.setId(nextNodeId);
+            EgLab::ME::CoordType coordinate(triangle, corner, 0.0);
+            node.setXYZ(coordinate);
+            mesh->addNode(EgLab::Common::move(node));
+            elem.setNode(corner, nextNodeId);
+            ++nextNodeId;
+        }
+        mesh->addElem(EgLab::Common::move(elem));
+    }
+
+    EgLab::ME::ExtractSurface extractor(mesh);
+    const auto start = std::chrono::steady_clock::now();
+    const auto faces = extractor.getSurface();
+    const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                               std::chrono::steady_clock::now() - start)
+                               .count();
+
+    EXPECT_EQ(faces.size(), static_cast<size_t>(triangleCount));
+    EXPECT_LT(elapsedMs, 1000) << "surface extraction must not degrade on ordered input";
 }

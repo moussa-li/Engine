@@ -1,6 +1,7 @@
 #include "test_common.h"
 
 #include <atomic>
+#include <chrono>
 #include <thread>
 
 #include "Common/BBox.hpp"
@@ -17,6 +18,7 @@
 #include "Common/Publisher.hpp"
 #include "Common/SharedPtr.hpp"
 #include "Common/Singleton.hpp"
+#include "Common/Sort.hpp"
 #include "Common/String.hpp"
 #include "Common/StringLineIterator.hpp"
 #include "Common/Subscriber.hpp"
@@ -1113,4 +1115,53 @@ TEST_F(TestCommon, DynamicArrayReserve)
     arr.reserve(8);
     EXPECT_EQ(arr.capacity(), capacity);
     EXPECT_EQ(arr.size(), 32);
+}
+
+TEST_F(TestCommon, SortStaysQuasiLinearOnAlreadySortedInput)
+{
+    // Element faces reach ExtractSurface::getSurface already ordered, which used to drive the
+    // last-element-pivot quicksort into its quadratic worst case during geometry import.
+    const int count = 50000;
+    EgLab::Common::DynamicArray<int> data;
+    data.reserve(static_cast<size_t>(count));
+    for (int index = 0; index < count; ++index)
+    {
+        data.pushBack(index);
+    }
+
+    const auto start = std::chrono::steady_clock::now();
+    EgLab::Common::sort(data);
+    const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                               std::chrono::steady_clock::now() - start)
+                               .count();
+
+    bool ordered = true;
+    for (int index = 0; index < count; ++index)
+    {
+        if (data[static_cast<size_t>(index)] != index)
+        {
+            ordered = false;
+            break;
+        }
+    }
+    EXPECT_TRUE(ordered);
+    EXPECT_LT(elapsedMs, 1000) << "sorting already ordered input must stay O(n log n)";
+}
+
+TEST_F(TestCommon, SortHandlesDuplicatesAndUnorderedInput)
+{
+    const int values[] = {5, 3, 5, 1, 3, 2, 5, 0, 3, 2, 4, 4, 1};
+    EgLab::Common::DynamicArray<int> data;
+    for (int value : values)
+    {
+        data.pushBack(value);
+    }
+
+    EgLab::Common::sort(data);
+
+    ASSERT_EQ(data.size(), sizeof(values) / sizeof(values[0]));
+    for (size_t index = 1; index < data.size(); ++index)
+    {
+        EXPECT_LE(data[index - 1], data[index]);
+    }
 }

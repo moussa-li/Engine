@@ -1,6 +1,7 @@
 #include "DataBase/GeometryMeshSelector.hpp"
 
 #include "Common/HashSet.hpp"
+#include "Common/Pair.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "RenderEngine/Core/MeshToTriFace.hpp"
 
@@ -141,6 +142,7 @@ namespace EgLab::Platform
         // every hit element is replaced by all elements of the feature that owns it.
         const uint32_t mask = getFeatureTypeMask();
         Common::HashSet<ME::IdType> expandedElements;
+        Common::HashSet<Common::Pair<uint32_t, uint32_t>> expandedFeatures;
         for (std::size_t index = 0; index < resolution.elementIds.size(); ++index)
         {
             const GeometryFeatureRef feature =
@@ -152,6 +154,15 @@ namespace EgLab::Platform
                 continue;
             }
 
+            // A rectangle hits one triangle per element but only a handful of features, so the
+            // feature expansion below runs once per feature instead of once per triangle.
+            const Common::Pair<uint32_t, uint32_t> featureKey(resolved.featureType,
+                                                              resolved.featureIndex);
+            if (expandedFeatures.find(featureKey) != expandedFeatures.end())
+            {
+                continue;
+            }
+
             Common::DynamicArray<uint32_t> featureElements;
             data->getElementMap().collectElements(resolved, featureElements);
             if (featureElements.empty())
@@ -159,6 +170,7 @@ namespace EgLab::Platform
                 expandedElements.insert(resolution.elementIds[index]);
                 continue;
             }
+            expandedFeatures.insert(featureKey);
             for (std::size_t element = 0; element < featureElements.size(); ++element)
             {
                 expandedElements.insert(featureElements[element]);

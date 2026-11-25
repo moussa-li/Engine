@@ -1,6 +1,8 @@
 #include <cstddef>
 #include <cstdlib>
 
+#include <chrono>
+
 #include <gtest/gtest.h>
 
 #include "Common/DynamicArray.hpp"
@@ -259,6 +261,98 @@ namespace
         elements.clear();
         map.collectElements(GE::FeatureRef(GE::TopologyType::Face, 7), elements);
         EXPECT_TRUE(elements.empty());
+    }
+
+    TEST(GeometryElementMap, keepsSlotsStableWhenElementFeaturesInterleave)
+    {
+        GE::GeometryDocument document;
+        const auto face0 = document.createFeature(GE::TopologyType::Face, Common::String("Face_0"));
+        const auto face1 = document.createFeature(GE::TopologyType::Face, Common::String("Face_1"));
+        const auto face2 = document.createFeature(GE::TopologyType::Face, Common::String("Face_2"));
+        ASSERT_NE(face0, GE::INVALID_IDX);
+        ASSERT_NE(face1, GE::INVALID_IDX);
+        ASSERT_NE(face2, GE::INVALID_IDX);
+
+        // An importer that emits triangles out of feature order must still resolve every
+        // feature to one slot, exactly like a table grouped per feature.
+        Common::DynamicArray<GE::FeatureRef> elementFeatures;
+        elementFeatures.pushBack(GE::FeatureRef(GE::TopologyType::Face, face1));
+        elementFeatures.pushBack(GE::FeatureRef(GE::TopologyType::Face, face0));
+        elementFeatures.pushBack(GE::FeatureRef(GE::TopologyType::Face, face1));
+        elementFeatures.pushBack(GE::FeatureRef(GE::TopologyType::Face, face2));
+        elementFeatures.pushBack(GE::FeatureRef(GE::TopologyType::Face, face0));
+
+        GE::GeometryElementMap map;
+        ASSERT_TRUE(map.build(document, elementFeatures) == Common::Return::Succeed);
+
+        Common::DynamicArray<GE::IdType> elements;
+        map.collectElements(GE::FeatureRef(GE::TopologyType::Face, face0), elements);
+        ASSERT_EQ(elements.size(), 2u);
+        EXPECT_EQ(elements[0], 2u);
+        EXPECT_EQ(elements[1], 5u);
+
+        elements.clear();
+        map.collectElements(GE::FeatureRef(GE::TopologyType::Face, face1), elements);
+        ASSERT_EQ(elements.size(), 2u);
+        EXPECT_EQ(elements[0], 1u);
+        EXPECT_EQ(elements[1], 3u);
+
+        elements.clear();
+        map.collectElements(GE::FeatureRef(GE::TopologyType::Face, face2), elements);
+        ASSERT_EQ(elements.size(), 1u);
+        EXPECT_EQ(elements[0], 4u);
+
+        // Unknown indices must stay unresolved instead of reusing a stale slot.
+        elements.clear();
+        map.collectElements(GE::FeatureRef(GE::TopologyType::Face, 99), elements);
+        EXPECT_TRUE(elements.empty());
+
+        elements.clear();
+        map.collectElements(GE::FeatureRef(GE::TopologyType::Edge, face0), elements);
+        EXPECT_TRUE(elements.empty());
+    }
+
+    TEST(GeometryElementMap, buildStaysFastForLargeInterleavedTables)
+    {
+        // Box selection and import both build the map, then resolve one feature per hit
+        // element. The slot lookup used to scan every feature, which made large interleaved
+        // tables quadratic.
+        const std::size_t featureCount = 5000;
+        const std::size_t repeats = 10;
+
+        GE::GeometryDocument document;
+        for (std::size_t feature = 0; feature < featureCount; ++feature)
+        {
+            ASSERT_NE(document.createFeature(GE::TopologyType::Face, Common::String("Face")),
+                      GE::INVALID_IDX);
+        }
+
+        Common::DynamicArray<GE::FeatureRef> elementFeatures;
+        elementFeatures.reserve(featureCount * repeats);
+        for (std::size_t repeat = 0; repeat < repeats; ++repeat)
+        {
+            for (std::size_t feature = 0; feature < featureCount; ++feature)
+            {
+                elementFeatures.pushBack(
+                    GE::FeatureRef(GE::TopologyType::Face, static_cast<GE::IdxType>(feature)));
+            }
+        }
+
+        GE::GeometryElementMap map;
+        const auto start = std::chrono::steady_clock::now();
+        ASSERT_TRUE(map.build(document, elementFeatures) == Common::Return::Succeed);
+        const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                   std::chrono::steady_clock::now() - start)
+                                   .count();
+
+        EXPECT_EQ(map.getElementCount(), featureCount * repeats);
+        EXPECT_LT(elapsedMs, 500) << "slot lookup must not scan every feature";
+
+        Common::DynamicArray<GE::IdType> elements;
+        map.collectElements(GE::FeatureRef(GE::TopologyType::Face, 0), elements);
+        ASSERT_EQ(elements.size(), repeats);
+        EXPECT_EQ(elements[0], 1u);
+        EXPECT_EQ(elements[1], 1u + featureCount);
     }
 
 } // namespace

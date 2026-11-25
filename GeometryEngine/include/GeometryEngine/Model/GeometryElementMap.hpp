@@ -50,8 +50,12 @@ namespace EgLab::GE
     ///
     /// The forward table (element -> owning feature) is supplied by whoever built the render
     /// mesh; the inverse table (feature -> elements) is derived here so feature level picking
-    /// and selection can be answered in linear time. Element ids are 1-based, so id 0 keeps
+    /// and selection can be answered in constant time. Element ids are 1-based, so id 0 keeps
     /// its "no element" meaning.
+    ///
+    /// Feature -> elements lookups go through one dense table per topology type that maps a
+    /// feature index straight to its slot. Rectangle selection expands every hit triangle to its
+    /// owning feature, so this lookup runs once per hit and must not scan all features.
     class GeometryEngineAPI GeometryElementMap
     {
     public:
@@ -77,7 +81,13 @@ namespace EgLab::GE
         void collectElements(const FeatureRef& ref, Common::DynamicArray<IdType>& outElemIds) const;
 
     private:
+        static constexpr std::size_t TYPE_COUNT = TOPOLOGY_TYPE_COUNT;
+
+        /// Returns the slot owning ref, or INVALID_IDX when ref was never registered.
         IdxType findSlot(const FeatureRef& ref) const;
+
+        /// Binds ref to slot, growing the per-type index table when the feature index is new.
+        void registerSlot(const FeatureRef& ref, IdxType slot);
 
         void collectSlotElements(IdxType slot, Common::DynamicArray<IdType>& outElemIds) const;
 
@@ -89,6 +99,8 @@ namespace EgLab::GE
         Common::DynamicArray<FeatureRef> _featureRefs;
         Common::DynamicArray<IdxType> _featureElemOffsets; // slot -> begin of its element range
         Common::DynamicArray<IdType> _featureElemIds;      // flat per-feature element lists
+        /// featureIndex -> slot, one table per TopologyType; INVALID_IDX for unused indices.
+        Common::DynamicArray<IdxType> _slotOfFeature[TYPE_COUNT];
     };
 
 } // namespace EgLab::GE

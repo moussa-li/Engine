@@ -8,11 +8,6 @@ namespace EgLab::GE
     namespace
     {
         constexpr int MAX_CHILD_DEPTH = static_cast<int>(TOPOLOGY_TYPE_COUNT);
-
-        bool matches(const FeatureRef& lhs, const FeatureRef& rhs)
-        {
-            return lhs == rhs;
-        }
     } // namespace
 
     void GeometryElementMap::clear()
@@ -22,6 +17,10 @@ namespace EgLab::GE
         _featureRefs.clear();
         _featureElemOffsets.clear();
         _featureElemIds.clear();
+        for (std::size_t type = 0; type < TYPE_COUNT; ++type)
+        {
+            _slotOfFeature[type].clear();
+        }
     }
 
     Common::Return GeometryElementMap::build(const GeometryDocument& document,
@@ -34,39 +33,29 @@ namespace EgLab::GE
         }
 
         _document = &document;
+        _elementFeatures.reserve(elementFeatures.size());
         for (std::size_t index = 0; index < elementFeatures.size(); ++index)
         {
             _elementFeatures.pushBack(elementFeatures[index]);
         }
 
-        // The table produced by an importer is grouped per feature, so remembering the last
-        // slot turns the common case into a single comparison per element.
         Common::DynamicArray<IdxType> slotOfElement;
         Common::DynamicArray<IdxType> counts;
         slotOfElement.reserve(_elementFeatures.size());
-        IdxType lastSlot = INVALID_IDX;
         for (std::size_t index = 0; index < _elementFeatures.size(); ++index)
         {
             const FeatureRef& ref = _elementFeatures[index];
-            IdxType slot = INVALID_IDX;
-            if (lastSlot != INVALID_IDX && matches(_featureRefs[lastSlot], ref))
+            IdxType slot = findSlot(ref);
+            if (slot == INVALID_IDX)
             {
-                slot = lastSlot;
-            }
-            else
-            {
-                slot = findSlot(ref);
-                if (slot == INVALID_IDX)
-                {
-                    _featureRefs.pushBack(ref);
-                    counts.pushBack(0);
-                    slot = static_cast<IdxType>(_featureRefs.size() - 1);
-                }
+                slot = static_cast<IdxType>(_featureRefs.size());
+                _featureRefs.pushBack(ref);
+                counts.pushBack(0);
+                registerSlot(ref, slot);
             }
 
             slotOfElement.pushBack(slot);
             counts[slot] = counts[slot] + 1;
-            lastSlot = slot;
         }
 
         _featureElemOffsets.resize(counts.size() + 1);
@@ -161,14 +150,36 @@ namespace EgLab::GE
 
     IdxType GeometryElementMap::findSlot(const FeatureRef& ref) const
     {
-        for (std::size_t slot = 0; slot < _featureRefs.size(); ++slot)
+        if (ref.featureType >= TYPE_COUNT)
         {
-            if (matches(_featureRefs[slot], ref))
+            return INVALID_IDX;
+        }
+        const Common::DynamicArray<IdxType>& table = _slotOfFeature[ref.featureType];
+        if (ref.featureIndex >= table.size())
+        {
+            return INVALID_IDX;
+        }
+        return table[ref.featureIndex];
+    }
+
+    void GeometryElementMap::registerSlot(const FeatureRef& ref, IdxType slot)
+    {
+        if (ref.featureType >= TYPE_COUNT)
+        {
+            return;
+        }
+
+        Common::DynamicArray<IdxType>& table = _slotOfFeature[ref.featureType];
+        if (ref.featureIndex >= table.size())
+        {
+            const std::size_t oldSize = table.size();
+            table.resize(static_cast<std::size_t>(ref.featureIndex) + 1);
+            for (std::size_t index = oldSize; index < table.size(); ++index)
             {
-                return static_cast<IdxType>(slot);
+                table[index] = INVALID_IDX;
             }
         }
-        return INVALID_IDX;
+        table[ref.featureIndex] = slot;
     }
 
 } // namespace EgLab::GE

@@ -77,20 +77,19 @@ namespace EgLab::ME
             _faceIdx = faceIdx;
         }
 
-        bool operator<=(ElemFace& other) const
+        bool operator<(const ElemFace& other) const
         {
             if (_n1 != other._n1) return _n1 < other._n1;
             if (_n2 != other._n2) return _n2 < other._n2;
-            if (_n3 != other._n3) return _n3 < other._n3;
-            return true;
+            return _n3 < other._n3;
         }
 
-        bool operator==(ElemFace& other) const
+        bool operator==(const ElemFace& other) const
         {
             return _n1 == other._n1 && _n2 == other._n2 && _n3 == other._n3;
         }
 
-        bool operator!=(ElemFace& other) const
+        bool operator!=(const ElemFace& other) const
         {
             return _n1 != other._n1 || _n2 != other._n2 || _n3 != other._n3;
         }
@@ -137,6 +136,7 @@ namespace EgLab::ME
 
         Common::DynamicArray<Common::Pair<IdType, IdxType>> idxs;
         Common::DynamicArray<ElemFace> elemFaces;
+        elemFaces.reserve(static_cast<std::size_t>(_impl->_mesh->getElemNumber()));
 
         MeshIterator it(*_impl->_mesh);
 
