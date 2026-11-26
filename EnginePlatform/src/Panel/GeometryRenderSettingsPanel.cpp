@@ -15,6 +15,7 @@ namespace EgLab::Platform
         constexpr const char* GEOMETRY_ZEBRA_LIGHT_X_KEY = "geometry.zebraLightX";
         constexpr const char* GEOMETRY_ZEBRA_LIGHT_Y_KEY = "geometry.zebraLightY";
         constexpr const char* GEOMETRY_ZEBRA_LIGHT_Z_KEY = "geometry.zebraLightZ";
+        constexpr const char* GEOMETRY_UV_KEY = "geometry.uv";
         constexpr float GEOMETRY_ZEBRA_DEFAULT_LIGHT_X = 0.0f;
         constexpr float GEOMETRY_ZEBRA_DEFAULT_LIGHT_Y = 0.0f;
         constexpr float GEOMETRY_ZEBRA_DEFAULT_LIGHT_Z = 1.0f;
@@ -37,6 +38,8 @@ namespace EgLab::Platform
             Common::Vector3f(ini.getFloat(GEOMETRY_ZEBRA_LIGHT_X_KEY, GEOMETRY_ZEBRA_DEFAULT_LIGHT_X),
                              ini.getFloat(GEOMETRY_ZEBRA_LIGHT_Y_KEY, GEOMETRY_ZEBRA_DEFAULT_LIGHT_Y),
                              ini.getFloat(GEOMETRY_ZEBRA_LIGHT_Z_KEY, GEOMETRY_ZEBRA_DEFAULT_LIGHT_Z)));
+
+        _uvEnabled = ini.getBool(GEOMETRY_UV_KEY, false);
     }
 
     void GeometryRenderSettingsPanel::applyVertexDisplay(bool visible)
@@ -53,8 +56,8 @@ namespace EgLab::Platform
     {
         // The content grew with the zebra controls, so keep an older saved window size tall
         // enough to show them while still allowing the user to resize the panel.
-        ImGui::SetNextWindowSizeConstraints(ImVec2(320.0f, 380.0f), ImVec2(900.0f, 900.0f));
-        ImGui::SetNextWindowSize(ImVec2(360, 400), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(320.0f, 440.0f), ImVec2(900.0f, 900.0f));
+        ImGui::SetNextWindowSize(ImVec2(360, 470), ImGuiCond_FirstUseEver);
     }
 
     void GeometryRenderSettingsPanel::applyMode(GeometryDisplayMode mode)
@@ -91,6 +94,16 @@ namespace EgLab::Platform
         packet.setData("lightY", _zebra.lightDirection.y());
         packet.setData("lightZ", _zebra.lightDirection.z());
         CommandManager::instance().call(EventId::SetGeometryZebra, Common::move(packet));
+    }
+
+    void GeometryRenderSettingsPanel::applyUv(bool enabled)
+    {
+        _uvEnabled = enabled;
+        IniManager::instance().setInt(GEOMETRY_UV_KEY, _uvEnabled ? 1 : 0);
+
+        EventPacket packet;
+        packet.setData("enabled", static_cast<uint32_t>(_uvEnabled ? 1 : 0));
+        CommandManager::instance().call(EventId::SetGeometryUv, Common::move(packet));
     }
 
     void GeometryRenderSettingsPanel::renderImpl()
@@ -184,6 +197,19 @@ namespace EgLab::Platform
         ImGui::EndDisabled();
         ImGui::TextWrapped("Stripes replace the shaded color of the faces; edges and picking "
                            "are unaffected.");
+
+        ImGui::Separator();
+        if (ImGui::Checkbox("Surface UV", &_uvEnabled))
+        {
+            applyUv(_uvEnabled);
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Colours geometry faces from the surface UV taken at import and "
+                              "interpolated across each triangle. Takes precedence over zebra.");
+        }
+        ImGui::TextDisabled("UV comes from each B-Rep face's surface parameters (normalised per "
+                            "face).");
 
         ImGui::Separator();
         ImGui::Text("Current mode: %s",

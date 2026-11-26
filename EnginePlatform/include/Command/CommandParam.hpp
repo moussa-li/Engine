@@ -143,6 +143,13 @@ namespace EgLab::Platform
                                  // 斑马纹由该方向反射得到，与相机无关。
     };
 
+    // SetGeometryUv：几何面曲面 UV 显示。作用于场景内全部 B-Rep 几何模型。
+    struct GeometryUvParam
+    {
+        uint32_t enabled;  // off 0; 0=关闭 1=显示曲面 UV
+        uint32_t reserved; // off 4; 恒为 0
+    };
+
     // ===== SetCamera =====
     enum class CameraMode : uint32_t
     {
@@ -306,5 +313,8 @@ namespace EgLab::Platform
                   "GeometryZebraParam must be trivially copyable");
     static_assert(sizeof(GeometryZebraParam) == 20,
                   "GeometryZebraParam must be exactly 20 bytes");
+    static_assert(std::is_trivially_copyable<GeometryUvParam>::value,
+                  "GeometryUvParam must be trivially copyable");
+    static_assert(sizeof(GeometryUvParam) == 8, "GeometryUvParam must be exactly 8 bytes");
 
 } // namespace EgLab::Platform

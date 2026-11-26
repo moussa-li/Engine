@@ -1296,3 +1296,98 @@ TEST_F(TestRender, zebraStripesReplaceShadedFaceColor)
 
     app.shutdown();
 }
+
+TEST_F(TestRender, surfaceUvShaderInterpolatesFaceColor)
+{
+    // A flat quad with UVs (0,0),(1,0),(1,1),(0,1): the dedicated UV shader must interpolate
+    // them and colour the face from the interpolated values (R = u, G = v).
+    auto mesh = EgLab::Common::makeShared<EgLab::ME::Mesh>();
+    const double corners[4][2] = {{-1.0, -1.0}, {1.0, -1.0}, {1.0, 1.0}, {-1.0, 1.0}};
+    for (int i = 0; i < 4; ++i)
+    {
+        EgLab::ME::Node node;
+        node.setId(static_cast<EgLab::ME::IdType>(1 + i));
+        EgLab::ME::CoordType coordinate(corners[i][0], corners[i][1], 0.0);
+        node.setXYZ(coordinate);
+        mesh->addNode(EgLab::Common::move(node));
+    }
+    const EgLab::ME::IdType triangles[2][3] = {{1, 2, 3}, {1, 3, 4}};
+    EgLab::ME::IdType elemId = 1;
+    for (const auto& triangle : triangles)
+    {
+        EgLab::ME::Elem elem;
+        elem.setId(elemId++);
+        elem.setType(EgLab::ME::ElemType::Tri3);
+        for (int corner = 0; corner < 3; ++corner)
+        {
+            elem.setNode(corner, triangle[corner]);
+        }
+        mesh->addElem(EgLab::Common::move(elem));
+    }
+
+    EgLab::Common::DynamicArray<EgLab::Common::Vector2f> uvs;
+    uvs.pushBack(EgLab::Common::Vector2f(0.0f, 0.0f));
+    uvs.pushBack(EgLab::Common::Vector2f(1.0f, 0.0f));
+    uvs.pushBack(EgLab::Common::Vector2f(1.0f, 1.0f));
+    uvs.pushBack(EgLab::Common::Vector2f(0.0f, 1.0f));
+
+    SimpleApp app;
+    EgLab::RE::MeshPrimitiveCreator creator(mesh);
+    creator.setSmoothNormals(true);
+    creator.setNodeUvs(&uvs);
+    auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();
+    auto face = EgLab::Common::dynamicSharedPtrCast<EgLab::RE::RenderFace>(facePrimitive);
+    ASSERT_NE(face, nullptr);
+
+    app.window->activeContext();
+    face->setup();
+    EgLab::Common::SharedPtr<EgLab::RE::Shader> shader;
+    EgLab::RE::ShaderLib::instance().getUvShader(shader);
+    app.scene->addPrimitive(shader, facePrimitive);
+    app.window->deactiveContext();
+
+    // A pure blue background keeps the UV gradient unambiguous.
+    app.renderer->setBackGroundColor(EgLab::Common::Vector4f(0.0f, 0.0f, 1.0f, 1.0f));
+
+    app.window->activeContext();
+    app.renderer->update(0.016f);
+    app.renderer->draw(app.scene, app.camera);
+    EgLab::Common::DynamicArray<unsigned char> pixels;
+    pixels.resize(800u * 600u * 4u);
+    glReadPixels(0, 0, 800, 600, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+    app.window->deactiveContext();
+
+    if (!(pixels[2] > 200 && pixels[0] < 40))
+    {
+        app.shutdown();
+        GTEST_SKIP() << "the GL context no longer renders after earlier windowed tests";
+    }
+
+    int redDominant = 0;
+    int greenDominant = 0;
+    for (std::size_t index = 0; index + 3 < pixels.size(); index += 4)
+    {
+        const int red = pixels[index];
+        const int green = pixels[index + 1];
+        const int blue = pixels[index + 2];
+        if (blue > 200 && red < 40)
+        {
+            continue;
+        }
+        if (red > green + 20)
+        {
+            ++redDominant;
+        }
+        else if (green > red + 20)
+        {
+            ++greenDominant;
+        }
+    }
+
+    // Interpolating u and v across the quad produces both red- and green-dominant regions; a
+    // flat or uninitialised colour would produce neither.
+    EXPECT_GT(redDominant, 1000);
+    EXPECT_GT(greenDominant, 1000);
+
+    app.shutdown();
+}

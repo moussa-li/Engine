@@ -60,6 +60,7 @@ namespace EgLab::Platform
         GeometryDisplayMode,
         GeometryVertexDisplay,
         GeometryZebra,
+        GeometryUv,
     };
 
     /// Polymorphic base for rendering change requests. Each concrete event type carries only
@@ -360,5 +361,16 @@ namespace EgLab::Platform
         /// Direction towards the virtual zebra light; the stripes mirror it instead of the
         /// camera, so the pattern stays put when the camera moves.
         Common::Vector3f lightDirection{0.0f, 0.0f, 1.0f};
+    };
+
+    /// Requests showing the surface UV of geometry faces as interpolated colours.
+    class GeometryUvEvent : public RenderEvent
+    {
+    public:
+        GeometryUvEvent() : RenderEvent(RenderEventType::GeometryUv)
+        {
+        }
+
+        bool enabled{false};
     };
 } // namespace EgLab::Platform

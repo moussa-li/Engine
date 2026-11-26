@@ -187,6 +187,8 @@ namespace EgLab::Platform
         // lightDirection selects the virtual light the stripes mirror instead of the camera.
         void setGeometryZebra(bool enabled, float frequency,
                               const Common::Vector3f& lightDirection);
+        // Shows the surface UV of geometry faces, coloured by the interpolated UV.
+        void setGeometryUv(bool enabled);
         // Restricts which B-Rep feature types may be picked/selected (GEOMETRY_FEATURE_MASK_*).
         void setGeometryPickFilter(uint32_t mask);
         uint32_t getGeometryPickFilter() const;

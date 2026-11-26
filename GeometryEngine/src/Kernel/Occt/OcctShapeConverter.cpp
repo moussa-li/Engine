@@ -24,6 +24,7 @@
 #include <TopoDS_Solid.hxx>
 #include <TopoDS_Vertex.hxx>
 #include <gp_Pnt.hxx>
+#include <gp_Pnt2d.hxx>
 #include <gp_Trsf.hxx>
 
 #include "Common/DynamicArray.hpp"
@@ -239,10 +240,23 @@ namespace EgLab::GE
                     mesh.reserveNodes(static_cast<std::size_t>(triangulation->NbNodes()));
 
                     const gp_Trsf& transform = location.Transformation();
+                    // The triangulation UV nodes are the exact surface parameters (u, v) used
+                    // by the tessellator, so they are read straight from the face's surface
+                    // parameterisation instead of being re-derived from the 3D positions.
+                    const bool hasUvs = triangulation->HasUVNodes();
                     for (Standard_Integer n = 1; n <= triangulation->NbNodes(); ++n)
                     {
                         const gp_Pnt point = triangulation->Node(n).Transformed(transform);
-                        mesh.addNode(Vec3(point.X(), point.Y(), point.Z()));
+                        if (hasUvs)
+                        {
+                            const gp_Pnt2d& uv = triangulation->UVNode(n);
+                            mesh.addNode(Vec3(point.X(), point.Y(), point.Z()),
+                                         Vec2(uv.X(), uv.Y()));
+                        }
+                        else
+                        {
+                            mesh.addNode(Vec3(point.X(), point.Y(), point.Z()));
+                        }
                     }
 
                     const bool reversed = face.Orientation() == TopAbs_REVERSED;

@@ -37,6 +37,7 @@ namespace EgLab::Platform
         SetGeometryPickFilter = 200024, // 设置几何拾取/框选的特征类型过滤
         SetGeometryVertexDisplay = 200025, // 显示/隐藏几何顶点标记
         SetGeometryZebra = 200026,         // 几何面斑马纹（等照度）分析显示
+        SetGeometryUv = 200027,            // 几何面曲面 UV 显示
         CameraPan = 300001, // Camera = 3xxxxx
         CameraRotate = 300002,
         CameraRotateLocal = 300003,

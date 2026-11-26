@@ -12,6 +12,8 @@ namespace EgLab::GE
 
     using Vec3 = Common::Vector<Scalar, 3>;
 
+    using Vec2 = Common::Vector<Scalar, 2>;
+
     using BoundingBox = Common::BBox<Scalar, 3>;
 
     using IdType = std::uint32_t;

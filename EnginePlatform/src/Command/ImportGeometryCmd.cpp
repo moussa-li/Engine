@@ -140,6 +140,7 @@ namespace EgLab::Platform
         geometryData->setElementFeatures(build.elementFeatures);
         geometryData->setVertexEdgeFeatures(build.nodeFeatures, build.edgeSegmentIndices,
                                             build.edgeSegmentFeatures);
+        geometryData->setNodeUvs(build.nodeUvs);
 
         if (Context::instance().addDataNode(geometryData) != Common::Return::Succeed)
         {

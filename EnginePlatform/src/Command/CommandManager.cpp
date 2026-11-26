@@ -28,6 +28,7 @@
 #include "Command/SetGeometryPickFilterCmd.hpp"
 #include "Command/SetGeometryVertexDisplayCmd.hpp"
 #include "Command/SetGeometryZebraCmd.hpp"
+#include "Command/SetGeometryUvCmd.hpp"
 #include "Command/LocateElementsCmd.hpp"
 #include "Command/ElementsVisibilityCmd.hpp"
 #include "Command/NodeVisibilityCmd.hpp"
@@ -269,6 +270,12 @@ namespace EgLab::Platform
                 return Common::makeShared<SetGeometryZebraCmd>(param);
             };
 
+            _creator[EventId::SetGeometryUv] = [](const PacketPOD& pod) {
+                GeometryUvParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<SetGeometryUvCmd>(param);
+            };
+
             _creator[EventId::Highlight] = [](const PacketPOD& pod) {
                 HighlightParam param{};
                 std::memcpy(&param, pod.data, sizeof(param));
@@ -449,6 +456,18 @@ namespace EgLab::Platform
                     param.lightDirection[2] = packet.getData<float>("lightZ");
                 }
                 param.frequency = GeometryZebra::clampFrequency(param.frequency);
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
+            _packetCreator[EventId::SetGeometryUv] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                GeometryUvParam param{};
+                if (packet.contains("enabled"))
+                {
+                    param.enabled = packet.getData<uint32_t>("enabled");
+                }
                 pod.dataSize = sizeof(param);
                 std::memcpy(pod.data, &param, sizeof(param));
                 return pod;
@@ -667,6 +686,7 @@ namespace EgLab::Platform
             _subscriber.subscrib((uint32_t)EventId::SetGeometryPickFilter);
             _subscriber.subscrib((uint32_t)EventId::SetGeometryVertexDisplay);
             _subscriber.subscrib((uint32_t)EventId::SetGeometryZebra);
+            _subscriber.subscrib((uint32_t)EventId::SetGeometryUv);
 
             if (_isRunning == true) return;
             _isRunning = true;

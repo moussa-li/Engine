@@ -5,6 +5,7 @@
 #include "Common/DynamicArray.hpp"
 #include "Common/Return.hpp"
 #include "Common/SharedPtr.hpp"
+#include "Common/Vector.hpp"
 #include "DataBase/GeometryData.hpp"
 
 namespace EgLab::GE
@@ -36,6 +37,9 @@ namespace EgLab::Platform
         Common::DynamicArray<GeometryFeatureRef> nodeFeatures;
         /// Edge segments as mesh node index pairs (2 entries per segment).
         Common::DynamicArray<uint32_t> edgeSegmentIndices;
+        /// Surface UV per mesh node, parallel to the mesh node array. Face nodes carry their
+        /// surface parameters normalised to [0, 1] per B-Rep face; other nodes are (0, 0).
+        Common::DynamicArray<Common::Vector2f> nodeUvs;
         /// edgeSegmentFeatures[segment] owns edgeSegmentIndices[2 * segment].
         Common::DynamicArray<GeometryFeatureRef> edgeSegmentFeatures;
         uint32_t triangleCount{0};

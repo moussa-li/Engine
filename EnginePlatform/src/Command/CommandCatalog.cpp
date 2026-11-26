@@ -107,6 +107,12 @@ namespace EgLab::Platform
              "Z of the virtual zebra light direction (default 1)"},
         };
 
+        // ===== GeometryUvParam =====
+        const ParamFieldDesc kGeometryUvFields[] = {
+            {"enabled", "Surface UV", ParamFieldType::UInt32, 0,
+             "0 = regular shading, 1 = colour geometry faces from their interpolated surface UV"},
+        };
+
         // ===== DeleteMeshParam =====
         const ParamFieldDesc kDeleteMeshFields[] = {
             {"dataNodeId", "Data Node Id", ParamFieldType::UInt64, 0,
@@ -215,6 +221,9 @@ namespace EgLab::Platform
             {EventId::SetGeometryZebra, "SetGeometryZebra", "Set Geometry Zebra Stripes",
              "Geometry", true, sizeof(GeometryZebraParam), kGeometryZebraFields,
              sizeof(kGeometryZebraFields) / sizeof(kGeometryZebraFields[0])},
+            {EventId::SetGeometryUv, "SetGeometryUv", "Set Geometry Surface UV", "Geometry", true,
+             sizeof(GeometryUvParam), kGeometryUvFields,
+             sizeof(kGeometryUvFields) / sizeof(kGeometryUvFields[0])},
             {EventId::CameraPan, "CameraPan", "Pan Camera", "Camera", false, 0, nullptr, 0, true,
              true},
             {EventId::CameraRotate, "CameraRotate", "Rotate Camera", "Camera", false, 0, nullptr,

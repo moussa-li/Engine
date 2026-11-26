@@ -37,9 +37,9 @@ namespace
         GE::Geometry* faceGeometry = document.getGeometry(GE::TopologyType::Face, face);
         ASSERT_NE(faceGeometry, nullptr);
         GE::Tessellation& faceMesh = faceGeometry->getTessellation();
-        faceMesh.addNode(GE::Vec3(0.0, 0.0, 0.0));
-        faceMesh.addNode(GE::Vec3(1.0, 0.0, 0.0));
-        faceMesh.addNode(GE::Vec3(0.0, 1.0, 0.0));
+        faceMesh.addNode(GE::Vec3(0.0, 0.0, 0.0), GE::Vec2(2.0, 4.0));
+        faceMesh.addNode(GE::Vec3(1.0, 0.0, 0.0), GE::Vec2(6.0, 4.0));
+        faceMesh.addNode(GE::Vec3(0.0, 1.0, 0.0), GE::Vec2(2.0, 9.0));
         faceMesh.addTriangle(0, 1, 2);
 
         GE::Geometry* edgeGeometry = document.getGeometry(GE::TopologyType::Edge, edge);
@@ -195,6 +195,21 @@ namespace
         // Triangles reference the first three nodes only, and every element is a Tri3.
         ASSERT_EQ(build.mesh->getElemNumber(), 1u);
         EXPECT_EQ(build.mesh->getElemById(1).getType(), ME::ElemType::Tri3);
+
+        // Surface UV: one entry per mesh node, face nodes normalised to [0,1] per face, and
+        // edge/vertex nodes left at the origin.
+        ASSERT_EQ(build.nodeUvs.size(), build.mesh->getNodeNumber());
+        EXPECT_NEAR(build.nodeUvs[0][0], 0.0f, 1e-6f);
+        EXPECT_NEAR(build.nodeUvs[0][1], 0.0f, 1e-6f);
+        EXPECT_NEAR(build.nodeUvs[1][0], 1.0f, 1e-6f);
+        EXPECT_NEAR(build.nodeUvs[1][1], 0.0f, 1e-6f);
+        EXPECT_NEAR(build.nodeUvs[2][0], 0.0f, 1e-6f);
+        EXPECT_NEAR(build.nodeUvs[2][1], 1.0f, 1e-6f);
+        for (std::size_t index = 3; index < build.nodeUvs.size(); ++index)
+        {
+            EXPECT_NEAR(build.nodeUvs[index][0], 0.0f, 1e-6f);
+            EXPECT_NEAR(build.nodeUvs[index][1], 0.0f, 1e-6f);
+        }
 
         expectEdgeSegmentsMatchPolylines(*document, build);
     }

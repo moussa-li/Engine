@@ -122,6 +122,13 @@ namespace EgLab::RE
         arrayLayout.pushBack<float>(3, _arrayNormalVertexBuffer);
         _arrayCentroidVertexBuffer = Common::makeShared<VertexBuffer>(*centerSource);
         arrayLayout.pushBack<float>(3, _arrayCentroidVertexBuffer);
+        // Attribute 3 carries the surface UV. It is only bound when the caller supplied one UV
+        // per face vertex (geometry faces); regular meshes leave it disabled.
+        if (!_uvs.empty() && _uvs.size() == arrayVertices.size())
+        {
+            _arrayUvVertexBuffer = Common::makeShared<VertexBuffer>(_uvs);
+            arrayLayout.pushBack<float>(2, _arrayUvVertexBuffer);
+        }
         _arrayVertexArray->addBuffer(arrayLayout);
         _arrayVertexArray->unBind();
 
@@ -548,6 +555,11 @@ namespace EgLab::RE
     {
         _normals = Common::move(norms);
         _normalsProvided = !_normals.empty();
+    }
+
+    void RenderFace::setUvs(Common::DynamicArray<Common::Vector2f> &&uvs)
+    {
+        _uvs = Common::move(uvs);
     }
 
     void RenderFace::setColors(Common::DynamicArray<Common::Vector4f> &&colors)

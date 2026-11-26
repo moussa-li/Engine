@@ -22,6 +22,10 @@ namespace EgLab::GE
 
         IdxType addNode(const Vec3& position);
 
+        /// Adds a node together with its surface parameter (UV). Nodes without a UV use (0,0)
+        /// so the UV table always stays parallel to the node table.
+        IdxType addNode(const Vec3& position, const Vec2& uv);
+
         void addElement(const IdxType* nodeIndices, std::size_t nodeCount);
 
         void addSegment(IdxType first, IdxType second);
@@ -32,6 +36,9 @@ namespace EgLab::GE
         void append(const Tessellation& other);
 
         const Common::DynamicArray<Vec3>& getNodes() const;
+
+        /// Surface parameters (u, v) parallel to getNodes(); empty entries are (0,0).
+        const Common::DynamicArray<Vec2>& getUVs() const;
 
         const Common::DynamicArray<IdxType>& getElemNodeIndices() const;
 
@@ -45,6 +52,7 @@ namespace EgLab::GE
 
     private:
         Common::DynamicArray<Vec3> _nodes;
+        Common::DynamicArray<Vec2> _uvs;
         Common::DynamicArray<IdxType> _elemNodeIndices;
         Common::DynamicArray<std::uint32_t> _elemSizes;
     };

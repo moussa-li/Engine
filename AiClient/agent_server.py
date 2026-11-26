@@ -833,6 +833,10 @@ class NativeCommandBridge:
             lz = float(light[2]) if is_number(light[2]) else 1.0
             return 200026, struct.pack("<I", 20) + struct.pack("<Iffff", enabled, frequency,
                                                                lx, ly, lz)
+        if name == "SetGeometryUv":
+            # 布局：uint32 enabled + uint32 reserved（共 8B）。
+            enabled = 1 if args.get("enabled") else 0
+            return 200027, struct.pack("<I", 8) + struct.pack("<II", enabled, 0)
         return None
 
     def call(self, name, arguments):

@@ -39,6 +39,11 @@ namespace EgLab::RE
         _smoothNormals = smooth;
     }
 
+    void MeshPrimitiveCreator::setNodeUvs(const Common::DynamicArray<Common::Vector2f>* uvs)
+    {
+        _nodeUvs = uvs;
+    }
+
     void MeshPrimitiveCreator::updateData(Common::SharedPtr<RenderNode> primitive)
     {
         ME::MeshIterator meshIt(*_mesh);
@@ -99,6 +104,27 @@ namespace EgLab::RE
         primitive->setNodes(Common::move(faceNodes));
         Common::DynamicArray<IdxType> sourceIndices = _translator->getBoundaryFaceIdx();
         primitive->setIndices(Common::move(sourceIndices));
+
+        // Surface UVs are expanded per face corner so they line up with faceNodes (and with the
+        // de-indexed vertex array the face primitive builds), letting the UV shader interpolate
+        // them across each triangle.
+        if (_nodeUvs != nullptr && !_nodeUvs->empty())
+        {
+            Common::DynamicArray<Common::Vector2f> faceUvs;
+            faceUvs.reserve(faceNodeIndices.size());
+            for (IdxType sourceNodeIndex : faceNodeIndices)
+            {
+                if (sourceNodeIndex < _nodeUvs->size())
+                {
+                    faceUvs.pushBack((*_nodeUvs)[sourceNodeIndex]);
+                }
+                else
+                {
+                    faceUvs.pushBack(Common::Vector2f(0.0f, 0.0f));
+                }
+            }
+            primitive->setUvs(Common::move(faceUvs));
+        }
 
         if (_smoothNormals)
         {

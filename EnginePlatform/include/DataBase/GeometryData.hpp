@@ -6,6 +6,7 @@
 #include "Common/DynamicArray.hpp"
 #include "Common/SharedPtr.hpp"
 #include "Common/String.hpp"
+#include "Common/Vector.hpp"
 #include "DataBase/MeshData.hpp"
 #include "GeometryEngine/Model/GeometryElementMap.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
@@ -73,6 +74,13 @@ namespace EgLab::Platform
                                    const Common::DynamicArray<uint32_t>& edgeSegmentIndices,
                                    const Common::DynamicArray<GeometryFeatureRef>& edgeSegmentFeatures);
 
+        /// 每个渲染节点的曲面 UV（与渲染 Mesh 的节点一一对应，面节点按单个 B-Rep 面归一化到
+        /// [0,1]，边/顶点节点为 (0,0)）。须在发布前调用，发布后只读。
+        void setNodeUvs(const Common::DynamicArray<Common::Vector2f>& uvs);
+
+        /// 渲染节点的曲面 UV 表；未设置时为空。
+        const Common::DynamicArray<Common::Vector2f>& getNodeUvs() const;
+
         /// 无效 elemId 返回 GeometryFeatureRef{}（两个 0xFFFFFFFF）。
         GeometryFeatureRef getFeatureByElement(uint32_t elemId) const;
 
@@ -122,6 +130,7 @@ namespace EgLab::Platform
         Common::DynamicArray<GeometryFeatureRef> _elementFeatures; // 由 _geometryMutex 保护
         GE::GeometryElementMap _elementMap;                        // 由 _geometryMutex 保护
         Common::DynamicArray<GeometryFeatureRef> _nodeFeatures;    // 由 _geometryMutex 保护
+        Common::DynamicArray<Common::Vector2f> _nodeUvs;           // 由 _geometryMutex 保护
         Common::DynamicArray<uint32_t> _edgeSegmentIndices;        // 由 _geometryMutex 保护
         Common::DynamicArray<GeometryFeatureRef> _edgeSegmentFeatures; // 由 _geometryMutex 保护
     };

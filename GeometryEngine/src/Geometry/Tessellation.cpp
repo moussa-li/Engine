@@ -5,6 +5,7 @@ namespace EgLab::GE
     void Tessellation::clear()
     {
         _nodes.clear();
+        _uvs.clear();
         _elemNodeIndices.clear();
         _elemSizes.clear();
     }
@@ -16,8 +17,14 @@ namespace EgLab::GE
 
     IdxType Tessellation::addNode(const Vec3& position)
     {
+        return addNode(position, Vec2(0.0, 0.0));
+    }
+
+    IdxType Tessellation::addNode(const Vec3& position, const Vec2& uv)
+    {
         const auto index = static_cast<IdxType>(_nodes.size());
         _nodes.pushBack(position);
+        _uvs.pushBack(uv);
         return index;
     }
 
@@ -52,6 +59,7 @@ namespace EgLab::GE
         for (std::size_t i = 0; i < other._nodes.size(); ++i)
         {
             _nodes.pushBack(other._nodes[i]);
+            _uvs.pushBack(i < other._uvs.size() ? other._uvs[i] : Vec2(0.0, 0.0));
         }
 
         std::size_t cursor = 0;
@@ -70,6 +78,11 @@ namespace EgLab::GE
     const Common::DynamicArray<Vec3>& Tessellation::getNodes() const
     {
         return _nodes;
+    }
+
+    const Common::DynamicArray<Vec2>& Tessellation::getUVs() const
+    {
+        return _uvs;
     }
 
     const Common::DynamicArray<IdxType>& Tessellation::getElemNodeIndices() const

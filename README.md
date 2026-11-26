@@ -283,6 +283,13 @@ Imported geometry is *not* a regular mesh, and the two are kept apart:
   enabling the analysis also switches the geometry faces to smooth normals so the bands stay
   continuous within a face. Pure-color draws (selection and locate highlights) keep their own
   color, and edge/vertex rendering plus picking are unaffected.
+* `Geometry Render Settings` can also colour the faces from their surface UV (persisted as
+  `geometry.uv`, dispatched as the `SetGeometryUv` command). The importer reads each face's
+  surface parameters (u, v) for every tessellation node directly from the OCCT triangulation's
+  UV nodes, normalises them per B-Rep face to `[0, 1]`, and stores them on the render mesh nodes.
+  A dedicated UV shader interpolates those per-vertex UVs across each triangle and writes
+  `vec3(u, v, 0)`; surface UV takes precedence over the zebra display, and highlights still draw
+  in their pure colour.
 
 ### Add render primitives to a scene
 

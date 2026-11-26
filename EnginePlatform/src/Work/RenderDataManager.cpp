@@ -826,6 +826,62 @@ namespace EgLab::Platform
         }
     }
 
+    void RenderDataManager::applyGeometryUv(const GeometryUvEvent& event)
+    {
+        if (_geometryUv.enabled == event.enabled)
+        {
+            return;
+        }
+        _geometryUv.enabled = event.enabled;
+
+        // UV display is a pure shading switch, so only the shader bucket changes; the face
+        // vertices and their UV attributes stay untouched.
+        clearPickHighlight();
+        for (auto& entry : _activeMeshes)
+        {
+            if (!isGeometryMesh(entry.mesh))
+            {
+                continue;
+            }
+            updateGeometryFaceShader(entry);
+        }
+        // Highlights reuse the face shader, so they have to be rebuilt against the new one.
+        updateSelectionHighlight();
+    }
+
+    void RenderDataManager::updateGeometryFaceShader(MeshRenderEntry& entry)
+    {
+        if (!_scene || !entry.packet.renderFace)
+        {
+            return;
+        }
+
+        Common::SharedPtr<RE::Shader> nextShader;
+        if (isGeometryMesh(entry.mesh) && _geometryUv.enabled)
+        {
+            RE::ShaderLib::instance().getUvShader(nextShader);
+        }
+        else if (isGeometryMesh(entry.mesh) && _geometryZebra.enabled)
+        {
+            RE::ShaderLib::instance().getZebraShader(nextShader);
+        }
+        else
+        {
+            RE::ShaderLib::instance().getFaceShader(nextShader);
+        }
+
+        if (nextShader == entry.packet.faceShader)
+        {
+            return;
+        }
+        if (entry.packet.faceShader)
+        {
+            _scene->removePrimitive(entry.packet.faceShader, entry.packet.renderFace);
+        }
+        _scene->addPrimitive(nextShader, entry.packet.renderFace);
+        entry.packet.faceShader = nextShader;
+    }
+
     void RenderDataManager::applyGeometryNodeVisibility(const Common::SharedPtr<ME::Mesh>& mesh)
     {
         MeshRenderEntry* entry = findActiveMeshEntry(mesh);
@@ -1789,7 +1845,19 @@ namespace EgLab::Platform
         const GeometryDisplayMode displayMode = effectiveDisplayMode(mesh);
         const bool geometryZebra = isGeometryMesh(mesh) && _geometryZebra.enabled;
 
+        // Geometry faces feed their surface UV table into the creator so the dedicated UV
+        // shader can interpolate it; regular meshes have no UV table.
+        Common::SharedPtr<GeometryData> geometryData;
+        if (isGeometryMesh(mesh))
+        {
+            geometryData = GeometryData::findByMesh(reinterpret_cast<uint64_t>(mesh.get()));
+        }
+
         RE::MeshPrimitiveCreator creator(mesh, target->translator);
+        if (geometryData)
+        {
+            creator.setNodeUvs(&geometryData->getNodeUvs());
+        }
         if (displayMode != GeometryDisplayMode::Mesh)
         {
             creator.setLineIndexSource(RE::MeshPrimitiveCreator::LineIndexSource::BoundaryOnly);
@@ -1844,11 +1912,15 @@ namespace EgLab::Platform
         newFace->setup();
         newLine->setup();
 
-        // Zebra geometry faces are drawn with the dedicated zebra shader: it owns its light
-        // direction, so the pattern no longer follows the scene camera or the global lighting.
+        // Geometry faces pick a dedicated shader: surface UV wins over zebra, and both replace
+        // the regular shaded face shader. The other buckets keep the shared basic shader.
         Common::SharedPtr<RE::Shader> previousFaceShader = target->packet.faceShader;
         Common::SharedPtr<RE::Shader> nextFaceShader;
-        if (geometryZebra)
+        if (isGeometryMesh(mesh) && _geometryUv.enabled)
+        {
+            RE::ShaderLib::instance().getUvShader(nextFaceShader);
+        }
+        else if (geometryZebra)
         {
             RE::ShaderLib::instance().getZebraShader(nextFaceShader);
         }

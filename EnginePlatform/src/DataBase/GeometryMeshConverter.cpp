@@ -19,6 +19,7 @@ namespace EgLab::Platform
         nodeFeatures.clear();
         edgeSegmentIndices.clear();
         edgeSegmentFeatures.clear();
+        nodeUvs.clear();
         triangleCount = 0;
         vertexCount = 0;
         edgeCount = 0;
@@ -29,9 +30,11 @@ namespace EgLab::Platform
     {
         /// Appends the tessellation nodes to the mesh and returns the id of the first one.
         ME::IdType appendNodes(const GE::Tessellation& tessellation, ME::Mesh& mesh,
-                               ME::IdType& nextNodeId)
+                               ME::IdType& nextNodeId,
+                               Common::DynamicArray<Common::Vector2f>& outUvs)
         {
             const auto& nodes = tessellation.getNodes();
+            const auto& uvs = tessellation.getUVs();
             const ME::IdType base = nextNodeId;
             for (std::size_t nodeIndex = 0; nodeIndex < nodes.size(); ++nodeIndex)
             {
@@ -40,9 +43,56 @@ namespace EgLab::Platform
                 ME::CoordType coord(nodes[nodeIndex][0], nodes[nodeIndex][1], nodes[nodeIndex][2]);
                 node.setXYZ(coord);
                 mesh.addNode(Common::move(node));
+                if (nodeIndex < uvs.size())
+                {
+                    outUvs.pushBack(Common::Vector2f(static_cast<float>(uvs[nodeIndex][0]),
+                                                     static_cast<float>(uvs[nodeIndex][1])));
+                }
+                else
+                {
+                    outUvs.pushBack(Common::Vector2f(0.0f, 0.0f));
+                }
                 ++nextNodeId;
             }
             return base;
+        }
+
+        /// Rescales one face's UVs into [0, 1] so the display does not depend on the raw
+        /// surface parameter range (planners can span millimetres, cylinders 0..2π, ...).
+        void normaliseFaceUvs(const GE::Tessellation& tessellation, std::size_t baseIndex,
+                              Common::DynamicArray<Common::Vector2f>& nodeUvs)
+        {
+            const auto& uvs = tessellation.getUVs();
+            if (uvs.empty() || uvs.size() != tessellation.getNodeCount() ||
+                baseIndex + uvs.size() > nodeUvs.size())
+            {
+                return;
+            }
+
+            double minU = uvs[0][0];
+            double maxU = minU;
+            double minV = uvs[0][1];
+            double maxV = minV;
+            for (std::size_t i = 1; i < uvs.size(); ++i)
+            {
+                minU = uvs[i][0] < minU ? uvs[i][0] : minU;
+                maxU = uvs[i][0] > maxU ? uvs[i][0] : maxU;
+                minV = uvs[i][1] < minV ? uvs[i][1] : minV;
+                maxV = uvs[i][1] > maxV ? uvs[i][1] : maxV;
+            }
+
+            const double spanU = maxU - minU;
+            const double spanV = maxV - minV;
+            for (std::size_t i = 0; i < uvs.size(); ++i)
+            {
+                const float u = spanU > 1e-12
+                                    ? static_cast<float>((uvs[i][0] - minU) / spanU)
+                                    : 0.5f;
+                const float v = spanV > 1e-12
+                                    ? static_cast<float>((uvs[i][1] - minV) / spanV)
+                                    : 0.5f;
+                nodeUvs[baseIndex + i] = Common::Vector2f(u, v);
+            }
         }
     } // namespace
 
@@ -86,8 +136,11 @@ namespace EgLab::Platform
             const auto& elemNodeIndices = tessellation.getElemNodeIndices();
             const auto& elemSizes = tessellation.getElemSizes();
 
-            const ME::IdType faceNodeBase = appendNodes(tessellation, *mesh, nextNodeId);
+            const ME::IdType faceNodeBase =
+                appendNodes(tessellation, *mesh, nextNodeId, outBuild.nodeUvs);
             syncNodeFeatures(nextNodeId);
+            normaliseFaceUvs(tessellation, static_cast<std::size_t>(faceNodeBase - 1),
+                             outBuild.nodeUvs);
 
             std::size_t cursor = 0;
             for (std::size_t element = 0; element < elemSizes.size(); ++element)
@@ -147,7 +200,8 @@ namespace EgLab::Platform
                 continue;
             }
 
-            const ME::IdType edgeNodeBase = appendNodes(tessellation, *mesh, nextNodeId);
+            const ME::IdType edgeNodeBase =
+                appendNodes(tessellation, *mesh, nextNodeId, outBuild.nodeUvs);
             syncNodeFeatures(nextNodeId);
 
             GeometryFeatureRef ref;
@@ -185,7 +239,8 @@ namespace EgLab::Platform
                 continue;
             }
 
-            const ME::IdType vertexNodeBase = appendNodes(tessellation, *mesh, nextNodeId);
+            const ME::IdType vertexNodeBase =
+                appendNodes(tessellation, *mesh, nextNodeId, outBuild.nodeUvs);
             syncNodeFeatures(nextNodeId);
 
             GeometryFeatureRef ref;

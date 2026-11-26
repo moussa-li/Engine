@@ -67,6 +67,12 @@ namespace EgLab::RE
         /// @brief Replaces the face vertex normals.
         void setNormals(Common::DynamicArray<CoordType> &&);
 
+        /// @brief Sets one surface UV per face vertex (array-mode, 3 entries per triangle).
+        /// @details The UVs are fed to the dedicated surface-UV shader, which interpolates them
+        ///          across each triangle to colour the face.
+        /// @param uvs UV coordinates matching the vertex array size.
+        void setUvs(Common::DynamicArray<Common::Vector2f> &&uvs);
+
         /** @brief Sets one RGBA color per triangle.
          * @param colors Triangle colors; gray is used when no colors are provided.
          */
@@ -112,6 +118,7 @@ namespace EgLab::RE
 
         Common::DynamicArray<CoordType> _vertices;
         Common::DynamicArray<CoordType> _normals;
+        Common::DynamicArray<Common::Vector2f> _uvs;
         Common::DynamicArray<IdxType> _indices;
         // True when the normals were supplied externally and must not be recomputed.
         bool _normalsProvided{false};
@@ -124,6 +131,7 @@ namespace EgLab::RE
         Common::SharedPtr<VertexBuffer> _arrayVertexBuffer;
         Common::SharedPtr<VertexBuffer> _arrayNormalVertexBuffer;
         Common::SharedPtr<VertexBuffer> _arrayCentroidVertexBuffer;
+        Common::SharedPtr<VertexBuffer> _arrayUvVertexBuffer;
         Common::SharedPtr<IndexBuffer> _indexBuffer;
 
         // Per-triangle color table stored in a Shader Storage Buffer Object (SSBO).

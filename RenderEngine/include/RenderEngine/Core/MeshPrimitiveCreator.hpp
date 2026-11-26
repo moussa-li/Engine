@@ -1,4 +1,5 @@
 #pragma once
+#include "Common/Vector.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "RenderEngine/Core/MeshToTriFace.hpp"
 #include "RenderEngine/Core/PrimitiveCreator.hpp"
@@ -45,6 +46,13 @@ namespace EgLab::RE
         ///          faces keep their sharp boundary.
         void setSmoothNormals(bool smooth);
 
+        /// @brief Supplies one surface UV per source mesh node for the face primitive.
+        /// @details The buffer must outlive getPrimitive<RenderFace>(). UVs are expanded per
+        ///          face corner in the same order as the face vertices, so the UV shader can
+        ///          interpolate them across each triangle.
+        /// @param uvs Per-mesh-node UV table, or null when the mesh has no surface UVs.
+        void setNodeUvs(const Common::DynamicArray<Common::Vector2f>* uvs);
+
     protected:
         /// @brief Populates a node primitive from the source mesh.
         virtual void updateData(Common::SharedPtr<RenderNode>);
@@ -58,5 +66,6 @@ namespace EgLab::RE
         Common::SharedPtr<MeshToTriFace> _translator;
         LineIndexSource _lineIndexSource{LineIndexSource::AllTriangleEdges};
         bool _smoothNormals{false};
+        const Common::DynamicArray<Common::Vector2f>* _nodeUvs{nullptr};
     };
 } // namespace EgLab::RE

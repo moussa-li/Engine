@@ -14,6 +14,7 @@
 #include "RenderEngine/Core/ScenePicker.hpp"
 #include "Work/RenderEvent.hpp"
 #include "Work/GeometryZebra.hpp"
+#include "Work/GeometryUv.hpp"
 #include "Work/SelectionModel.hpp"
 
 namespace EgLab::ME
@@ -115,6 +116,9 @@ namespace EgLab::Platform
         /// Turns the zebra (isophote) stripe analysis of geometry faces on or off.
         void applyGeometryZebra(const GeometryZebraEvent& event);
 
+        /// Turns the surface-UV colouring of geometry faces on or off.
+        void applyGeometryUv(const GeometryUvEvent& event);
+
         // ---- pick phase: query the scene and expose the highlight as a scene primitive ----
         void applyPick(const PickEvent& event);
 
@@ -183,6 +187,9 @@ namespace EgLab::Platform
         /// Display mode in effect for one mesh: geometry meshes follow the global mode,
         /// regular meshes always use the regular mesh appearance.
         GeometryDisplayMode effectiveDisplayMode(const Common::SharedPtr<ME::Mesh>& mesh) const;
+        /// Picks the face shader for a geometry mesh: UV display, then zebra, then the regular
+        /// shaded face shader. Moves the primitive between shader buckets when it changes.
+        void updateGeometryFaceShader(MeshRenderEntry& entry);
         Common::Vector4f getMeshBaseColor(const Common::SharedPtr<ME::Mesh>& mesh) const;
         MeshRenderEntry* findActiveMeshEntry(const Common::SharedPtr<ME::Mesh>& mesh);
 
@@ -226,6 +233,7 @@ namespace EgLab::Platform
         GeometryDisplayMode _geometryDisplayMode{GeometryDisplayMode::Mesh};
         bool _geometryShowVertices{true};
         GeometryZebra _geometryZebra;
+        GeometryUv _geometryUv;
 
         RE::CoordType _highlightViewPosition;
         RE::CoordType _highlightViewFront;

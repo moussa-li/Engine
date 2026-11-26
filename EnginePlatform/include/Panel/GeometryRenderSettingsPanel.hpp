@@ -36,10 +36,12 @@ namespace EgLab::Platform
         void applyVertexDisplay(bool visible);
         void applyZebra(bool enabled, float frequency,
                         const Common::Vector3f& lightDirection);
+        void applyUv(bool enabled);
 
         GeometryDisplayMode _mode{GeometryDisplayMode::Mesh};
         bool _showVertices{true};
         GeometryZebra _zebra;
+        bool _uvEnabled{false};
         Common::String _status;
     };
 } // namespace EgLab::Platform

@@ -36,6 +36,7 @@ namespace EgLab::RE
         Easy,
         Highlight,
         Zebra,
+        Uv,
     };
 
     /// Loads and provides shared built-in shader programs.
@@ -89,6 +90,15 @@ namespace EgLab::RE
         /// @param shader Receives the shader object.
         Common::Return getZebraShader(Common::SharedPtr<Shader> &shader);
 
+        /// @brief Loads the surface-UV shader source into a buffer.
+        /// @param buffer Receives the shader source.
+        Common::Return getUvShader(Common::String &buffer);
+
+        /// @brief Creates or retrieves the surface-UV shader program.
+        /// @details Colours the geometry faces from their interpolated surface UV.
+        /// @param shader Receives the shader object.
+        Common::Return getUvShader(Common::SharedPtr<Shader> &shader);
+
     private:
         ShaderLib();
         ~ShaderLib();
@@ -104,6 +114,7 @@ namespace EgLab::RE
         RegisterShaderLib(ShaderId::Basic, getBasicShader);
         RegisterShaderLib(ShaderId::Node, getNodeShader);
         RegisterShaderLib(ShaderId::Zebra, getZebraShader);
+        RegisterShaderLib(ShaderId::Uv, getUvShader);
         return Common::Return::Succeed;
     }
 

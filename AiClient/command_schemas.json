@@ -680,6 +680,24 @@
         "required": ["enabled"],
         "additionalProperties": false
       }
+    },
+    {
+      "name": "SetGeometryUv",
+      "eventId": 200027,
+      "category": "Geometry",
+      "summary": "设置几何面曲面 UV 显示",
+      "description": "对导入的 B-Rep 几何模型启用曲面 UV 着色，作用于场景内全部几何模型，普通网格模型不受影响。导入时直接从每个曲面的参数化中获得渲染网格节点的 UV，并按单个 B-Rep 面归一化到 [0,1]；专用 UV 着色器在每个三角形内插值 UV 并据此生成颜色（R=u，G=v）。UV 显示优先于斑马纹。enabled=false 时恢复常规着色。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "true=显示曲面 UV，false=关闭并恢复常规着色。"
+          }
+        },
+        "required": ["enabled"],
+        "additionalProperties": false
+      }
     }
   ],
   "excluded": [

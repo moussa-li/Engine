@@ -863,6 +863,13 @@ namespace EgLab::Platform
         queueRenderEvent(event);
     }
 
+    void RenderWork::setGeometryUv(bool enabled)
+    {
+        auto event = Common::makeShared<GeometryUvEvent>();
+        event->enabled = enabled;
+        queueRenderEvent(event);
+    }
+
     void RenderWork::setGeometryPickFilter(uint32_t mask)
     {
         // The selector stores the mask atomically, so picking on the render thread always sees

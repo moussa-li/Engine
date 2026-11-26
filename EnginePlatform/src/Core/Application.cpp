@@ -148,6 +148,7 @@ namespace EgLab::Platform
                 Common::Vector3f(ini.getFloat("geometry.zebraLightX", 0.0f),
                                  ini.getFloat("geometry.zebraLightY", 0.0f),
                                  ini.getFloat("geometry.zebraLightZ", 1.0f))));
+        RenderWork::instance().setGeometryUv(ini.getBool("geometry.uv", false));
 
         // 周期性读取注册表中的活动进程 PID，供主菜单实时高亮当前进程。
         const int pidIntervalMs = ini.getInt("registry.pidIntervalMs", 300);

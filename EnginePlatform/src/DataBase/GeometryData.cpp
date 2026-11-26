@@ -103,6 +103,21 @@ namespace EgLab::Platform
         }
     }
 
+    void GeometryData::setNodeUvs(const Common::DynamicArray<Common::Vector2f>& uvs)
+    {
+        std::lock_guard<std::mutex> lock(_geometryMutex);
+        _nodeUvs.clear();
+        for (std::size_t index = 0; index < uvs.size(); ++index)
+        {
+            _nodeUvs.pushBack(uvs[index]);
+        }
+    }
+
+    const Common::DynamicArray<Common::Vector2f>& GeometryData::getNodeUvs() const
+    {
+        return _nodeUvs;
+    }
+
     GeometryFeatureRef GeometryData::getFeatureByNodeIndex(uint32_t nodeIndex) const
     {
         std::lock_guard<std::mutex> lock(_geometryMutex);
