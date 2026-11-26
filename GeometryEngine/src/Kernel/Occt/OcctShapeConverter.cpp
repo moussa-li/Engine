@@ -10,7 +10,9 @@
 #include <GProp_GProps.hxx>
 #include <Poly_Triangle.hxx>
 #include <Poly_Triangulation.hxx>
+#include <Poly_PolygonOnTriangulation.hxx>
 #include <Standard_Failure.hxx>
+#include <TColStd_Array1OfInteger.hxx>
 #include <Standard_Integer.hxx>
 #include <TopAbs_Orientation.hxx>
 #include <TopExp.hxx>
@@ -165,24 +167,59 @@ namespace EgLab::GE
                 Tessellation& mesh = geometry->getTessellation();
                 Common::DynamicArray<Vec3> points;
 
-                try
+                // Prefer the polygon OCCT stored on a face triangulation: those nodes are the
+                // exact same points the rendered face patches use, so the edge line coincides
+                // with the tessellated face boundary instead of being an independent curve
+                // approximation that can drift away from it.
+                Handle(Poly_PolygonOnTriangulation) polygon;
+                Handle(Poly_Triangulation) polygonTriangulation;
+                TopLoc_Location polygonLocation;
+                BRep_Tool::PolygonOnTriangulation(edge, polygon, polygonTriangulation,
+                                                  polygonLocation);
+                if (!polygon.IsNull() && !polygonTriangulation.IsNull() &&
+                    polygon->NbNodes() >= 2)
                 {
-                    BRepAdaptor_Curve curve(edge);
-                    GCPnts_QuasiUniformDeflection sampler(curve, _options.getLinearDeflection());
-                    if (sampler.IsDone() && sampler.NbPoints() >= 2)
+                    const gp_Trsf& transform = polygonLocation.Transformation();
+                    const TColStd_Array1OfInteger& nodeIndices = polygon->Nodes();
+                    points.reserve(static_cast<std::size_t>(polygon->NbNodes()));
+                    for (Standard_Integer p = nodeIndices.Lower(); p <= nodeIndices.Upper(); ++p)
                     {
-                        points.reserve(static_cast<std::size_t>(sampler.NbPoints()));
-                        for (Standard_Integer p = 1; p <= sampler.NbPoints(); ++p)
+                        const Standard_Integer nodeIndex = nodeIndices(p);
+                        if (nodeIndex < 1 || nodeIndex > polygonTriangulation->NbNodes())
                         {
-                            const gp_Pnt point = sampler.Value(p);
-                            points.pushBack(Vec3(point.X(), point.Y(), point.Z()));
+                            continue;
                         }
+                        const gp_Pnt point =
+                            polygonTriangulation->Node(nodeIndex).Transformed(transform);
+                        points.pushBack(Vec3(point.X(), point.Y(), point.Z()));
                     }
                 }
-                catch (const Standard_Failure&)
+
+                // Fall back to sampling the exact curve when the edge has no polygon on a
+                // triangulation (free edges, meshing disabled for the adjacent face, ...).
+                if (points.size() < 2)
                 {
-                    // Degenerate or invalid edges fall back to their end vertices below.
                     points.clear();
+                    try
+                    {
+                        BRepAdaptor_Curve curve(edge);
+                        GCPnts_QuasiUniformDeflection sampler(curve,
+                                                              _options.getLinearDeflection());
+                        if (sampler.IsDone() && sampler.NbPoints() >= 2)
+                        {
+                            points.reserve(static_cast<std::size_t>(sampler.NbPoints()));
+                            for (Standard_Integer p = 1; p <= sampler.NbPoints(); ++p)
+                            {
+                                const gp_Pnt point = sampler.Value(p);
+                                points.pushBack(Vec3(point.X(), point.Y(), point.Z()));
+                            }
+                        }
+                    }
+                    catch (const Standard_Failure&)
+                    {
+                        // Degenerate or invalid edges fall back to their end vertices below.
+                        points.clear();
+                    }
                 }
 
                 if (points.size() < 2)

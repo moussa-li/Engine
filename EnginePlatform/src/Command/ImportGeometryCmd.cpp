@@ -19,6 +19,7 @@
 #include "GeometryEngine/Topology/TopologyType.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "MeshEngine/MeshData/Node.hpp"
+#include "Work/GeometryTessellation.hpp"
 #include "Work/RenderWork.hpp"
 
 namespace EgLab::Platform
@@ -113,7 +114,8 @@ namespace EgLab::Platform
         const Common::String kernelName(getParams().kernelName);
         GE::GeometryImporter importer(
             kernelName.size() == 0 ? GE::GeometryKernelRegistry::getDefaultKernelName()
-                                   : kernelName);
+                                   : kernelName,
+            GeometryTessellationSettings::instance().getOptions());
         const GE::GeometryImportReport report = importer.importFile(filePath, *document);
         if (!report.isSucceed())
         {

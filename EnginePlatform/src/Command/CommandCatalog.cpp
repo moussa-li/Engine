@@ -113,6 +113,18 @@ namespace EgLab::Platform
              "0 = regular shading, 1 = colour geometry faces from their interpolated surface UV"},
         };
 
+        // ===== GeometryTessellationParam =====
+        const ParamFieldDesc kGeometryTessellationFields[] = {
+            {"linearDeflection", "Linear Deflection", ParamFieldType::Float, 0,
+             "Chordal/linear deflection for tessellation (default 0.1)"},
+            {"angularDeflection", "Angular Deflection", ParamFieldType::Float, 0,
+             "Angular deflection in radians (default 0.5)"},
+            {"relative", "Relative Deflection", ParamFieldType::UInt32, 0,
+             "0 = absolute deflection, 1 = relative to the model bounding box"},
+            {"parallel", "Parallel Meshing", ParamFieldType::UInt32, 0,
+             "0 = serial, 1 = parallel tessellation"},
+        };
+
         // ===== DeleteMeshParam =====
         const ParamFieldDesc kDeleteMeshFields[] = {
             {"dataNodeId", "Data Node Id", ParamFieldType::UInt64, 0,
@@ -224,6 +236,10 @@ namespace EgLab::Platform
             {EventId::SetGeometryUv, "SetGeometryUv", "Set Geometry Surface UV", "Geometry", true,
              sizeof(GeometryUvParam), kGeometryUvFields,
              sizeof(kGeometryUvFields) / sizeof(kGeometryUvFields[0])},
+            {EventId::SetGeometryTessellation, "SetGeometryTessellation",
+             "Set Geometry Tessellation", "Geometry", true, sizeof(GeometryTessellationParam),
+             kGeometryTessellationFields,
+             sizeof(kGeometryTessellationFields) / sizeof(kGeometryTessellationFields[0])},
             {EventId::CameraPan, "CameraPan", "Pan Camera", "Camera", false, 0, nullptr, 0, true,
              true},
             {EventId::CameraRotate, "CameraRotate", "Rotate Camera", "Camera", false, 0, nullptr,

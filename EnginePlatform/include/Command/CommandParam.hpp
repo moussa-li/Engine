@@ -150,6 +150,16 @@ namespace EgLab::Platform
         uint32_t reserved; // off 4; 恒为 0
     };
 
+    // SetGeometryTessellation：几何划分（B-Rep 三角化）渲染网格参数。更新后会用新参数重新
+    // 导入并重建场景内已有几何模型的渲染网格。
+    struct GeometryTessellationParam
+    {
+        float linearDeflection;  // off 0; 线性/弦高偏差，>0，过小时按内核下限裁剪
+        float angularDeflection; // off 4; 角度偏差(弧度)，>0
+        uint32_t relative;       // off 8; 0=绝对偏差 1=相对包围盒偏差
+        uint32_t parallel;       // off 12; 0=串行 1=并行三角化
+    };
+
     // ===== SetCamera =====
     enum class CameraMode : uint32_t
     {
@@ -316,5 +326,9 @@ namespace EgLab::Platform
     static_assert(std::is_trivially_copyable<GeometryUvParam>::value,
                   "GeometryUvParam must be trivially copyable");
     static_assert(sizeof(GeometryUvParam) == 8, "GeometryUvParam must be exactly 8 bytes");
+    static_assert(std::is_trivially_copyable<GeometryTessellationParam>::value,
+                  "GeometryTessellationParam must be trivially copyable");
+    static_assert(sizeof(GeometryTessellationParam) == 16,
+                  "GeometryTessellationParam must be exactly 16 bytes");
 
 } // namespace EgLab::Platform

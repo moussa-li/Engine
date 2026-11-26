@@ -837,6 +837,16 @@ class NativeCommandBridge:
             # 布局：uint32 enabled + uint32 reserved（共 8B）。
             enabled = 1 if args.get("enabled") else 0
             return 200027, struct.pack("<I", 8) + struct.pack("<II", enabled, 0)
+        if name == "SetGeometryTessellation":
+            # 布局：float linear + float angular + uint32 relative + uint32 parallel（共 16B）。
+            linear = (float(args.get("linearDeflection"))
+                      if is_number(args.get("linearDeflection")) else 0.1)
+            angular = (float(args.get("angularDeflection"))
+                       if is_number(args.get("angularDeflection")) else 0.5)
+            relative = 1 if args.get("relative") else 0
+            parallel = 1 if args.get("parallel", True) else 0
+            return 200028, struct.pack("<I", 16) + struct.pack("<ffII", linear, angular,
+                                                                relative, parallel)
         return None
 
     def call(self, name, arguments):

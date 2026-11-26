@@ -698,6 +698,38 @@
         "required": ["enabled"],
         "additionalProperties": false
       }
+    },
+    {
+      "name": "SetGeometryTessellation",
+      "eventId": 200028,
+      "category": "Geometry",
+      "summary": "设置几何划分（B-Rep 三角化）渲染网格参数",
+      "description": "设置 B-Rep 几何模型的三角化参数，并立即使用新参数重新导入、重建场景内所有已导入几何模型的渲染网格（普通网格模型不受影响）。linearDeflection 控制弦高误差，越小网格越密；angularDeflection 控制相邻细分段的最大夹角（弧度），越小曲面越精细；relative 使线性偏差按包围盒比例解释；parallel 启用并行三角化。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "linearDeflection": {
+            "type": "number",
+            "description": "线性/弦高偏差，>0，默认 0.1；越小网格越密。",
+            "exclusiveMinimum": 0
+          },
+          "angularDeflection": {
+            "type": "number",
+            "description": "角度偏差（弧度），>0，默认 0.5；越小曲面越精细。",
+            "exclusiveMinimum": 0
+          },
+          "relative": {
+            "type": "boolean",
+            "description": "true=线性偏差相对于模型包围盒，false=使用绝对模型单位（默认 false）。"
+          },
+          "parallel": {
+            "type": "boolean",
+            "description": "true=并行三角化（默认 true），false=串行。"
+          }
+        },
+        "required": ["linearDeflection", "angularDeflection"],
+        "additionalProperties": false
+      }
     }
   ],
   "excluded": [

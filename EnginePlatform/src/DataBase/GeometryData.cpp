@@ -48,6 +48,12 @@ namespace EgLab::Platform
         return _document;
     }
 
+    void GeometryData::setDocument(const Common::SharedPtr<GE::GeometryDocument>& document)
+    {
+        std::lock_guard<std::mutex> lock(_geometryMutex);
+        _document = document;
+    }
+
     const Common::String& GeometryData::getSourcePath() const
     {
         return _sourcePath;

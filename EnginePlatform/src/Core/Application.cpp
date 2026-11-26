@@ -13,6 +13,7 @@
 #include "RenderEngine/Core/RenderConfigure.hpp"
 #include "Work/GeometryDisplayMode.hpp"
 #include "Work/GeometryZebra.hpp"
+#include "Work/GeometryTessellation.hpp"
 #include "Work/RenderWork.hpp"
 #include "Work/UIWork.hpp"
 
@@ -128,8 +129,7 @@ namespace EgLab::Platform
         RenderWork::instance().setLineWidth(ini.getFloat("mesh.lineWidth", 2.0f));
         RenderWork::instance().setFaceShrink(ini.getFloat("mesh.faceShrink", 0.0f));
 
-        const int savedGeometryMode = ini.getInt("geometry.displayMode", 0);
-        RenderWork::instance().setGeometryDisplayMode(
+        const int savedGeometryMode = ini.getInt("geometry.displayMode", 0);        RenderWork::instance().setGeometryDisplayMode(
             GeometryDisplayModeInfo::isValid(static_cast<uint32_t>(savedGeometryMode))
                 ? static_cast<uint32_t>(savedGeometryMode)
                 : static_cast<uint32_t>(GeometryDisplayMode::Mesh));
@@ -149,6 +149,19 @@ namespace EgLab::Platform
                                  ini.getFloat("geometry.zebraLightY", 0.0f),
                                  ini.getFloat("geometry.zebraLightZ", 1.0f))));
         RenderWork::instance().setGeometryUv(ini.getBool("geometry.uv", false));
+
+        {
+            GE::GeometryImportOptions options;
+            options.setLinearDeflection(
+                ini.getFloat("geometry.tessellation.linearDeflection",
+                             static_cast<float>(options.getLinearDeflection())));
+            options.setAngularDeflection(
+                ini.getFloat("geometry.tessellation.angularDeflection",
+                             static_cast<float>(options.getAngularDeflection())));
+            options.setRelativeDeflection(ini.getBool("geometry.tessellation.relative", false));
+            options.setParallel(ini.getBool("geometry.tessellation.parallel", true));
+            GeometryTessellationSettings::instance().setOptions(options);
+        }
 
         // 周期性读取注册表中的活动进程 PID，供主菜单实时高亮当前进程。
         const int pidIntervalMs = ini.getInt("registry.pidIntervalMs", 300);

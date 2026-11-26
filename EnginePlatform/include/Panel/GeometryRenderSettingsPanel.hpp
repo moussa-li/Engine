@@ -37,11 +37,17 @@ namespace EgLab::Platform
         void applyZebra(bool enabled, float frequency,
                         const Common::Vector3f& lightDirection);
         void applyUv(bool enabled);
+        void applyTessellation();
 
         GeometryDisplayMode _mode{GeometryDisplayMode::Mesh};
         bool _showVertices{true};
         GeometryZebra _zebra;
         bool _uvEnabled{false};
+        float _tessLinearDeflection{0.1f};
+        float _tessAngularDeflection{0.5f};
+        bool _tessRelative{false};
+        bool _tessParallel{true};
+        Common::String _tessStatus;
         Common::String _status;
     };
 } // namespace EgLab::Platform

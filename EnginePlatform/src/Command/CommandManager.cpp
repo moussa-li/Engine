@@ -29,6 +29,7 @@
 #include "Command/SetGeometryVertexDisplayCmd.hpp"
 #include "Command/SetGeometryZebraCmd.hpp"
 #include "Command/SetGeometryUvCmd.hpp"
+#include "Command/SetGeometryTessellationCmd.hpp"
 #include "Command/LocateElementsCmd.hpp"
 #include "Command/ElementsVisibilityCmd.hpp"
 #include "Command/NodeVisibilityCmd.hpp"
@@ -276,6 +277,12 @@ namespace EgLab::Platform
                 return Common::makeShared<SetGeometryUvCmd>(param);
             };
 
+            _creator[EventId::SetGeometryTessellation] = [](const PacketPOD& pod) {
+                GeometryTessellationParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<SetGeometryTessellationCmd>(param);
+            };
+
             _creator[EventId::Highlight] = [](const PacketPOD& pod) {
                 HighlightParam param{};
                 std::memcpy(&param, pod.data, sizeof(param));
@@ -467,6 +474,34 @@ namespace EgLab::Platform
                 if (packet.contains("enabled"))
                 {
                     param.enabled = packet.getData<uint32_t>("enabled");
+                }
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
+            _packetCreator[EventId::SetGeometryTessellation] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                GeometryTessellationParam param{};
+                param.linearDeflection = 0.1f;
+                param.angularDeflection = 0.5f;
+                param.relative = 0;
+                param.parallel = 1;
+                if (packet.contains("linearDeflection"))
+                {
+                    param.linearDeflection = packet.getData<float>("linearDeflection");
+                }
+                if (packet.contains("angularDeflection"))
+                {
+                    param.angularDeflection = packet.getData<float>("angularDeflection");
+                }
+                if (packet.contains("relative"))
+                {
+                    param.relative = packet.getData<uint32_t>("relative");
+                }
+                if (packet.contains("parallel"))
+                {
+                    param.parallel = packet.getData<uint32_t>("parallel");
                 }
                 pod.dataSize = sizeof(param);
                 std::memcpy(pod.data, &param, sizeof(param));
@@ -687,6 +722,7 @@ namespace EgLab::Platform
             _subscriber.subscrib((uint32_t)EventId::SetGeometryVertexDisplay);
             _subscriber.subscrib((uint32_t)EventId::SetGeometryZebra);
             _subscriber.subscrib((uint32_t)EventId::SetGeometryUv);
+            _subscriber.subscrib((uint32_t)EventId::SetGeometryTessellation);
 
             if (_isRunning == true) return;
             _isRunning = true;

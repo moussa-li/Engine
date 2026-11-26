@@ -16,6 +16,10 @@ namespace EgLab::Platform
         constexpr const char* GEOMETRY_ZEBRA_LIGHT_Y_KEY = "geometry.zebraLightY";
         constexpr const char* GEOMETRY_ZEBRA_LIGHT_Z_KEY = "geometry.zebraLightZ";
         constexpr const char* GEOMETRY_UV_KEY = "geometry.uv";
+        constexpr const char* GEOMETRY_TESS_LINEAR_KEY = "geometry.tessellation.linearDeflection";
+        constexpr const char* GEOMETRY_TESS_ANGULAR_KEY = "geometry.tessellation.angularDeflection";
+        constexpr const char* GEOMETRY_TESS_RELATIVE_KEY = "geometry.tessellation.relative";
+        constexpr const char* GEOMETRY_TESS_PARALLEL_KEY = "geometry.tessellation.parallel";
         constexpr float GEOMETRY_ZEBRA_DEFAULT_LIGHT_X = 0.0f;
         constexpr float GEOMETRY_ZEBRA_DEFAULT_LIGHT_Y = 0.0f;
         constexpr float GEOMETRY_ZEBRA_DEFAULT_LIGHT_Z = 1.0f;
@@ -40,6 +44,11 @@ namespace EgLab::Platform
                              ini.getFloat(GEOMETRY_ZEBRA_LIGHT_Z_KEY, GEOMETRY_ZEBRA_DEFAULT_LIGHT_Z)));
 
         _uvEnabled = ini.getBool(GEOMETRY_UV_KEY, false);
+
+        _tessLinearDeflection = ini.getFloat(GEOMETRY_TESS_LINEAR_KEY, 0.1f);
+        _tessAngularDeflection = ini.getFloat(GEOMETRY_TESS_ANGULAR_KEY, 0.5f);
+        _tessRelative = ini.getBool(GEOMETRY_TESS_RELATIVE_KEY, false);
+        _tessParallel = ini.getBool(GEOMETRY_TESS_PARALLEL_KEY, true);
     }
 
     void GeometryRenderSettingsPanel::applyVertexDisplay(bool visible)
@@ -56,8 +65,8 @@ namespace EgLab::Platform
     {
         // The content grew with the zebra controls, so keep an older saved window size tall
         // enough to show them while still allowing the user to resize the panel.
-        ImGui::SetNextWindowSizeConstraints(ImVec2(320.0f, 440.0f), ImVec2(900.0f, 900.0f));
-        ImGui::SetNextWindowSize(ImVec2(360, 470), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(320.0f, 560.0f), ImVec2(900.0f, 900.0f));
+        ImGui::SetNextWindowSize(ImVec2(360, 600), ImGuiCond_FirstUseEver);
     }
 
     void GeometryRenderSettingsPanel::applyMode(GeometryDisplayMode mode)
@@ -104,6 +113,23 @@ namespace EgLab::Platform
         EventPacket packet;
         packet.setData("enabled", static_cast<uint32_t>(_uvEnabled ? 1 : 0));
         CommandManager::instance().call(EventId::SetGeometryUv, Common::move(packet));
+    }
+
+    void GeometryRenderSettingsPanel::applyTessellation()
+    {
+        auto& ini = IniManager::instance();
+        ini.setFloat(GEOMETRY_TESS_LINEAR_KEY, _tessLinearDeflection);
+        ini.setFloat(GEOMETRY_TESS_ANGULAR_KEY, _tessAngularDeflection);
+        ini.setInt(GEOMETRY_TESS_RELATIVE_KEY, _tessRelative ? 1 : 0);
+        ini.setInt(GEOMETRY_TESS_PARALLEL_KEY, _tessParallel ? 1 : 0);
+
+        EventPacket packet;
+        packet.setData("linearDeflection", _tessLinearDeflection);
+        packet.setData("angularDeflection", _tessAngularDeflection);
+        packet.setData("relative", static_cast<uint32_t>(_tessRelative ? 1 : 0));
+        packet.setData("parallel", static_cast<uint32_t>(_tessParallel ? 1 : 0));
+        CommandManager::instance().call(EventId::SetGeometryTessellation, Common::move(packet));
+        _tessStatus = "Re-tessellation requested";
     }
 
     void GeometryRenderSettingsPanel::renderImpl()
@@ -210,6 +236,55 @@ namespace EgLab::Platform
         }
         ImGui::TextDisabled("UV comes from each B-Rep face's surface parameters (normalised per "
                             "face).");
+
+        ImGui::Separator();
+        ImGui::TextUnformatted("Tessellation (render mesh)");
+        ImGui::TextDisabled("Applies to new imports and re-tessellates existing geometry models.");
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::SliderFloat("Linear deflection", &_tessLinearDeflection, 0.001f, 5.0f, "%.3f",
+                           ImGuiSliderFlags_Logarithmic);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Maximum chordal deviation between the tessellation and the exact "
+                              "surface. Smaller values give a denser, more accurate mesh.");
+        }
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::SliderFloat("Angular deflection", &_tessAngularDeflection, 0.05f, 1.5f, "%.2f rad",
+                           ImGuiSliderFlags_Logarithmic);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Maximum angle between adjacent tessellation segments. Smaller "
+                              "values refine curved regions.");
+        }
+        ImGui::Checkbox("Relative deflection", &_tessRelative);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Scale the linear deflection by the model bounding box instead of "
+                              "using model units.");
+        }
+        ImGui::Checkbox("Parallel meshing", &_tessParallel);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Tessellate faces in parallel. Disable for deterministic, "
+                              "single-threaded output.");
+        }
+        if (ImGui::Button("Apply tessellation"))
+        {
+            applyTessellation();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Reset tessellation"))
+        {
+            _tessLinearDeflection = 0.1f;
+            _tessAngularDeflection = 0.5f;
+            _tessRelative = false;
+            _tessParallel = true;
+            applyTessellation();
+        }
+        if (_tessStatus.size() > 0)
+        {
+            ImGui::TextDisabled("%s", _tessStatus.c_str());
+        }
 
         ImGui::Separator();
         ImGui::Text("Current mode: %s",

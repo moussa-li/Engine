@@ -241,13 +241,18 @@ picked with mesh node indices:
 | Layer | Render primitive | Feature |
 | --- | --- | --- |
 | Faces | `RenderFace` (Tri3 elements) | `Face`, promoted to `Solid` when faces are filtered out |
-| Edges | `RenderLine` (polyline segments from the B-Rep edges) | `Edge` |
+| Edges | `RenderLine` (polyline segments taken from the tessellated face boundary) | `Edge` |
 | Vertices | `RenderNode` (only nodes that reference a `Vertex`) | `Vertex` |
 
 `GeometryInfoPanel` reads whichever layer was hit and shows the feature (type, length, area,
 volume, bbox, center, parents/children). Faces and edges are shown with `Face outline` and
 `Edges only`; the `Mesh` mode still draws the dense triangle wireframe, whose line hits resolve
 to the owning face.
+
+Edge polylines reuse the polygon OCCT stores on the adjacent face triangulation
+(`BRep_Tool::PolygonOnTriangulation`) instead of sampling the exact curve independently, so the
+`Face outline` / `Edges only` lines coincide with the tessellated face boundary. Curves with no
+polygon on a triangulation (free edges) still fall back to `GCPnts` sampling.
 
 * A hit on a tessellated triangle is resolved to the feature that owns it (`GeometryElementMap`
   maps `elemId → FeatureRef` and back), and **all** triangles of that feature are highlighted, so
@@ -290,6 +295,12 @@ Imported geometry is *not* a regular mesh, and the two are kept apart:
   A dedicated UV shader interpolates those per-vertex UVs across each triangle and writes
   `vec3(u, v, 0)`; surface UV takes precedence over the zebra display, and highlights still draw
   in their pure colour.
+* `Geometry Render Settings` exposes the B-Rep tessellation parameters — linear (chordal)
+  deflection, angular deflection, relative deflection and parallel meshing (persisted as
+  `geometry.tessellation.*`, dispatched as the `SetGeometryTessellation` command). Applying the
+  values stores them for upcoming imports and immediately re-imports every existing geometry
+  model with the new options, swapping its render mesh so the density change is visible without
+  re-adding the file.
 
 ### Add render primitives to a scene
 

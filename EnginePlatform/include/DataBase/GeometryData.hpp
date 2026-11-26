@@ -59,6 +59,9 @@ namespace EgLab::Platform
 
         Common::SharedPtr<GE::GeometryDocument> getDocument() const;
 
+        /// 重新划分后替换文档（与 setMesh/特征表同步调用）。发布后可调用。
+        void setDocument(const Common::SharedPtr<GE::GeometryDocument>& document);
+
         const Common::String& getSourcePath() const;
 
         /// refs 必须与渲染 Mesh 的 elemId 严格对齐：refs.size() == mesh->getElemNumber()

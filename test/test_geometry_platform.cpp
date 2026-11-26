@@ -18,6 +18,7 @@
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "MeshEngine/MeshData/Node.hpp"
 #include "Work/GeometryZebra.hpp"
+#include "Work/GeometryTessellation.hpp"
 
 namespace
 {
@@ -288,6 +289,31 @@ namespace
             Platform::GeometryZebra::clampDirection(Common::Vector3f(1.0f, 1.0f, 0.0f));
         EXPECT_NEAR(diagonal.length(), 1.0f, 1e-6f);
         EXPECT_NEAR(diagonal.x(), diagonal.y(), 1e-6f);
+    }
+
+    /// The render settings panel and the SetGeometryTessellation command share this holder, so
+    /// it must keep the clamped options that ImportGeometry will consume.
+    TEST(GeometryTessellationSettings, storesClampedImportOptions)
+    {
+        auto& settings = Platform::GeometryTessellationSettings::instance();
+        const GE::GeometryImportOptions original = settings.getOptions();
+
+        GE::GeometryImportOptions options;
+        options.setLinearDeflection(-5.0);
+        options.setAngularDeflection(0.0);
+        options.setRelativeDeflection(true);
+        options.setParallel(false);
+        EXPECT_GT(options.getLinearDeflection(), 0.0);
+        EXPECT_GT(options.getAngularDeflection(), 0.0);
+
+        settings.setOptions(options);
+        const GE::GeometryImportOptions stored = settings.getOptions();
+        EXPECT_DOUBLE_EQ(stored.getLinearDeflection(), options.getLinearDeflection());
+        EXPECT_DOUBLE_EQ(stored.getAngularDeflection(), options.getAngularDeflection());
+        EXPECT_TRUE(stored.isRelativeDeflection());
+        EXPECT_FALSE(stored.isParallel());
+
+        settings.setOptions(original);
     }
 
 } // namespace
