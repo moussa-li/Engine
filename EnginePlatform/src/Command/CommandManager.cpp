@@ -27,6 +27,7 @@
 #include "Command/SetGeometryRenderModeCmd.hpp"
 #include "Command/SetGeometryPickFilterCmd.hpp"
 #include "Command/SetGeometryVertexDisplayCmd.hpp"
+#include "Command/SetGeometryZebraCmd.hpp"
 #include "Command/LocateElementsCmd.hpp"
 #include "Command/ElementsVisibilityCmd.hpp"
 #include "Command/NodeVisibilityCmd.hpp"
@@ -39,6 +40,7 @@
 #include "Common/SharedPtr.hpp"
 #include "Common/Subscriber.hpp"
 #include "DataBase/Context.hpp"
+#include "Work/GeometryZebra.hpp"
 #include "Work/RenderWork.hpp"
 
 namespace EgLab::Platform
@@ -261,6 +263,12 @@ namespace EgLab::Platform
                 return Common::makeShared<SetGeometryVertexDisplayCmd>(param);
             };
 
+            _creator[EventId::SetGeometryZebra] = [](const PacketPOD& pod) {
+                GeometryZebraParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<SetGeometryZebraCmd>(param);
+            };
+
             _creator[EventId::Highlight] = [](const PacketPOD& pod) {
                 HighlightParam param{};
                 std::memcpy(&param, pod.data, sizeof(param));
@@ -408,6 +416,39 @@ namespace EgLab::Platform
                 {
                     param.visible = packet.getData<uint32_t>("visible");
                 }
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
+            _packetCreator[EventId::SetGeometryZebra] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                GeometryZebraParam param{};
+                param.frequency = GeometryZebra::DEFAULT_FREQUENCY;
+                param.lightDirection[0] = 0.0f;
+                param.lightDirection[1] = 0.0f;
+                param.lightDirection[2] = 1.0f;
+                if (packet.contains("enabled"))
+                {
+                    param.enabled = packet.getData<uint32_t>("enabled");
+                }
+                if (packet.contains("frequency"))
+                {
+                    param.frequency = packet.getData<float>("frequency");
+                }
+                if (packet.contains("lightX"))
+                {
+                    param.lightDirection[0] = packet.getData<float>("lightX");
+                }
+                if (packet.contains("lightY"))
+                {
+                    param.lightDirection[1] = packet.getData<float>("lightY");
+                }
+                if (packet.contains("lightZ"))
+                {
+                    param.lightDirection[2] = packet.getData<float>("lightZ");
+                }
+                param.frequency = GeometryZebra::clampFrequency(param.frequency);
                 pod.dataSize = sizeof(param);
                 std::memcpy(pod.data, &param, sizeof(param));
                 return pod;
@@ -625,6 +666,7 @@ namespace EgLab::Platform
             _subscriber.subscrib((uint32_t)EventId::SetGeometryRenderMode);
             _subscriber.subscrib((uint32_t)EventId::SetGeometryPickFilter);
             _subscriber.subscrib((uint32_t)EventId::SetGeometryVertexDisplay);
+            _subscriber.subscrib((uint32_t)EventId::SetGeometryZebra);
 
             if (_isRunning == true) return;
             _isRunning = true;

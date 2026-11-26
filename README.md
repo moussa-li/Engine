@@ -274,6 +274,15 @@ Imported geometry is *not* a regular mesh, and the two are kept apart:
   feature are rendered, controlled by the `Show vertices` checkbox in
   `Geometry Render Settings` (persisted as `geometry.showVertices`, dispatched as the
   `SetGeometryVertexDisplay` command).
+* `Geometry Render Settings` can turn the faces into zebra (isophote) stripes for continuity
+  review (persisted as `geometry.zebra` / `geometry.zebraFrequency` / `geometry.zebraLight*`,
+  dispatched as the `SetGeometryZebra` command). The stripes are drawn by a dedicated zebra
+  shader that owns its virtual light direction: the pattern mirrors the UI-configured direction
+  instead of the camera eye ray, so it does not inherit the global lighting and never moves when
+  the camera orbits or zooms. A flat region keeps one band while curvature breaks bend it;
+  enabling the analysis also switches the geometry faces to smooth normals so the bands stay
+  continuous within a face. Pure-color draws (selection and locate highlights) keep their own
+  color, and edge/vertex rendering plus picking are unaffected.
 
 ### Add render primitives to a scene
 

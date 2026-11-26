@@ -4,6 +4,7 @@
 
 #include "Panel/IPanel.hpp"
 #include "Work/GeometryDisplayMode.hpp"
+#include "Work/GeometryZebra.hpp"
 
 namespace EgLab::Platform
 {
@@ -33,9 +34,12 @@ namespace EgLab::Platform
     private:
         void applyMode(GeometryDisplayMode mode);
         void applyVertexDisplay(bool visible);
+        void applyZebra(bool enabled, float frequency,
+                        const Common::Vector3f& lightDirection);
 
         GeometryDisplayMode _mode{GeometryDisplayMode::Mesh};
         bool _showVertices{true};
+        GeometryZebra _zebra;
         Common::String _status;
     };
 } // namespace EgLab::Platform

@@ -649,6 +649,37 @@
         "required": ["visible"],
         "additionalProperties": false
       }
+    },
+    {
+      "name": "SetGeometryZebra",
+      "eventId": 200026,
+      "category": "Geometry",
+      "summary": "设置几何面斑马纹（等照度）分析显示",
+      "description": "对导入的 B-Rep 几何模型启用斑马纹（等照度线）分析显示，作用于场景内全部几何模型，普通网格模型不受影响。斑马纹由用户配置的虚拟光源方向（lightDirection）反射后的纬度切片生成，不继承全局光照、也与相机无关：旋转或缩放相机不会改变条纹图案。平坦区域保持单一条带，曲率突变处条带会弯折，便于检查面之间的连续性。enabled=false 时恢复常规着色。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "true=显示斑马纹，false=关闭并恢复常规着色。"
+          },
+          "frequency": {
+            "type": "number",
+            "description": "条纹密度，取值 2..40，越大条纹越密；省略或非法时为默认 8。",
+            "minimum": 2,
+            "maximum": 40
+          },
+          "lightDirection": {
+            "type": "array",
+            "description": "虚拟斑马光源方向（模型空间），三个数依次为 x/y/z；省略或零向量时使用默认 (0,0,1)。修改相机不会影响该方向。",
+            "items": { "type": "number" },
+            "minItems": 3,
+            "maxItems": 3
+          }
+        },
+        "required": ["enabled"],
+        "additionalProperties": false
+      }
     }
   ],
   "excluded": [

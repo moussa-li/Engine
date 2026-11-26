@@ -820,6 +820,19 @@ class NativeCommandBridge:
         if name == "SetGeometryVertexDisplay":
             visible = 1 if args.get("visible") else 0
             return 200025, struct.pack("<I", 8) + struct.pack("<II", visible, 0)
+        if name == "SetGeometryZebra":
+            # 布局：uint32 enabled + float frequency + float lightDirection[3]（无填充，共 20B）。
+            # frequency 缺省取引擎默认值 8；lightDirection 缺省 (0,0,1)，零向量由引擎回退到默认。
+            enabled = 1 if args.get("enabled") else 0
+            frequency = float(args.get("frequency")) if is_number(args.get("frequency")) else 8.0
+            light = args.get("lightDirection")
+            if not isinstance(light, (list, tuple)) or len(light) < 3:
+                light = (0.0, 0.0, 1.0)
+            lx = float(light[0]) if is_number(light[0]) else 0.0
+            ly = float(light[1]) if is_number(light[1]) else 0.0
+            lz = float(light[2]) if is_number(light[2]) else 1.0
+            return 200026, struct.pack("<I", 20) + struct.pack("<Iffff", enabled, frequency,
+                                                               lx, ly, lz)
         return None
 
     def call(self, name, arguments):

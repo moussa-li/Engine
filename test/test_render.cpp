@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 
 #include <chrono>
+#include <cmath>
 
 #include "Common/StringLineIterator.hpp"
 #include "Common/String.hpp"
@@ -113,6 +114,19 @@ public:
     }
 
     ~SimpleApp() = default;
+
+    /// Releases ImGui, the GL context and GLFW so another SimpleApp can be created in the
+    /// same process.
+    void shutdown()
+    {
+        window->activeContext();
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+        window->deactiveContext();
+        window->terminate();
+    }
+
     void exec()
     {
         const auto startTime = std::chrono::steady_clock::now();
@@ -135,12 +149,7 @@ public:
             window->deal();
         };
 
-        window->activeContext();
-        ImGui_ImplOpenGL3_Shutdown();
-        ImGui_ImplGlfw_Shutdown();
-        ImGui::DestroyContext();
-        window->deactiveContext();
-        window->terminate();
+        shutdown();
     }
 };
 
@@ -1150,4 +1159,140 @@ TEST_F(TestRender, rect_pick_projects_with_real_camera_matrices)
     pickContext.x = center.x;
     pickContext.y = center.y;
     EXPECT_EQ(face.touch(pickContext), 0u);
+}
+
+TEST_F(TestRender, zebraStripesReplaceShadedFaceColor)
+{
+    // A plate curved along Y makes the reflected zebra light direction sweep through several
+    // stripe bands, which is exactly what the zebra analysis has to render.
+    const int columns = 8;
+    const int rows = 48;
+    auto mesh = EgLab::Common::makeShared<EgLab::ME::Mesh>();
+    for (int row = 0; row <= rows; ++row)
+    {
+        for (int column = 0; column <= columns; ++column)
+        {
+            const double x = -1.0 + 2.0 * column / columns;
+            const double y = -1.0 + 2.0 * row / rows;
+            EgLab::ME::Node node;
+            node.setId(static_cast<EgLab::ME::IdType>(1 + row * (columns + 1) + column));
+            EgLab::ME::CoordType coordinate(x, y, 0.35 * std::sin(3.0 * y));
+            node.setXYZ(coordinate);
+            mesh->addNode(EgLab::Common::move(node));
+        }
+    }
+
+    EgLab::ME::IdType elemId = 1;
+    for (int row = 0; row < rows; ++row)
+    {
+        for (int column = 0; column < columns; ++column)
+        {
+            const EgLab::ME::IdType base =
+                static_cast<EgLab::ME::IdType>(1 + row * (columns + 1) + column);
+            const EgLab::ME::IdType below = base + static_cast<EgLab::ME::IdType>(columns + 1);
+            const EgLab::ME::IdType corners[2][3] = {
+                {base, base + 1, below + 1},
+                {base, below + 1, below},
+            };
+            for (int triangle = 0; triangle < 2; ++triangle)
+            {
+                EgLab::ME::Elem elem;
+                elem.setId(elemId++);
+                elem.setType(EgLab::ME::ElemType::Tri3);
+                for (int corner = 0; corner < 3; ++corner)
+                {
+                    elem.setNode(corner, corners[triangle][corner]);
+                }
+                mesh->addElem(EgLab::Common::move(elem));
+            }
+        }
+    }
+
+    SimpleApp app;
+    EgLab::RE::MeshPrimitiveCreator creator(mesh);
+    creator.setSmoothNormals(true);
+    auto facePrimitive = creator.getPrimitive<EgLab::RE::RenderFace>();
+    auto face = EgLab::Common::dynamicSharedPtrCast<EgLab::RE::RenderFace>(facePrimitive);
+    ASSERT_NE(face, nullptr);
+
+    app.window->activeContext();
+    face->setup();
+    EgLab::Common::SharedPtr<EgLab::RE::Shader> faceShader;
+    EgLab::RE::ShaderLib::instance().getFaceShader(faceShader);
+    EgLab::Common::SharedPtr<EgLab::RE::Shader> zebraShader;
+    EgLab::RE::ShaderLib::instance().getZebraShader(zebraShader);
+    app.scene->addPrimitive(faceShader, facePrimitive);
+    app.window->deactiveContext();
+
+    // Pure blue background keeps the grey zebra bands unambiguous.
+    app.renderer->setBackGroundColor(EgLab::Common::Vector4f(0.0f, 0.0f, 1.0f, 1.0f));
+
+    struct BandPixels
+    {
+        int dark{0};
+        int light{0};
+        // Corner pixel of the framebuffer; proves the frame was actually rendered.
+        unsigned char cornerRed{0};
+        unsigned char cornerBlue{0};
+    };
+
+    const auto drawAndCountBands = [&app]() {
+        app.window->activeContext();
+        app.renderer->update(0.016f);
+        app.renderer->draw(app.scene, app.camera);
+
+        EgLab::Common::DynamicArray<unsigned char> pixels;
+        pixels.resize(800u * 600u * 4u);
+        glReadPixels(0, 0, 800, 600, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+        app.window->deactiveContext();
+
+        BandPixels counts;
+        counts.cornerRed = pixels[0];
+        counts.cornerBlue = pixels[2];
+        for (std::size_t index = 0; index + 3 < pixels.size(); index += 4)
+        {
+            const unsigned char red = pixels[index];
+            const unsigned char green = pixels[index + 1];
+            const unsigned char blue = pixels[index + 2];
+            if (red < 40 && green < 40 && blue < 40)
+            {
+                ++counts.dark;
+            }
+            else if (red > 230 && green > 230 && blue > 230)
+            {
+                ++counts.light;
+            }
+        }
+        return counts;
+    };
+
+    const EgLab::Common::Vector3f zebraLight(0.0f, 0.0f, 1.0f);
+    face->setZebraStripes(false, 12.0f, zebraLight, EgLab::Common::Vector4f(0.05f, 0.05f, 0.05f, 1.0f));
+    const BandPixels shaded = drawAndCountBands();
+
+    // Windowed tests tear GLFW down when they finish, so a later context in the same process
+    // may not render at all. The framebuffer corner tells whether this run is usable.
+    if (!(shaded.cornerBlue > 200 && shaded.cornerRed < 40))
+    {
+        app.shutdown();
+        GTEST_SKIP() << "the GL context no longer renders after earlier windowed tests";
+    }
+
+    // Zebra faces are drawn with the dedicated shader, which owns its light direction and never
+    // reads the camera, so the pattern is independent of the view transform.
+    app.window->activeContext();
+    app.scene->removePrimitive(faceShader, facePrimitive);
+    face->setZebraStripes(true, 12.0f, zebraLight, EgLab::Common::Vector4f(0.05f, 0.05f, 0.05f, 1.0f));
+    app.scene->addPrimitive(zebraShader, facePrimitive);
+    app.window->deactiveContext();
+
+    const BandPixels zebra = drawAndCountBands();
+
+    // Both band colors must cover a large part of the model; the shaded look produces neither.
+    EXPECT_GT(zebra.dark, 500);
+    EXPECT_GT(zebra.light, 500);
+    EXPECT_GT(zebra.dark, shaded.dark * 5);
+    EXPECT_GT(zebra.light, shaded.light * 5);
+
+    app.shutdown();
 }

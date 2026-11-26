@@ -88,6 +88,18 @@ namespace EgLab::RE
         /// @param factor Slope-scaled depth bias factor.
         /// @param units Constant depth bias units.
         void setDepthOffset(float factor, float units);
+        /// @brief Enables zebra (isophote) stripe analysis shading.
+        /// @details The lit color is replaced by bands reflected off the curved surface, which
+        ///          reveals curvature discontinuities. Kept per primitive because the zebra
+        ///          shader program is shared by every geometry face.
+        /// @param enabled True to draw zebra stripes instead of the shaded color.
+        /// @param frequency Stripe density; larger values give more, tighter bands.
+        /// @param lightDirection Direction towards the virtual zebra light in model space. The
+        ///        stripes mirror it instead of the camera eye ray, so the pattern does not move
+        ///        when the camera does.
+        /// @param darkColor Color of the dark bands; the light bands stay white.
+        void setZebraStripes(bool enabled, float frequency, const Common::Vector3f &lightDirection,
+                             const Common::Vector4f &darkColor);
         /// @brief Selects the face drawing mode.
         /// @param mode Array or indexed drawing mode.
         void setDrawMode(DrawMode mode);
@@ -124,6 +136,10 @@ namespace EgLab::RE
         Common::DynamicArray<CoordType> _faceCenters;
         float _depthOffsetFactor{1.0f};
         float _depthOffsetUnits{1.0f};
+        bool _zebraEnabled{false};
+        float _zebraFrequency{8.0f};
+        Common::Vector3f _zebraLightDirection{0.0f, 0.0f, 1.0f};
+        Common::Vector4f _zebraDarkColor{0.05f, 0.05f, 0.05f, 1.0f};
         DrawMode _drawMode{DrawMode::Arrays};
         Common::Matrix4f _highlightScaleMatrix{Common::Matrix4f::Identity()};
         // SSBO binding point used by shaders. Shaders should declare:

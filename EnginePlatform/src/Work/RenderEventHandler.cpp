@@ -358,6 +358,29 @@ namespace EgLab::Platform
         RenderDataManager& _data;
     };
 
+    class GeometryZebraHandler : public IRenderEventHandler
+    {
+    public:
+        explicit GeometryZebraHandler(RenderDataManager& data) : _data(data)
+        {
+        }
+
+        static Common::SharedPtr<IRenderEventHandler> create(RenderDataManager& data)
+        {
+            return Common::makeShared<GeometryZebraHandler>(data);
+        }
+
+        Common::Return apply(const RenderEvent& event) override
+        {
+            const auto& e = static_cast<const GeometryZebraEvent&>(event);
+            _data.applyGeometryZebra(e);
+            return Common::Return::Succeed;
+        }
+
+    private:
+        RenderDataManager& _data;
+    };
+
     class ReferencePlaneSettingsHandler : public IRenderEventHandler    {
     public:
         explicit ReferencePlaneSettingsHandler(RenderDataManager& data) : _data(data)
@@ -627,6 +650,7 @@ namespace EgLab::Platform
         {RenderEventType::FaceShrink, &FaceShrinkHandler::create},
         {RenderEventType::GeometryDisplayMode, &GeometryDisplayModeHandler::create},
         {RenderEventType::GeometryVertexDisplay, &GeometryVertexDisplayHandler::create},
+        {RenderEventType::GeometryZebra, &GeometryZebraHandler::create},
         {RenderEventType::ReferencePlaneSettings, &ReferencePlaneSettingsHandler::create},
         {RenderEventType::HEMeshHighlight, &HEMeshHighlightHandler::create},
         {RenderEventType::Locate, &LocateHandler::create},

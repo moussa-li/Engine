@@ -12,6 +12,7 @@
 #include "RenderEngine/Core/OrbitCameraController.hpp"
 #include "RenderEngine/Core/RenderConfigure.hpp"
 #include "Work/GeometryDisplayMode.hpp"
+#include "Work/GeometryZebra.hpp"
 #include "Work/RenderWork.hpp"
 #include "Work/UIWork.hpp"
 
@@ -139,6 +140,14 @@ namespace EgLab::Platform
             GEOMETRY_FEATURE_MASK_ALL);
 
         RenderWork::instance().setGeometryVertexDisplay(ini.getInt("geometry.showVertices", 1) != 0);
+        RenderWork::instance().setGeometryZebra(
+            ini.getBool("geometry.zebra", false),
+            GeometryZebra::clampFrequency(
+                ini.getFloat("geometry.zebraFrequency", GeometryZebra::DEFAULT_FREQUENCY)),
+            GeometryZebra::clampDirection(
+                Common::Vector3f(ini.getFloat("geometry.zebraLightX", 0.0f),
+                                 ini.getFloat("geometry.zebraLightY", 0.0f),
+                                 ini.getFloat("geometry.zebraLightZ", 1.0f))));
 
         // 周期性读取注册表中的活动进程 PID，供主菜单实时高亮当前进程。
         const int pidIntervalMs = ini.getInt("registry.pidIntervalMs", 300);

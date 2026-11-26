@@ -93,6 +93,20 @@ namespace EgLab::Platform
              "0 = hide the B-Rep vertex markers, 1 = show them"},
         };
 
+        // ===== GeometryZebraParam =====
+        const ParamFieldDesc kGeometryZebraFields[] = {
+            {"enabled", "Zebra Stripes", ParamFieldType::UInt32, 0,
+             "0 = regular shading, 1 = zebra (isophote) stripe analysis on geometry faces"},
+            {"frequency", "Stripe Density", ParamFieldType::Float, 0,
+             "Stripe density 2..40; larger values give tighter bands (default 8)"},
+            {"lightX", "Light Direction X", ParamFieldType::Float, 0,
+             "X of the virtual zebra light direction (default 0)"},
+            {"lightY", "Light Direction Y", ParamFieldType::Float, 0,
+             "Y of the virtual zebra light direction (default 0)"},
+            {"lightZ", "Light Direction Z", ParamFieldType::Float, 0,
+             "Z of the virtual zebra light direction (default 1)"},
+        };
+
         // ===== DeleteMeshParam =====
         const ParamFieldDesc kDeleteMeshFields[] = {
             {"dataNodeId", "Data Node Id", ParamFieldType::UInt64, 0,
@@ -198,6 +212,9 @@ namespace EgLab::Platform
              "Set Geometry Vertex Display", "Geometry", true, sizeof(GeometryVertexDisplayParam),
              kGeometryVertexDisplayFields,
              sizeof(kGeometryVertexDisplayFields) / sizeof(kGeometryVertexDisplayFields[0])},
+            {EventId::SetGeometryZebra, "SetGeometryZebra", "Set Geometry Zebra Stripes",
+             "Geometry", true, sizeof(GeometryZebraParam), kGeometryZebraFields,
+             sizeof(kGeometryZebraFields) / sizeof(kGeometryZebraFields[0])},
             {EventId::CameraPan, "CameraPan", "Pan Camera", "Camera", false, 0, nullptr, 0, true,
              true},
             {EventId::CameraRotate, "CameraRotate", "Rotate Camera", "Camera", false, 0, nullptr,

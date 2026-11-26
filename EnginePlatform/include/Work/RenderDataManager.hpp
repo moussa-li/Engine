@@ -13,6 +13,7 @@
 #include "RenderEngine/Core/Definites.hpp"
 #include "RenderEngine/Core/ScenePicker.hpp"
 #include "Work/RenderEvent.hpp"
+#include "Work/GeometryZebra.hpp"
 #include "Work/SelectionModel.hpp"
 
 namespace EgLab::ME
@@ -110,6 +111,9 @@ namespace EgLab::Platform
 
         /// Returns whether geometry vertex markers are shown.
         bool getGeometryVertexDisplay() const;
+
+        /// Turns the zebra (isophote) stripe analysis of geometry faces on or off.
+        void applyGeometryZebra(const GeometryZebraEvent& event);
 
         // ---- pick phase: query the scene and expose the highlight as a scene primitive ----
         void applyPick(const PickEvent& event);
@@ -221,6 +225,7 @@ namespace EgLab::Platform
         float _faceShrink{0.0f};
         GeometryDisplayMode _geometryDisplayMode{GeometryDisplayMode::Mesh};
         bool _geometryShowVertices{true};
+        GeometryZebra _geometryZebra;
 
         RE::CoordType _highlightViewPosition;
         RE::CoordType _highlightViewFront;

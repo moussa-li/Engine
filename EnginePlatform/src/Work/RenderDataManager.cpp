@@ -772,6 +772,60 @@ namespace EgLab::Platform
         return _geometryShowVertices;
     }
 
+    void RenderDataManager::applyGeometryZebra(const GeometryZebraEvent& event)
+    {
+        const float frequency = GeometryZebra::clampFrequency(event.frequency);
+        const Common::Vector3f lightDirection = GeometryZebra::clampDirection(event.lightDirection);
+        const bool toggleChanged = _geometryZebra.enabled != event.enabled;
+        _geometryZebra.enabled = event.enabled;
+        _geometryZebra.frequency = frequency;
+        _geometryZebra.lightDirection = lightDirection;
+
+        if (!toggleChanged)
+        {
+            // Only the density or the virtual light direction changed. The stripes are
+            // per-draw uniforms on the face primitive, so the existing primitives can be
+            // updated without rebuilding the scene topology.
+            for (const auto& entry : _activeMeshes)
+            {
+                if (!isGeometryMesh(entry.mesh))
+                {
+                    continue;
+                }
+                auto face = Common::dynamicSharedPtrCast<RE::RenderFace>(entry.packet.renderFace);
+                if (face)
+                {
+                    face->setZebraStripes(_geometryZebra.enabled, _geometryZebra.frequency,
+                                          _geometryZebra.lightDirection,
+                                          GeometryZebra::darkColor());
+                }
+            }
+            return;
+        }
+
+        // Turning the analysis on or off switches the face normals between flat and smooth
+        // shading, which is baked into the face primitive, so the geometry faces are rebuilt.
+        Common::DynamicArray<Common::SharedPtr<ME::Mesh>> geometryMeshes;
+        for (const auto& entry : _activeMeshes)
+        {
+            if (isGeometryMesh(entry.mesh))
+            {
+                geometryMeshes.pushBack(entry.mesh);
+            }
+        }
+
+        for (const auto& mesh : geometryMeshes)
+        {
+            Common::DynamicArray<ME::IdType> hiddenElementIds;
+            MeshElementVisibilityState* state = findElementVisibilityState(mesh);
+            if (state != nullptr)
+            {
+                hiddenElementIds = collectHiddenElementIds(*state);
+            }
+            rebuildMeshSurface(mesh, hiddenElementIds);
+        }
+    }
+
     void RenderDataManager::applyGeometryNodeVisibility(const Common::SharedPtr<ME::Mesh>& mesh)
     {
         MeshRenderEntry* entry = findActiveMeshEntry(mesh);
@@ -1114,6 +1168,12 @@ namespace EgLab::Platform
         if (face)
         {
             face->setFaceShrink(_faceShrink);
+            if (isGeometryMesh(entry.mesh))
+            {
+                // Geometry faces may be created while the analysis is already on.
+                face->setZebraStripes(_geometryZebra.enabled, _geometryZebra.frequency,
+                                      _geometryZebra.lightDirection, GeometryZebra::darkColor());
+            }
         }
 
         if (_meshSelector && entry.mesh && entry.translator)
@@ -1727,14 +1787,16 @@ namespace EgLab::Platform
         target->translator->setHiddenElements(hiddenElementIds);
 
         const GeometryDisplayMode displayMode = effectiveDisplayMode(mesh);
+        const bool geometryZebra = isGeometryMesh(mesh) && _geometryZebra.enabled;
 
         RE::MeshPrimitiveCreator creator(mesh, target->translator);
         if (displayMode != GeometryDisplayMode::Mesh)
         {
             creator.setLineIndexSource(RE::MeshPrimitiveCreator::LineIndexSource::BoundaryOnly);
         }
-        // Smooth shading is what makes the face frames readable on curved B-Rep faces.
-        creator.setSmoothNormals(displayMode == GeometryDisplayMode::FaceOutline);
+        // Smooth shading is what makes the face frames readable on curved B-Rep faces, and it
+        // keeps the zebra bands continuous instead of breaking them at every triangle.
+        creator.setSmoothNormals(displayMode == GeometryDisplayMode::FaceOutline || geometryZebra);
         auto facePrimitive = creator.getPrimitive<RE::RenderFace>();
         auto linePrimitive = creator.getPrimitive<RE::RenderLine>();
         auto newFace = Common::dynamicSharedPtrCast<RE::RenderFace>(facePrimitive);
@@ -1776,15 +1838,31 @@ namespace EgLab::Platform
 
         newFace->setColor(getMeshBaseColor(mesh));
         newFace->setFaceShrink(_faceShrink);
+        newFace->setZebraStripes(geometryZebra, _geometryZebra.frequency,
+                                 _geometryZebra.lightDirection, GeometryZebra::darkColor());
         newLine->setLineWidth(_lineWidth);
         newFace->setup();
         newLine->setup();
 
-        _scene->removePrimitive(target->packet.faceShader, target->packet.renderFace);
+        // Zebra geometry faces are drawn with the dedicated zebra shader: it owns its light
+        // direction, so the pattern no longer follows the scene camera or the global lighting.
+        Common::SharedPtr<RE::Shader> previousFaceShader = target->packet.faceShader;
+        Common::SharedPtr<RE::Shader> nextFaceShader;
+        if (geometryZebra)
+        {
+            RE::ShaderLib::instance().getZebraShader(nextFaceShader);
+        }
+        else
+        {
+            RE::ShaderLib::instance().getFaceShader(nextFaceShader);
+        }
+
+        _scene->removePrimitive(previousFaceShader, target->packet.renderFace);
         _scene->removePrimitive(target->packet.lineShader, target->packet.renderLine);
-        _scene->addPrimitive(target->packet.faceShader, facePrimitive);
+        _scene->addPrimitive(nextFaceShader, facePrimitive);
         _scene->addPrimitive(target->packet.lineShader, linePrimitive);
 
+        target->packet.faceShader = nextFaceShader;
         target->packet.renderFace = facePrimitive;
         target->packet.renderLine = linePrimitive;
 

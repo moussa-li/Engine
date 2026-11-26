@@ -59,6 +59,7 @@ namespace EgLab::Platform
         ReferencePlaneSettings,
         GeometryDisplayMode,
         GeometryVertexDisplay,
+        GeometryZebra,
     };
 
     /// Polymorphic base for rendering change requests. Each concrete event type carries only
@@ -342,5 +343,22 @@ namespace EgLab::Platform
         }
 
         bool visible{true};
+    };
+
+    /// Requests turning the zebra (isophote) stripe analysis of geometry faces on or off.
+    /// Frequency changes alone update the existing primitives; enabling or disabling rebuilds
+    /// the geometry faces so their normals switch between flat and smooth shading.
+    class GeometryZebraEvent : public RenderEvent
+    {
+    public:
+        GeometryZebraEvent() : RenderEvent(RenderEventType::GeometryZebra)
+        {
+        }
+
+        bool enabled{false};
+        float frequency{8.0f};
+        /// Direction towards the virtual zebra light; the stripes mirror it instead of the
+        /// camera, so the pattern stays put when the camera moves.
+        Common::Vector3f lightDirection{0.0f, 0.0f, 1.0f};
     };
 } // namespace EgLab::Platform

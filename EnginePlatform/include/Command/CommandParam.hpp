@@ -134,6 +134,15 @@ namespace EgLab::Platform
         uint32_t reserved; // off 4; 恒为 0
     };
 
+    // SetGeometryZebra：几何面斑马纹（等照度）分析显示。作用于场景内全部 B-Rep 几何模型。
+    struct GeometryZebraParam
+    {
+        uint32_t enabled;        // off 0; 0=关闭 1=开启
+        float frequency;         // off 4; 条纹密度(2~40)，<=0 或非数时使用默认值 8
+        float lightDirection[3]; // off 8; 虚拟光源方向(模型空间)，零向量时使用默认值 (0,0,1)。
+                                 // 斑马纹由该方向反射得到，与相机无关。
+    };
+
     // ===== SetCamera =====
     enum class CameraMode : uint32_t
     {
@@ -293,5 +302,9 @@ namespace EgLab::Platform
                   "GeometryVertexDisplayParam must be trivially copyable");
     static_assert(sizeof(GeometryVertexDisplayParam) == 8,
                   "GeometryVertexDisplayParam must be exactly 8 bytes");
+    static_assert(std::is_trivially_copyable<GeometryZebraParam>::value,
+                  "GeometryZebraParam must be trivially copyable");
+    static_assert(sizeof(GeometryZebraParam) == 20,
+                  "GeometryZebraParam must be exactly 20 bytes");
 
 } // namespace EgLab::Platform

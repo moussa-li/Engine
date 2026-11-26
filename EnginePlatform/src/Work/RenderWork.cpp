@@ -10,6 +10,7 @@
 #include "RenderEngine/Core/Renderer.hpp"
 #include "RenderEngine/Core/Scene.hpp"
 #include "RenderEngine/Core/Window.hpp"
+#include "Work/GeometryZebra.hpp"
 #include "Work/UIWork.hpp"
 
 namespace EgLab::Platform
@@ -850,6 +851,16 @@ namespace EgLab::Platform
     bool RenderWork::getGeometryVertexDisplay() const
     {
         return _renderData.getGeometryVertexDisplay();
+    }
+
+    void RenderWork::setGeometryZebra(bool enabled, float frequency,
+                                      const Common::Vector3f& lightDirection)
+    {
+        auto event = Common::makeShared<GeometryZebraEvent>();
+        event->enabled = enabled;
+        event->frequency = GeometryZebra::clampFrequency(frequency);
+        event->lightDirection = GeometryZebra::clampDirection(lightDirection);
+        queueRenderEvent(event);
     }
 
     void RenderWork::setGeometryPickFilter(uint32_t mask)

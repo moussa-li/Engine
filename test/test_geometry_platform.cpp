@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <cstdlib>
+#include <limits>
 
 #include <gtest/gtest.h>
 
@@ -16,6 +17,7 @@
 #include "MeshEngine/MeshData/Element.hpp"
 #include "MeshEngine/MeshData/Mesh.hpp"
 #include "MeshEngine/MeshData/Node.hpp"
+#include "Work/GeometryZebra.hpp"
 
 namespace
 {
@@ -231,6 +233,46 @@ namespace
             }
         }
         EXPECT_EQ(vertexNodes, build.vertexCount);
+    }
+
+    /// The zebra stripe density arrives from the UI or an IPC client, so it must be normalised
+    /// before it reaches the shader.
+    TEST(GeometryZebraSettings, clampsFrequencyIntoSupportedRange)
+    {
+        EXPECT_FLOAT_EQ(Platform::GeometryZebra::clampFrequency(12.0f), 12.0f);
+        EXPECT_FLOAT_EQ(Platform::GeometryZebra::clampFrequency(0.5f),
+                        Platform::GeometryZebra::MIN_FREQUENCY);
+        EXPECT_FLOAT_EQ(Platform::GeometryZebra::clampFrequency(500.0f),
+                        Platform::GeometryZebra::MAX_FREQUENCY);
+
+        // Absent, zero, negative and non-finite values must not produce a degenerate pattern.
+        EXPECT_FLOAT_EQ(Platform::GeometryZebra::clampFrequency(0.0f),
+                        Platform::GeometryZebra::DEFAULT_FREQUENCY);
+        EXPECT_FLOAT_EQ(Platform::GeometryZebra::clampFrequency(-4.0f),
+                        Platform::GeometryZebra::DEFAULT_FREQUENCY);
+        EXPECT_FLOAT_EQ(Platform::GeometryZebra::clampFrequency(
+                            std::numeric_limits<float>::quiet_NaN()),
+                        Platform::GeometryZebra::DEFAULT_FREQUENCY);
+    }
+
+    /// The zebra light direction is a free UI/AI parameter, so a degenerate direction must fall
+    /// back to the default instead of collapsing every stripe into one value.
+    TEST(GeometryZebraSettings, normalisesLightDirection)
+    {
+        const Common::Vector3f scaled =
+            Platform::GeometryZebra::clampDirection(Common::Vector3f(0.0f, 0.0f, 4.0f));
+        EXPECT_FLOAT_EQ(scaled.x(), 0.0f);
+        EXPECT_FLOAT_EQ(scaled.y(), 0.0f);
+        EXPECT_FLOAT_EQ(scaled.z(), 1.0f);
+
+        const Common::Vector3f fallback =
+            Platform::GeometryZebra::clampDirection(Common::Vector3f(0.0f, 0.0f, 0.0f));
+        EXPECT_FLOAT_EQ(fallback.z(), 1.0f);
+
+        const Common::Vector3f diagonal =
+            Platform::GeometryZebra::clampDirection(Common::Vector3f(1.0f, 1.0f, 0.0f));
+        EXPECT_NEAR(diagonal.length(), 1.0f, 1e-6f);
+        EXPECT_NEAR(diagonal.x(), diagonal.y(), 1e-6f);
     }
 
 } // namespace

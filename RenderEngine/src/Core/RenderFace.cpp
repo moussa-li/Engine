@@ -175,6 +175,14 @@ namespace EgLab::RE
         shader->bind();
         shader->setUniform1i("isPureColor", 0);
         shader->setUniform1f("faceShrink", _faceShrink);
+        // The zebra shader owns its lighting setup, but the program is shared by every
+        // geometry face, so this primitive's stripe state has to be pushed on every draw.
+        if (_zebraEnabled)
+        {
+            shader->setUniform1f("zebraFrequency", _zebraFrequency);
+            shader->setUniform3f("zebraLightDirection", _zebraLightDirection);
+            shader->setUniform4f("zebraColor", _zebraDarkColor);
+        }
         if (!_colors.empty())
         {
             shader->setUniform4f("u_Color", _colors[0]);
@@ -582,6 +590,20 @@ namespace EgLab::RE
     {
         _depthOffsetFactor = factor;
         _depthOffsetUnits = units;
+    }
+
+    void RenderFace::setZebraStripes(bool enabled, float frequency,
+                                     const Common::Vector3f &lightDirection,
+                                     const Common::Vector4f &darkColor)
+    {
+        _zebraEnabled = enabled;
+        if (frequency > 0.0f)
+        {
+            _zebraFrequency = frequency;
+        }
+        _zebraLightDirection = lightDirection;
+        _zebraLightDirection.normalize();
+        _zebraDarkColor = darkColor;
     }
 
     void RenderFace::setDrawMode(DrawMode mode)

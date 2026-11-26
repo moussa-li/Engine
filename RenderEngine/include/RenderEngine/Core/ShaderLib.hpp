@@ -35,6 +35,7 @@ namespace EgLab::RE
         Line,
         Easy,
         Highlight,
+        Zebra,
     };
 
     /// Loads and provides shared built-in shader programs.
@@ -78,6 +79,16 @@ namespace EgLab::RE
         /// @details The output reference receives the shader object.
         Common::Return getHighlightShader(Common::SharedPtr<Shader> &);
 
+        /// @brief Loads the zebra (isophote) shader source into a buffer.
+        /// @param buffer Receives the shader source.
+        Common::Return getZebraShader(Common::String &buffer);
+
+        /// @brief Creates or retrieves the zebra (isophote) shader program.
+        /// @details Stripes are driven by the shader's own light-direction uniform, so the
+        ///          pattern is independent of the scene camera and the global lighting.
+        /// @param shader Receives the shader object.
+        Common::Return getZebraShader(Common::SharedPtr<Shader> &shader);
+
     private:
         ShaderLib();
         ~ShaderLib();
@@ -92,6 +103,7 @@ namespace EgLab::RE
     {
         RegisterShaderLib(ShaderId::Basic, getBasicShader);
         RegisterShaderLib(ShaderId::Node, getNodeShader);
+        RegisterShaderLib(ShaderId::Zebra, getZebraShader);
         return Common::Return::Succeed;
     }
 
