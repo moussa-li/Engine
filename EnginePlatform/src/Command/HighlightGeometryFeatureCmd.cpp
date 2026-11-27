@@ -9,8 +9,8 @@
 namespace EgLab::Platform
 {
     HighlightGeometryFeatureCmd::HighlightGeometryFeatureCmd(
-        const GeometryFeatureHighlightParam& params)
-        : CommandBase<GeometryFeatureHighlightParam>(params)
+        const GeometryFeatureHighlightParam& params, bool focus)
+        : CommandBase<GeometryFeatureHighlightParam>(params), _focus(focus)
     {
     }
 
@@ -18,7 +18,14 @@ namespace EgLab::Platform
     {
         if (getParams().count == 0)
         {
-            RenderWork::instance().clearGeometryFeatureHighlight();
+            if (_focus)
+            {
+                RenderWork::instance().clearGeometryFeatureFocus();
+            }
+            else
+            {
+                RenderWork::instance().clearGeometryFeatureHighlight();
+            }
             return Common::Return::Succeed;
         }
 
@@ -26,7 +33,8 @@ namespace EgLab::Platform
         auto* geometryData = dynamic_cast<GeometryData*>(node.get());
         if (geometryData == nullptr)
         {
-            LOG(WARNING) << "HighlightGeometryFeatureCmd::exec() could not find geometry data node "
+            LOG(WARNING) << getCmdName().c_str()
+                         << "::exec() could not find geometry data node "
                          << getParams().dataNodeId;
             return Common::Return::Failed;
         }
@@ -34,8 +42,8 @@ namespace EgLab::Platform
         const auto mesh = geometryData->getMesh();
         if (!mesh)
         {
-            LOG(WARNING) << "HighlightGeometryFeatureCmd::exec() found a geometry node without a "
-                            "mesh";
+            LOG(WARNING) << getCmdName().c_str()
+                         << "::exec() found a geometry node without a mesh";
             return Common::Return::Failed;
         }
 
@@ -95,10 +103,19 @@ namespace EgLab::Platform
             mergedNodeIndices.pushBack(it.data());
         }
 
-        RenderWork::instance().setGeometryFeatureHighlight(mesh, mergedElementIds,
+        if (_focus)
+        {
+            RenderWork::instance().setGeometryFeatureFocus(mesh, mergedElementIds,
                                                            edgeSegmentNodeIndices,
                                                            mergedNodeIndices);
-        LOG(INFO) << "HighlightGeometryFeatureCmd::exec() highlighted " << getParams().count
+        }
+        else
+        {
+            RenderWork::instance().setGeometryFeatureHighlight(mesh, mergedElementIds,
+                                                               edgeSegmentNodeIndices,
+                                                               mergedNodeIndices);
+        }
+        LOG(INFO) << getCmdName().c_str() << "::exec() highlighted " << getParams().count
                   << " feature(s): " << mergedElementIds.size() << " element(s), "
                   << segmentIndices.size() << " segment(s), " << mergedNodeIndices.size()
                   << " node(s)";

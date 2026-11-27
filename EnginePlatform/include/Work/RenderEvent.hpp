@@ -62,6 +62,7 @@ namespace EgLab::Platform
         GeometryZebra,
         GeometryUv,
         GeometryFeatureHighlight,
+        GeometryFeatureFocus,
     };
 
     /// Polymorphic base for rendering change requests. Each concrete event type carries only
@@ -202,6 +203,21 @@ namespace EgLab::Platform
     {
     public:
         GeometryFeatureHighlightEvent() : RenderEvent(RenderEventType::GeometryFeatureHighlight)
+        {
+        }
+
+        Common::SharedPtr<ME::Mesh> mesh;
+        Common::DynamicArray<uint32_t> elementIds;
+        Common::DynamicArray<uint32_t> edgeSegmentNodeIndices;
+        Common::DynamicArray<uint32_t> nodeIndices;
+    };
+
+    /// Focus highlight for the feature opened in the feature browser. Carries the same ids as
+    /// GeometryFeatureHighlightEvent but is drawn with a distinct colour.
+    class GeometryFeatureFocusEvent : public RenderEvent
+    {
+    public:
+        GeometryFeatureFocusEvent() : RenderEvent(RenderEventType::GeometryFeatureFocus)
         {
         }
 

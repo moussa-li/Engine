@@ -507,6 +507,36 @@ namespace EgLab::Platform
         RenderDataManager& _data;
     };
 
+    class GeometryFeatureFocusHandler : public IRenderEventHandler
+    {
+    public:
+        explicit GeometryFeatureFocusHandler(RenderDataManager& data) : _data(data)
+        {
+        }
+
+        static Common::SharedPtr<IRenderEventHandler> create(RenderDataManager& data)
+        {
+            return Common::makeShared<GeometryFeatureFocusHandler>(data);
+        }
+
+        Common::Return record(const RenderEvent& event) override
+        {
+            const auto& e = static_cast<const GeometryFeatureFocusEvent&>(event);
+            _data.setGeometryFeatureFocusState(e.mesh, e.elementIds, e.edgeSegmentNodeIndices,
+                                               e.nodeIndices);
+            return Common::Return::Succeed;
+        }
+
+        Common::Return apply(const RenderEvent&) override
+        {
+            _data.applyGeometryFeatureFocus();
+            return Common::Return::Succeed;
+        }
+
+    private:
+        RenderDataManager& _data;
+    };
+
     class ElementsVisibilityHandler : public IRenderEventHandler
     {
     public:
@@ -709,6 +739,7 @@ namespace EgLab::Platform
         {RenderEventType::HEMeshHighlight, &HEMeshHighlightHandler::create},
         {RenderEventType::Locate, &LocateHandler::create},
         {RenderEventType::GeometryFeatureHighlight, &GeometryFeatureHighlightHandler::create},
+        {RenderEventType::GeometryFeatureFocus, &GeometryFeatureFocusHandler::create},
         {RenderEventType::ElementsVisibility, &ElementsVisibilityHandler::create},
         {RenderEventType::NodeVisibility, &NodeVisibilityHandler::create},
         {RenderEventType::BoxSelection, &BoxSelectionHandler::create},

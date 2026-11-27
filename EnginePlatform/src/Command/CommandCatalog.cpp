@@ -253,6 +253,11 @@ namespace EgLab::Platform
              sizeof(GeometryFeatureHighlightParam), kHighlightGeometryFeatureFields,
              sizeof(kHighlightGeometryFeatureFields) /
                  sizeof(kHighlightGeometryFeatureFields[0])},
+            {EventId::HighlightGeometryFeatureFocus, "HighlightGeometryFeatureFocus",
+             "Focus Geometry Feature", "Geometry", true,
+             sizeof(GeometryFeatureHighlightParam), kHighlightGeometryFeatureFields,
+             sizeof(kHighlightGeometryFeatureFields) /
+                 sizeof(kHighlightGeometryFeatureFields[0])},
             {EventId::CameraPan, "CameraPan", "Pan Camera", "Camera", false, 0, nullptr, 0, true,
              true},
             {EventId::CameraRotate, "CameraRotate", "Rotate Camera", "Camera", false, 0, nullptr,

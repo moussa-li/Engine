@@ -337,6 +337,12 @@ namespace EgLab::Platform
                 return Common::makeShared<HighlightGeometryFeatureCmd>(param);
             };
 
+            _creator[EventId::HighlightGeometryFeatureFocus] = [](const PacketPOD& pod) {
+                GeometryFeatureHighlightParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<HighlightGeometryFeatureCmd>(param, true);
+            };
+
             _packetCreator[EventId::MeshImport] = [](const EventPacket& packet) {
                 PacketPOD pod{};
                 ImportMeshParam param{};
@@ -751,6 +757,24 @@ namespace EgLab::Platform
                 std::memcpy(pod.data, &param, sizeof(param));
                 return pod;
             };
+
+            _packetCreator[EventId::HighlightGeometryFeatureFocus] =
+                [](const EventPacket& packet) {
+                    PacketPOD pod{};
+                    GeometryFeatureHighlightParam param{};
+                    if (packet.contains("dataNodeId"))
+                    {
+                        param.dataNodeId = packet.getData<uint64_t>("dataNodeId");
+                    }
+                    if (packet.contains("features"))
+                    {
+                        parseGeometryFeatureList(packet.getData<Common::String>("features"),
+                                                 param);
+                    }
+                    pod.dataSize = sizeof(param);
+                    std::memcpy(pod.data, &param, sizeof(param));
+                    return pod;
+                };
         }
 
         void startListen()
@@ -783,6 +807,7 @@ namespace EgLab::Platform
             _subscriber.subscrib((uint32_t)EventId::SetGeometryUv);
             _subscriber.subscrib((uint32_t)EventId::SetGeometryTessellation);
             _subscriber.subscrib((uint32_t)EventId::HighlightGeometryFeature);
+            _subscriber.subscrib((uint32_t)EventId::HighlightGeometryFeatureFocus);
 
             if (_isRunning == true) return;
             _isRunning = true;

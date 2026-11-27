@@ -40,6 +40,7 @@ namespace EgLab::Platform
         SetGeometryUv = 200027,            // 几何面曲面 UV 显示
         SetGeometryTessellation = 200028,  // 几何划分渲染网格参数（并重建已有几何网格）
         HighlightGeometryFeature = 200029, // 高亮 GeometryData 中的单个几何特征
+        HighlightGeometryFeatureFocus = 200030, // 高亮当前查看的几何特征（与选中高亮不同色）
         CameraPan = 300001, // Camera = 3xxxxx
         CameraRotate = 300002,
         CameraRotateLocal = 300003,

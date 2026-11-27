@@ -729,6 +729,27 @@ namespace EgLab::Platform
                                     Common::DynamicArray<uint32_t>());
     }
 
+    void RenderWork::setGeometryFeatureFocus(
+        const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
+        const Common::DynamicArray<uint32_t>& elementIds,
+        const Common::DynamicArray<uint32_t>& edgeSegmentNodeIndices,
+        const Common::DynamicArray<uint32_t>& nodeIndices)
+    {
+        auto event = Common::makeShared<GeometryFeatureFocusEvent>();
+        event->mesh = mesh;
+        event->elementIds = elementIds;
+        event->edgeSegmentNodeIndices = edgeSegmentNodeIndices;
+        event->nodeIndices = nodeIndices;
+        queueRenderEvent(event);
+    }
+
+    void RenderWork::clearGeometryFeatureFocus()
+    {
+        setGeometryFeatureFocus(Common::SharedPtr<ME::Mesh>(), Common::DynamicArray<uint32_t>(),
+                                Common::DynamicArray<uint32_t>(),
+                                Common::DynamicArray<uint32_t>());
+    }
+
     void RenderWork::setElementsVisibility(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
                                            uint32_t mode,
                                            const Common::DynamicArray<uint32_t>& elementIds)

@@ -1,4 +1,4 @@
-#include "Panel/GeometryFeatureBrowser.hpp"
+﻿#include "Panel/GeometryFeatureBrowser.hpp"
 
 #include <cstdio>
 
@@ -12,7 +12,7 @@ namespace EgLab::Platform
     namespace
     {
         // Summary rows are ordered from the highest dimension to the lowest, matching the
-        // solid -> face -> edge -> vertex hierarchy shown in the detail windows.
+        // solid -> face -> edge -> vertex hierarchy shown in the detail page.
         constexpr uint32_t FEATURE_TYPE_ORDER[] = {
             static_cast<uint32_t>(GE::TopologyType::Solid),
             static_cast<uint32_t>(GE::TopologyType::Face),
@@ -32,73 +32,104 @@ namespace EgLab::Platform
             close();
             _data = data;
         }
-        _showSummary = true;
+
+        _pageStack.clear();
+        Page summary;
+        summary.kind = PageKind::Summary;
+        _pageStack.pushBack(summary);
+        _show = true;
     }
 
     void GeometryFeatureBrowser::close()
     {
         clearSelection();
+        if (_focusActive)
+        {
+            _focusActive = false;
+            _focusFeature = GeometryFeatureRef();
+            EventPacket packet;
+            packet.setData("dataNodeId", static_cast<uint64_t>(0));
+            packet.setData("features", Common::String());
+            CommandManager::instance().call(EventId::HighlightGeometryFeatureFocus,
+                                            Common::move(packet));
+        }
         _data = nullptr;
-        _showSummary = false;
-        _showFeatureList = false;
-        _detailWindows.clear();
+        _show = false;
+        _pageStack.clear();
     }
 
     void GeometryFeatureBrowser::render()
     {
-        if (!_data)
+        if (!_data || _pageStack.empty())
         {
             return;
         }
 
-        if (_showSummary)
-        {
-            renderSummaryWindow();
-        }
-        if (_showFeatureList)
-        {
-            renderFeatureListWindow();
-        }
+        char title[384];
+        std::snprintf(title, sizeof(title), "%s - %s###GeometryFeatureBrowser",
+                      _data->getName().c_str(), currentPageTitle().c_str());
 
-        // Detail windows may open further detail windows, so iterate by index and re-read the
-        // entry every step instead of holding a reference across the draw call.
-        for (std::size_t index = 0; index < _detailWindows.size(); ++index)
-        {
-            const GeometryFeatureRef ref = _detailWindows[index].ref;
-            bool open = _detailWindows[index].open;
-            renderDetailWindow(ref, open, index);
-            _detailWindows[index].open = open;
-        }
-
-        Common::DynamicArray<DetailWindow> remainingWindows;
-        for (const auto& window : _detailWindows)
-        {
-            if (window.open)
-            {
-                remainingWindows.pushBack(window);
-            }
-        }
-        _detailWindows = Common::move(remainingWindows);
-
-        if (!_showSummary && !_showFeatureList && _detailWindows.empty())
-        {
-            close();
-        }
-    }
-
-    void GeometryFeatureBrowser::renderSummaryWindow()
-    {
-        char title[192];
-        std::snprintf(title, sizeof(title), "Geometry Features - %s###GeometryFeatureSummary",
-                      _data->getName().c_str());
-
-        ImGui::SetNextWindowSize(ImVec2(320.0f, 210.0f), ImGuiCond_FirstUseEver);
-        if (!ImGui::Begin(title, &_showSummary))
+        ImGui::SetNextWindowSize(ImVec2(420.0f, 520.0f), ImGuiCond_FirstUseEver);
+        bool open = _show;
+        if (!ImGui::Begin(title, &open))
         {
             ImGui::End();
+            _show = open;
+            if (!_show)
+            {
+                close();
+            }
             return;
         }
 
+        renderNavigationBar();
+        ImGui::Separator();
+
+        const Page* page = currentPage();
+        if (page != nullptr)
+        {
+            switch (page->kind)
+            {
+            case PageKind::Summary:
+                renderSummaryPage();
+                break;
+            case PageKind::FeatureList:
+                renderFeatureListPage();
+                break;
+            case PageKind::Detail:
+            {
+                const GeometryFeatureRef ref = page->ref;
+                renderDetailPage(ref);
+                break;
+            }
+            }
+        }
+
+        ImGui::End();
+        _show = open;
+        if (!_show)
+        {
+            close();
+            return;
+        }
+
+        commitFocusHighlight();
+    }
+
+    void GeometryFeatureBrowser::renderNavigationBar()
+    {
+        ImGui::BeginDisabled(_pageStack.size() <= 1);
+        if (ImGui::Button("< Back"))
+        {
+            popPage();
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::TextUnformatted(currentPageTitle().c_str());
+    }
+
+    void GeometryFeatureBrowser::renderSummaryPage()
+    {
         ImGui::TextWrapped("Double-click a row to list every feature of that type.");
         ImGui::Separator();
 
@@ -124,7 +155,7 @@ namespace EgLab::Platform
                 {
                     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                     {
-                        openFeatureList(featureType);
+                        pushFeatureListPage(featureType);
                     }
                 }
                 ImGui::PopID();
@@ -134,32 +165,24 @@ namespace EgLab::Platform
             }
             ImGui::EndTable();
         }
-
-        ImGui::End();
     }
 
-    void GeometryFeatureBrowser::renderFeatureListWindow()
+    void GeometryFeatureBrowser::renderFeatureListPage()
     {
-        char title[128];
-        std::snprintf(title, sizeof(title), "%s###GeometryFeatureList",
-                      featureTypeName(_featureListType));
-
-        ImGui::SetNextWindowSize(ImVec2(380.0f, 400.0f), ImGuiCond_FirstUseEver);
-        if (!ImGui::Begin(title, &_showFeatureList))
+        const Page* page = currentPage();
+        if (page == nullptr)
         {
-            ImGui::End();
             return;
         }
 
-        const auto type = static_cast<GE::TopologyType>(_featureListType);
+        const auto type = static_cast<GE::TopologyType>(page->featureType);
         const std::size_t count = _data->getFeatureCount(type);
-        ImGui::Text("%zu %s feature(s)", count, featureTypeName(_featureListType));
+        ImGui::Text("%zu %s feature(s)", count, featureTypeName(page->featureType));
         ImGui::TextDisabled(
             "Click highlights, Ctrl/Shift multi-selects, double-click inspects parents/children.");
-        if (!_selectedFeatures.empty() && _selectionStatus.size() > 0)
-        {
-            ImGui::TextDisabled("%s", _selectionStatus.c_str());
-        }
+        // Always reserve the status line: showing it only after the first click would shift the
+        // rows down between the two clicks of a double-click and make it hit the next row.
+        ImGui::TextDisabled("%s", _selectionStatus.size() > 0 ? _selectionStatus.c_str() : " ");
         ImGui::Separator();
 
         ImGui::BeginChild("##featureList");
@@ -171,40 +194,20 @@ namespace EgLab::Platform
         }
         renderFeatureRefList(refs);
         ImGui::EndChild();
-
-        ImGui::End();
     }
 
-    void GeometryFeatureBrowser::renderDetailWindow(const GeometryFeatureRef& ref, bool& open,
-                                                    std::size_t index)
+    void GeometryFeatureBrowser::renderDetailPage(const GeometryFeatureRef& ref)
     {
         const GeometryFeatureInfo info = _data->getFeatureInfo(ref);
 
-        // The visible title carries the geometry name plus the feature name and id; the part
-        // after ### keeps the ImGui id stable and unique per feature.
-        char title[320];
-        std::snprintf(title, sizeof(title), "%s / %s (id %u)###GeometryFeatureDetail_%u_%u",
-                      _data->getName().c_str(), info.name.c_str(), info.featureId,
-                      static_cast<uint32_t>(ref.featureType),
-                      static_cast<uint32_t>(ref.featureIndex));
-
-        const float offset = 24.0f * static_cast<float>(index + 1);
-        ImGui::SetNextWindowPos(ImVec2(160.0f + offset, 120.0f + offset), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(340.0f, 360.0f), ImGuiCond_FirstUseEver);
-        if (!ImGui::Begin(title, &open))
-        {
-            ImGui::End();
-            return;
-        }
-
         ImGui::Text("Feature: %s", info.name.c_str());
         ImGui::Text("Id: %u   Type: %s", info.featureId, featureTypeName(ref.featureType));
+        ImGui::TextColored(ImVec4(0.1f, 0.9f, 0.55f, 1.0f),
+                           "This feature is highlighted in green.");
         ImGui::TextDisabled(
             "Click highlights (Ctrl/Shift multi-select), double-click opens that feature.");
-        if (!_selectedFeatures.empty() && _selectionStatus.size() > 0)
-        {
-            ImGui::TextDisabled("%s", _selectionStatus.c_str());
-        }
+        // Keep the status line height reserved for the same reason as the feature list page.
+        ImGui::TextDisabled("%s", _selectionStatus.size() > 0 ? _selectionStatus.c_str() : " ");
         ImGui::Separator();
 
         Common::DynamicArray<GeometryFeatureRef> parents;
@@ -237,8 +240,6 @@ namespace EgLab::Platform
             renderFeatureRefList(children);
         }
         ImGui::EndChild();
-
-        ImGui::End();
     }
 
     GeometryFeatureBrowser::FeatureRowResult GeometryFeatureBrowser::renderFeatureRow(
@@ -281,7 +282,7 @@ namespace EgLab::Platform
                 if (result.doubleClicked)
                 {
                     // The first click already updated the selection; only guarantee that the
-                    // double-clicked feature stays selected before opening its window.
+                    // double-clicked feature stays selected before switching to its detail page.
                     if (!isFeatureSelected(ref))
                     {
                         _selectedFeatures.clear();
@@ -289,7 +290,7 @@ namespace EgLab::Platform
                         commitSelectionHighlight();
                     }
                     _selectionAnchor = ref;
-                    openDetailWindow(ref);
+                    pushDetailPage(ref);
                     continue;
                 }
 
@@ -461,27 +462,107 @@ namespace EgLab::Platform
         CommandManager::instance().call(EventId::HighlightGeometryFeature, Common::move(packet));
     }
 
-    void GeometryFeatureBrowser::openFeatureList(uint32_t featureType)
+    void GeometryFeatureBrowser::commitFocusHighlight()
     {
-        _featureListType = featureType;
-        _showFeatureList = true;
-    }
-
-    void GeometryFeatureBrowser::openDetailWindow(const GeometryFeatureRef& ref)
-    {
-        for (auto& window : _detailWindows)
+        if (!_data || _pageStack.empty())
         {
-            if (window.ref == ref)
-            {
-                window.open = true;
-                return;
-            }
+            return;
         }
 
-        DetailWindow window;
-        window.ref = ref;
-        window.open = true;
-        _detailWindows.pushBack(window);
+        const Page& page = _pageStack.back();
+        const bool wantFocus = page.kind == PageKind::Detail;
+
+        if (!wantFocus)
+        {
+            if (!_focusActive)
+            {
+                return;
+            }
+            _focusActive = false;
+            _focusFeature = GeometryFeatureRef();
+
+            EventPacket packet;
+            packet.setData("dataNodeId", static_cast<uint64_t>(_data->getId()));
+            packet.setData("features", Common::String());
+            CommandManager::instance().call(EventId::HighlightGeometryFeatureFocus,
+                                            Common::move(packet));
+            return;
+        }
+
+        if (_focusActive && _focusFeature == page.ref)
+        {
+            return;
+        }
+
+        _focusFeature = page.ref;
+        _focusActive = true;
+
+        char item[64];
+        std::snprintf(item, sizeof(item), "%u:%u", page.ref.featureType, page.ref.featureIndex);
+
+        EventPacket packet;
+        packet.setData("dataNodeId", static_cast<uint64_t>(_data->getId()));
+        packet.setData("features", Common::String(item));
+        CommandManager::instance().call(EventId::HighlightGeometryFeatureFocus,
+                                        Common::move(packet));
+    }
+
+    void GeometryFeatureBrowser::pushFeatureListPage(uint32_t featureType)
+    {
+        Page page;
+        page.kind = PageKind::FeatureList;
+        page.featureType = featureType;
+        _pageStack.pushBack(page);
+    }
+
+    void GeometryFeatureBrowser::pushDetailPage(const GeometryFeatureRef& ref)
+    {
+        Page page;
+        page.kind = PageKind::Detail;
+        page.ref = ref;
+        _pageStack.pushBack(page);
+    }
+
+    void GeometryFeatureBrowser::popPage()
+    {
+        if (_pageStack.size() <= 1)
+        {
+            return;
+        }
+        _pageStack.popBack();
+    }
+
+    const GeometryFeatureBrowser::Page* GeometryFeatureBrowser::currentPage() const
+    {
+        if (_pageStack.empty())
+        {
+            return nullptr;
+        }
+        return &_pageStack.back();
+    }
+
+    Common::String GeometryFeatureBrowser::currentPageTitle() const
+    {
+        const Page* page = currentPage();
+        if (page == nullptr)
+        {
+            return Common::String();
+        }
+
+        if (page->kind == PageKind::Summary)
+        {
+            return Common::String("Topology");
+        }
+        if (page->kind == PageKind::FeatureList)
+        {
+            return Common::String(featureTypeName(page->featureType));
+        }
+
+        char title[128];
+        const uint32_t featureId = _data ? _data->getFeatureInfo(page->ref).featureId : 0;
+        std::snprintf(title, sizeof(title), "%s #%u", featureTypeName(page->ref.featureType),
+                      featureId);
+        return Common::String(title);
     }
 
     void GeometryFeatureBrowser::clearSelection()

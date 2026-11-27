@@ -75,6 +75,11 @@ namespace EgLab::Platform
             const Common::DynamicArray<uint32_t>& elementIds,
             const Common::DynamicArray<uint32_t>& edgeSegmentNodeIndices,
             const Common::DynamicArray<uint32_t>& nodeIndices);
+        void setGeometryFeatureFocusState(
+            const Common::SharedPtr<ME::Mesh>& mesh,
+            const Common::DynamicArray<uint32_t>& elementIds,
+            const Common::DynamicArray<uint32_t>& edgeSegmentNodeIndices,
+            const Common::DynamicArray<uint32_t>& nodeIndices);
         void setCamera(const SetCameraEvent& event);
         void fitView(const Common::SharedPtr<ME::Mesh>& mesh);
 
@@ -99,6 +104,7 @@ namespace EgLab::Platform
         void applyReferencePlaneSettings(const SetReferencePlaneParam& param);
         void applyLocate();
         void applyGeometryFeatureHighlight();
+        void applyGeometryFeatureFocus();
         void applyElementsVisibility(const ElementsVisibilityEvent& event);
         void applyNodeVisibility(const NodeVisibilityEvent& event);
         void applyBoxSelection(const BoxSelectEvent& event);
@@ -170,6 +176,16 @@ namespace EgLab::Platform
         void notifyPickCleared();
         void updateLocateHighlight();
         void updateGeometryFeatureHighlight();
+        void updateGeometryFeatureFocus();
+        /// Adds the face/edge/vertex overlay of a geometry feature. coloredFaceOverlay selects
+        /// the per-feature face colour path (focus) instead of the cached selection overlay.
+        void addGeometryFeatureOverlay(
+            const Common::SharedPtr<ME::Mesh>& mesh,
+            const Common::DynamicArray<uint32_t>& elementIds,
+            const Common::DynamicArray<uint32_t>& edgeSegmentNodeIndices,
+            const Common::DynamicArray<uint32_t>& nodeIndices, const Common::Vector4f& color,
+            bool coloredFaceOverlay,
+            Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>>& primitives);
         void updateElementsVisibility(const ElementsVisibilityEvent& event);
         void updateNodeVisibility(const NodeVisibilityEvent& event);
         void applyNodeVisibilityToPrimitive(const Common::SharedPtr<ME::Mesh>& mesh);
@@ -241,6 +257,13 @@ namespace EgLab::Platform
         Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>>
             _featureHighlightPrimitives;
         Common::Vector4f _featureHighlightColor{1.0f, 0.28f, 0.04f, 1.0f};
+
+        Common::SharedPtr<ME::Mesh> _featureFocusMesh;
+        Common::DynamicArray<uint32_t> _featureFocusElementIds;
+        Common::DynamicArray<uint32_t> _featureFocusEdgeSegmentNodeIndices;
+        Common::DynamicArray<uint32_t> _featureFocusNodeIndices;
+        Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _featureFocusPrimitives;
+        Common::Vector4f _featureFocusColor{0.1f, 0.9f, 0.55f, 1.0f};
 
         float _nodePointSize{3.0f};
         float _lineWidth{2.0f};

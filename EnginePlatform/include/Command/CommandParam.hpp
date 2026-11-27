@@ -163,6 +163,8 @@ namespace EgLab::Platform
     // HighlightGeometryFeature：高亮 GeometryData 中的一组几何特征。
     // features 为空表示清除高亮；否则每项按 "type:index,type:index,..." 描述
     // （type 使用 GE::TopologyType 数值：0=V 1=E 2=F 3=S）。
+    // HighlightGeometryFeatureFocus 复用同一 Param，用于“当前正在查看的特征”高亮，
+    // 渲染层使用与选中高亮不同的颜色。
     constexpr size_t MAX_HIGHLIGHT_GEOMETRY_FEATURE_COUNT = 64;
     struct GeometryFeatureHighlightParam
     {

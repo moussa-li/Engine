@@ -151,6 +151,13 @@ namespace EgLab::Platform
                                          const Common::DynamicArray<uint32_t>& edgeSegmentNodeIndices,
                                          const Common::DynamicArray<uint32_t>& nodeIndices);
         void clearGeometryFeatureHighlight();
+        // Focus highlight for the feature currently opened in the feature browser. Uses a
+        // different colour than setGeometryFeatureHighlight so selection stays distinguishable.
+        void setGeometryFeatureFocus(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
+                                     const Common::DynamicArray<uint32_t>& elementIds,
+                                     const Common::DynamicArray<uint32_t>& edgeSegmentNodeIndices,
+                                     const Common::DynamicArray<uint32_t>& nodeIndices);
+        void clearGeometryFeatureFocus();
         // Changes element visibility of one mesh. mode: 0 = hide ids, 1 = show ids,
         // 2 = show only ids (hide the rest), 3 = hide only ids (show the rest). An empty id
         // list in modes 1/3 restores the full mesh surface.
