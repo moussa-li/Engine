@@ -537,6 +537,36 @@ namespace EgLab::Platform
         RenderDataManager& _data;
     };
 
+    class MeshEntityHighlightHandler : public IRenderEventHandler
+    {
+    public:
+        explicit MeshEntityHighlightHandler(RenderDataManager& data) : _data(data)
+        {
+        }
+
+        static Common::SharedPtr<IRenderEventHandler> create(RenderDataManager& data)
+        {
+            return Common::makeShared<MeshEntityHighlightHandler>(data);
+        }
+
+        Common::Return record(const RenderEvent& event) override
+        {
+            const auto& e = static_cast<const MeshEntityHighlightEvent&>(event);
+            _data.setMeshEntityHighlightState(e.mesh, e.elementIds, e.nodeIndices, e.focus);
+            return Common::Return::Succeed;
+        }
+
+        Common::Return apply(const RenderEvent& event) override
+        {
+            const auto& e = static_cast<const MeshEntityHighlightEvent&>(event);
+            _data.applyMeshEntityHighlight(e.focus);
+            return Common::Return::Succeed;
+        }
+
+    private:
+        RenderDataManager& _data;
+    };
+
     class ElementsVisibilityHandler : public IRenderEventHandler
     {
     public:
@@ -740,6 +770,7 @@ namespace EgLab::Platform
         {RenderEventType::Locate, &LocateHandler::create},
         {RenderEventType::GeometryFeatureHighlight, &GeometryFeatureHighlightHandler::create},
         {RenderEventType::GeometryFeatureFocus, &GeometryFeatureFocusHandler::create},
+        {RenderEventType::MeshEntityHighlight, &MeshEntityHighlightHandler::create},
         {RenderEventType::ElementsVisibility, &ElementsVisibilityHandler::create},
         {RenderEventType::NodeVisibility, &NodeVisibilityHandler::create},
         {RenderEventType::BoxSelection, &BoxSelectionHandler::create},

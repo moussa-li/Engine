@@ -158,6 +158,18 @@ namespace EgLab::Platform
                                      const Common::DynamicArray<uint32_t>& edgeSegmentNodeIndices,
                                      const Common::DynamicArray<uint32_t>& nodeIndices);
         void clearGeometryFeatureFocus();
+        // Selection highlight requested by the mesh browser: element ids plus 0-based render
+        // node indices of one mesh. Passing both lists empty clears the highlight.
+        void setMeshEntityHighlight(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
+                                    const Common::DynamicArray<uint32_t>& elementIds,
+                                    const Common::DynamicArray<uint32_t>& nodeIndices);
+        void clearMeshEntityHighlight();
+        // Context highlight for the entities shown on the browser's current page. Uses a
+        // different colour than setMeshEntityHighlight so selected rows stay distinguishable.
+        void setMeshEntityFocus(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
+                                const Common::DynamicArray<uint32_t>& elementIds,
+                                const Common::DynamicArray<uint32_t>& nodeIndices);
+        void clearMeshEntityFocus();
         // Changes element visibility of one mesh. mode: 0 = hide ids, 1 = show ids,
         // 2 = show only ids (hide the rest), 3 = hide only ids (show the rest). An empty id
         // list in modes 1/3 restores the full mesh surface.

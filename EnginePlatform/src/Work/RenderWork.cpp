@@ -750,6 +750,42 @@ namespace EgLab::Platform
                                 Common::DynamicArray<uint32_t>());
     }
 
+    void RenderWork::setMeshEntityHighlight(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
+                                            const Common::DynamicArray<uint32_t>& elementIds,
+                                            const Common::DynamicArray<uint32_t>& nodeIndices)
+    {
+        auto event = Common::makeShared<MeshEntityHighlightEvent>();
+        event->mesh = mesh;
+        event->elementIds = elementIds;
+        event->nodeIndices = nodeIndices;
+        event->focus = false;
+        queueRenderEvent(event);
+    }
+
+    void RenderWork::clearMeshEntityHighlight()
+    {
+        setMeshEntityHighlight(Common::SharedPtr<ME::Mesh>(), Common::DynamicArray<uint32_t>(),
+                               Common::DynamicArray<uint32_t>());
+    }
+
+    void RenderWork::setMeshEntityFocus(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
+                                        const Common::DynamicArray<uint32_t>& elementIds,
+                                        const Common::DynamicArray<uint32_t>& nodeIndices)
+    {
+        auto event = Common::makeShared<MeshEntityHighlightEvent>();
+        event->mesh = mesh;
+        event->elementIds = elementIds;
+        event->nodeIndices = nodeIndices;
+        event->focus = true;
+        queueRenderEvent(event);
+    }
+
+    void RenderWork::clearMeshEntityFocus()
+    {
+        setMeshEntityFocus(Common::SharedPtr<ME::Mesh>(), Common::DynamicArray<uint32_t>(),
+                           Common::DynamicArray<uint32_t>());
+    }
+
     void RenderWork::setElementsVisibility(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
                                            uint32_t mode,
                                            const Common::DynamicArray<uint32_t>& elementIds)

@@ -87,6 +87,14 @@ namespace EgLab::Platform
         _featureFocusElementIds.clear();
         _featureFocusEdgeSegmentNodeIndices.clear();
         _featureFocusNodeIndices.clear();
+        _meshSelectionHighlight.primitives.clear();
+        _meshSelectionHighlight.mesh = nullptr;
+        _meshSelectionHighlight.elementIds.clear();
+        _meshSelectionHighlight.nodeIndices.clear();
+        _meshFocusHighlight.primitives.clear();
+        _meshFocusHighlight.mesh = nullptr;
+        _meshFocusHighlight.elementIds.clear();
+        _meshFocusHighlight.nodeIndices.clear();
         _highlightShader = nullptr;
         _heMeshHighlightShader = nullptr;
         _meshSelector = nullptr;
@@ -258,6 +266,23 @@ namespace EgLab::Platform
         _featureFocusElementIds = elementIds;
         _featureFocusEdgeSegmentNodeIndices = edgeSegmentNodeIndices;
         _featureFocusNodeIndices = nodeIndices;
+    }
+
+    RenderDataManager::MeshEntityHighlightState& RenderDataManager::meshEntityHighlightState(
+        bool focus)
+    {
+        return focus ? _meshFocusHighlight : _meshSelectionHighlight;
+    }
+
+    void RenderDataManager::setMeshEntityHighlightState(
+        const Common::SharedPtr<ME::Mesh>& mesh,
+        const Common::DynamicArray<uint32_t>& elementIds,
+        const Common::DynamicArray<uint32_t>& nodeIndices, bool focus)
+    {
+        MeshEntityHighlightState& state = meshEntityHighlightState(focus);
+        state.mesh = mesh;
+        state.elementIds = elementIds;
+        state.nodeIndices = nodeIndices;
     }
 
     void RenderDataManager::setCamera(const SetCameraEvent& event)
@@ -696,6 +721,16 @@ namespace EgLab::Platform
             _featureFocusEdgeSegmentNodeIndices.clear();
             _featureFocusNodeIndices.clear();
         }
+
+        if (_meshSelectionHighlight.mesh && _meshSelectionHighlight.mesh == mesh)
+        {
+            releaseMeshEntityHighlight(_meshSelectionHighlight);
+        }
+
+        if (_meshFocusHighlight.mesh && _meshFocusHighlight.mesh == mesh)
+        {
+            releaseMeshEntityHighlight(_meshFocusHighlight);
+        }
         updateMeshHighlight();
         updateSelectionHighlight();
     }
@@ -1047,6 +1082,11 @@ namespace EgLab::Platform
     void RenderDataManager::applyGeometryFeatureFocus()
     {
         updateGeometryFeatureFocus();
+    }
+
+    void RenderDataManager::applyMeshEntityHighlight(bool focus)
+    {
+        updateMeshEntityHighlight(focus);
     }
 
     void RenderDataManager::applyElementsVisibility(const ElementsVisibilityEvent& event)
@@ -1619,6 +1659,43 @@ namespace EgLab::Platform
         addGeometryFeatureOverlay(_featureFocusMesh, _featureFocusElementIds,
                                   _featureFocusEdgeSegmentNodeIndices, _featureFocusNodeIndices,
                                   _featureFocusColor, true, _featureFocusPrimitives);
+    }
+
+    void RenderDataManager::releaseMeshEntityHighlight(MeshEntityHighlightState& state)
+    {
+        Common::SharedPtr<RE::Shader> highlightShader;
+        RE::ShaderLib::instance().getHighlightShader(highlightShader);
+        for (const auto& primitive : state.primitives)
+        {
+            _scene->removePrimitive(highlightShader, primitive);
+        }
+        state.primitives.clear();
+        state.mesh = nullptr;
+        state.elementIds.clear();
+        state.nodeIndices.clear();
+    }
+
+    void RenderDataManager::updateMeshEntityHighlight(bool focus)
+    {
+        MeshEntityHighlightState& state = meshEntityHighlightState(focus);
+        if (!_scene)
+        {
+            return;
+        }
+
+        Common::SharedPtr<RE::Shader> highlightShader;
+        RE::ShaderLib::instance().getHighlightShader(highlightShader);
+        for (const auto& primitive : state.primitives)
+        {
+            _scene->removePrimitive(highlightShader, primitive);
+        }
+        state.primitives.clear();
+
+        const Common::DynamicArray<uint32_t> noEdgeSegments;
+        const Common::Vector4f& color =
+            focus ? _meshFocusHighlightColor : _meshSelectionHighlightColor;
+        addGeometryFeatureOverlay(state.mesh, state.elementIds, noEdgeSegments, state.nodeIndices,
+                                  color, true, state.primitives);
     }
 
     void RenderDataManager::addGeometryFeatureOverlay(
@@ -2320,6 +2397,16 @@ namespace EgLab::Platform
         if (_featureFocusMesh == mesh)
         {
             updateGeometryFeatureFocus();
+        }
+
+        if (_meshSelectionHighlight.mesh && _meshSelectionHighlight.mesh == mesh)
+        {
+            updateMeshEntityHighlight(false);
+        }
+
+        if (_meshFocusHighlight.mesh && _meshFocusHighlight.mesh == mesh)
+        {
+            updateMeshEntityHighlight(true);
         }
 
         // The face primitive was replaced, so any selection highlight that referenced it must

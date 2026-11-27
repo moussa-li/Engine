@@ -133,6 +133,16 @@ namespace EgLab::Platform
              "type:index, type:index (0=Vertex 1=Edge 2=Face 3=Solid); empty clears"},
         };
 
+        // ===== MeshEntityHighlightParam =====
+        const ParamFieldDesc kHighlightMeshEntitiesFields[] = {
+            {"dataNodeId", "Data Node Id", ParamFieldType::UInt64, 0,
+             "MeshData data node id"},
+            {"nodeIds", "Node Ids", ParamFieldType::String, 512,
+             "1, 2, 3; node ids of the mesh; empty clears"},
+            {"elementIds", "Element Ids", ParamFieldType::String, 512,
+             "1, 2, 3; element ids of the mesh; empty clears"},
+        };
+
         // ===== DeleteMeshParam =====
         const ParamFieldDesc kDeleteMeshFields[] = {
             {"dataNodeId", "Data Node Id", ParamFieldType::UInt64, 0,
@@ -258,6 +268,13 @@ namespace EgLab::Platform
              sizeof(GeometryFeatureHighlightParam), kHighlightGeometryFeatureFields,
              sizeof(kHighlightGeometryFeatureFields) /
                  sizeof(kHighlightGeometryFeatureFields[0])},
+            {EventId::HighlightMeshEntities, "HighlightMeshEntities", "Highlight Mesh Entities",
+             "Mesh", true, sizeof(MeshEntityHighlightParam), kHighlightMeshEntitiesFields,
+             sizeof(kHighlightMeshEntitiesFields) / sizeof(kHighlightMeshEntitiesFields[0])},
+            {EventId::HighlightMeshEntitiesFocus, "HighlightMeshEntitiesFocus",
+             "Focus Mesh Entities", "Mesh", true, sizeof(MeshEntityHighlightParam),
+             kHighlightMeshEntitiesFields,
+             sizeof(kHighlightMeshEntitiesFields) / sizeof(kHighlightMeshEntitiesFields[0])},
             {EventId::CameraPan, "CameraPan", "Pan Camera", "Camera", false, 0, nullptr, 0, true,
              true},
             {EventId::CameraRotate, "CameraRotate", "Rotate Camera", "Camera", false, 0, nullptr,

@@ -4,6 +4,7 @@
 #include "DataBase/DataNode.hpp"
 #include "Panel/GeometryFeatureBrowser.hpp"
 #include "Panel/IPanel.hpp"
+#include "Panel/MeshFeatureBrowser.hpp"
 
 namespace EgLab::Platform
 {
@@ -62,5 +63,8 @@ namespace EgLab::Platform
 
         // Feature browser opened by double-clicking a GeometryData node.
         GeometryFeatureBrowser _featureBrowser;
+
+        // Mesh browser opened by double-clicking a plain MeshData node.
+        MeshFeatureBrowser _meshBrowser;
     };
 } // namespace EgLab::Platform

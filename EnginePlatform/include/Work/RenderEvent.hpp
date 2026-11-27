@@ -63,6 +63,7 @@ namespace EgLab::Platform
         GeometryUv,
         GeometryFeatureHighlight,
         GeometryFeatureFocus,
+        MeshEntityHighlight,
     };
 
     /// Polymorphic base for rendering change requests. Each concrete event type carries only
@@ -225,6 +226,22 @@ namespace EgLab::Platform
         Common::DynamicArray<uint32_t> elementIds;
         Common::DynamicArray<uint32_t> edgeSegmentNodeIndices;
         Common::DynamicArray<uint32_t> nodeIndices;
+    };
+
+    /// Highlights nodes and/or elements of one mesh. nodeIndices are 0-based render node
+    /// indices; empty lists clear the highlight. focus selects the current-page context
+    /// highlight, which uses a different colour than the row selection.
+    class MeshEntityHighlightEvent : public RenderEvent
+    {
+    public:
+        MeshEntityHighlightEvent() : RenderEvent(RenderEventType::MeshEntityHighlight)
+        {
+        }
+
+        Common::SharedPtr<ME::Mesh> mesh;
+        Common::DynamicArray<uint32_t> elementIds;
+        Common::DynamicArray<uint32_t> nodeIndices;
+        bool focus{false};
     };
 
     class ElementsVisibilityEvent : public RenderEvent

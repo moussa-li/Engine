@@ -42,6 +42,8 @@ namespace EgLab::Platform
         HighlightGeometryFeature = 200029, // 高亮 GeometryData 中的单个几何特征
         HighlightGeometryFeatureFocus = 200030, // 高亮当前查看的几何特征（与选中高亮不同色）
         GeometryUpdate = 200031, // 从内核序列化拓扑数据 + 特征名更新/创建 GeometryData
+        HighlightMeshEntities = 200032, // 高亮 MeshData 中的节点/单元（网格浏览器选中行）
+        HighlightMeshEntitiesFocus = 200033, // 高亮网格浏览器当前页关联的节点/单元（不同色）
         CameraPan = 300001, // Camera = 3xxxxx
         CameraRotate = 300002,
         CameraRotateLocal = 300003,

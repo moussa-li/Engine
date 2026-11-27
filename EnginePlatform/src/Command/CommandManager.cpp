@@ -33,6 +33,7 @@
 #include "Command/SetGeometryTessellationCmd.hpp"
 #include "Command/LocateElementsCmd.hpp"
 #include "Command/HighlightGeometryFeatureCmd.hpp"
+#include "Command/HighlightMeshEntitiesCmd.hpp"
 #include "Command/ElementsVisibilityCmd.hpp"
 #include "Command/NodeVisibilityCmd.hpp"
 #include "Command/MeshQueryCmd.hpp"
@@ -342,6 +343,18 @@ namespace EgLab::Platform
                 GeometryFeatureHighlightParam param{};
                 std::memcpy(&param, pod.data, sizeof(param));
                 return Common::makeShared<HighlightGeometryFeatureCmd>(param, true);
+            };
+
+            _creator[EventId::HighlightMeshEntities] = [](const PacketPOD& pod) {
+                MeshEntityHighlightParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<HighlightMeshEntitiesCmd>(param);
+            };
+
+            _creator[EventId::HighlightMeshEntitiesFocus] = [](const PacketPOD& pod) {
+                MeshEntityHighlightParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<HighlightMeshEntitiesCmd>(param, true);
             };
 
             _packetCreator[EventId::MeshImport] = [](const EventPacket& packet) {
@@ -776,6 +789,55 @@ namespace EgLab::Platform
                     std::memcpy(pod.data, &param, sizeof(param));
                     return pod;
                 };
+
+            _packetCreator[EventId::HighlightMeshEntities] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                MeshEntityHighlightParam param{};
+                if (packet.contains("dataNodeId"))
+                {
+                    param.dataNodeId = packet.getData<uint64_t>("dataNodeId");
+                }
+                if (packet.contains("nodeIds"))
+                {
+                    param.nodeCount = static_cast<uint32_t>(parseIdList(
+                        packet.getData<Common::String>("nodeIds"), param.nodeIds,
+                        MAX_HIGHLIGHT_MESH_ENTITY_COUNT));
+                }
+                if (packet.contains("elementIds"))
+                {
+                    param.elementCount = static_cast<uint32_t>(parseIdList(
+                        packet.getData<Common::String>("elementIds"), param.elementIds,
+                        MAX_HIGHLIGHT_MESH_ENTITY_COUNT));
+                }
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
+
+            _packetCreator[EventId::HighlightMeshEntitiesFocus] =
+                [](const EventPacket& packet) {
+                    PacketPOD pod{};
+                    MeshEntityHighlightParam param{};
+                    if (packet.contains("dataNodeId"))
+                    {
+                        param.dataNodeId = packet.getData<uint64_t>("dataNodeId");
+                    }
+                    if (packet.contains("nodeIds"))
+                    {
+                        param.nodeCount = static_cast<uint32_t>(parseIdList(
+                            packet.getData<Common::String>("nodeIds"), param.nodeIds,
+                            MAX_HIGHLIGHT_MESH_ENTITY_COUNT));
+                    }
+                    if (packet.contains("elementIds"))
+                    {
+                        param.elementCount = static_cast<uint32_t>(parseIdList(
+                            packet.getData<Common::String>("elementIds"), param.elementIds,
+                            MAX_HIGHLIGHT_MESH_ENTITY_COUNT));
+                    }
+                    pod.dataSize = sizeof(param);
+                    std::memcpy(pod.data, &param, sizeof(param));
+                    return pod;
+                };
         }
 
         void startListen()
@@ -810,6 +872,8 @@ namespace EgLab::Platform
             _subscriber.subscrib((uint32_t)EventId::SetGeometryTessellation);
             _subscriber.subscrib((uint32_t)EventId::HighlightGeometryFeature);
             _subscriber.subscrib((uint32_t)EventId::HighlightGeometryFeatureFocus);
+            _subscriber.subscrib((uint32_t)EventId::HighlightMeshEntities);
+            _subscriber.subscrib((uint32_t)EventId::HighlightMeshEntitiesFocus);
 
             if (_isRunning == true) return;
             _isRunning = true;

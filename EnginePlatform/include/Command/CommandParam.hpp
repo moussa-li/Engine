@@ -184,6 +184,20 @@ namespace EgLab::Platform
         uint32_t featureIndices[MAX_HIGHLIGHT_GEOMETRY_FEATURE_COUNT]; // off 272
     };
 
+    // HighlightMeshEntities：高亮 MeshData 中的一组节点和/或单元（网格浏览器选中行）。
+    // nodeCount 与 elementCount 同时为 0 表示清除高亮。
+    // HighlightMeshEntitiesFocus 复用同一 Param，用于当前页面关联实体的上下文高亮，
+    // 渲染层使用与选中行不同的颜色。
+    constexpr size_t MAX_HIGHLIGHT_MESH_ENTITY_COUNT = 1024;
+    struct MeshEntityHighlightParam
+    {
+        uint64_t dataNodeId;   // off 0; MeshData 数据节点 id
+        uint32_t nodeCount;    // off 8; 节点数量
+        uint32_t elementCount; // off 12; 单元数量
+        uint32_t nodeIds[MAX_HIGHLIGHT_MESH_ENTITY_COUNT];    // off 16
+        uint32_t elementIds[MAX_HIGHLIGHT_MESH_ENTITY_COUNT]; // off 4112
+    };
+
     // ===== SetCamera =====
     enum class CameraMode : uint32_t
     {
@@ -360,5 +374,9 @@ namespace EgLab::Platform
                   "GeometryFeatureHighlightParam must be trivially copyable");
     static_assert(sizeof(GeometryFeatureHighlightParam) == 528,
                   "GeometryFeatureHighlightParam must be exactly 528 bytes");
+    static_assert(std::is_trivially_copyable<MeshEntityHighlightParam>::value,
+                  "MeshEntityHighlightParam must be trivially copyable");
+    static_assert(sizeof(MeshEntityHighlightParam) == 8208,
+                  "MeshEntityHighlightParam must be exactly 8208 bytes");
 
 } // namespace EgLab::Platform

@@ -32,6 +32,8 @@ add_executable(mesh_test
     test_mesh.cpp
     test_mesh_visibility.cpp
     test_selection.cpp
+    test_mesh_topology.cpp
+    ${CMAKE_SOURCE_DIR}/EnginePlatform/src/DataBase/MeshTopology.cpp
     ${CMAKE_SOURCE_DIR}/EnginePlatform/src/Work/SelectionModel.cpp
     test_main.cpp
 )

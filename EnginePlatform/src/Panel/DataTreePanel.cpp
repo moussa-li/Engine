@@ -32,13 +32,24 @@ namespace EgLab::Platform
         ImGui::TreeNodeEx(&meshData, flags, "%s", meshData.getName().c_str());
         const bool isClicked = ImGui::IsItemClicked(ImGuiMouseButton_Left);
 
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) &&
-            dynamic_cast<GeometryData*>(&meshData) != nullptr)
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
         {
-            auto geometryData = GeometryData::findByMesh(reinterpret_cast<uint64_t>(mesh.get()));
-            if (geometryData)
+            if (dynamic_cast<GeometryData*>(&meshData) != nullptr)
             {
-                _featureBrowser.open(geometryData);
+                auto geometryData = GeometryData::findByMesh(reinterpret_cast<uint64_t>(mesh.get()));
+                if (geometryData)
+                {
+                    _featureBrowser.open(geometryData);
+                }
+            }
+            else
+            {
+                auto dataNode = Context::instance().getDataNode(meshData.getId());
+                auto sharedMeshData = Common::dynamicSharedPtrCast<MeshData>(dataNode);
+                if (sharedMeshData)
+                {
+                    _meshBrowser.open(sharedMeshData);
+                }
             }
         }
 
@@ -275,6 +286,7 @@ namespace EgLab::Platform
     void DataTreePanel::abortClose()
     {
         _featureBrowser.close();
+        _meshBrowser.close();
         _selectedDataNodeIds.clear();
         clearLocateHighlight();
     }
@@ -285,6 +297,7 @@ namespace EgLab::Platform
         if (!isShow())
         {
             _featureBrowser.close();
+            _meshBrowser.close();
             _selectedDataNodeIds.clear();
             clearLocateHighlight();
             return;
@@ -292,5 +305,6 @@ namespace EgLab::Platform
 
         // The browser windows are top-level, so they are drawn after the data tree window ends.
         _featureBrowser.render();
+        _meshBrowser.render();
     }
 } // namespace EgLab::Platform

@@ -80,6 +80,10 @@ namespace EgLab::Platform
             const Common::DynamicArray<uint32_t>& elementIds,
             const Common::DynamicArray<uint32_t>& edgeSegmentNodeIndices,
             const Common::DynamicArray<uint32_t>& nodeIndices);
+        void setMeshEntityHighlightState(const Common::SharedPtr<ME::Mesh>& mesh,
+                                         const Common::DynamicArray<uint32_t>& elementIds,
+                                         const Common::DynamicArray<uint32_t>& nodeIndices,
+                                         bool focus);
         void setCamera(const SetCameraEvent& event);
         void fitView(const Common::SharedPtr<ME::Mesh>& mesh);
 
@@ -105,6 +109,7 @@ namespace EgLab::Platform
         void applyLocate();
         void applyGeometryFeatureHighlight();
         void applyGeometryFeatureFocus();
+        void applyMeshEntityHighlight(bool focus);
         void applyElementsVisibility(const ElementsVisibilityEvent& event);
         void applyNodeVisibility(const NodeVisibilityEvent& event);
         void applyBoxSelection(const BoxSelectEvent& event);
@@ -167,6 +172,16 @@ namespace EgLab::Platform
             RenderPacket packet;
         };
 
+        // One mesh-browser highlight group: the target mesh, the requested entities and the
+        // scene primitives that draw them.
+        struct MeshEntityHighlightState
+        {
+            Common::SharedPtr<ME::Mesh> mesh;
+            Common::DynamicArray<uint32_t> elementIds;
+            Common::DynamicArray<uint32_t> nodeIndices;
+            Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> primitives;
+        };
+
         Common::Return uploadRenderPacket(const MeshRenderEntry& entry);
         /// Shows or hides the B-Rep vertex markers of every geometry model.
         void applyGeometryNodeVisibility(const Common::SharedPtr<ME::Mesh>& mesh);
@@ -177,6 +192,10 @@ namespace EgLab::Platform
         void updateLocateHighlight();
         void updateGeometryFeatureHighlight();
         void updateGeometryFeatureFocus();
+        void updateMeshEntityHighlight(bool focus);
+        /// Removes the scene primitives of one mesh highlight state and resets it.
+        void releaseMeshEntityHighlight(MeshEntityHighlightState& state);
+        MeshEntityHighlightState& meshEntityHighlightState(bool focus);
         /// Adds the face/edge/vertex overlay of a geometry feature. coloredFaceOverlay selects
         /// the per-feature face colour path (focus) instead of the cached selection overlay.
         void addGeometryFeatureOverlay(
@@ -264,6 +283,13 @@ namespace EgLab::Platform
         Common::DynamicArray<uint32_t> _featureFocusNodeIndices;
         Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>> _featureFocusPrimitives;
         Common::Vector4f _featureFocusColor{0.1f, 0.9f, 0.55f, 1.0f};
+
+        // Row selection highlight and current-page context highlight requested by the mesh
+        // browser. They use separate states so the two colours never overwrite each other.
+        MeshEntityHighlightState _meshSelectionHighlight;
+        MeshEntityHighlightState _meshFocusHighlight;
+        Common::Vector4f _meshSelectionHighlightColor{1.0f, 0.28f, 0.04f, 1.0f};
+        Common::Vector4f _meshFocusHighlightColor{0.1f, 0.9f, 0.55f, 1.0f};
 
         float _nodePointSize{3.0f};
         float _lineWidth{2.0f};
