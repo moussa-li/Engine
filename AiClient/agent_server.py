@@ -847,6 +847,31 @@ class NativeCommandBridge:
             parallel = 1 if args.get("parallel", True) else 0
             return 200028, struct.pack("<I", 16) + struct.pack("<ffII", linear, angular,
                                                                 relative, parallel)
+        if name == "HighlightGeometryFeature":
+            # 布局：uint64 dataNodeId + uint32 count + uint32 reserved
+            #       + uint32 featureTypes[64] + uint32 featureIndices[64]（共 528B）。
+            # features 为 "type:index,type:index"；空串表示清除高亮。
+            node = int(args.get("dataNodeId") or 0)
+            feature_types = [0] * 64
+            feature_indices = [0] * 64
+            count = 0
+            for part in str(args.get("features") or "").split(","):
+                part = part.strip()
+                if not part or ":" not in part:
+                    continue
+                type_text, _, index_text = part.partition(":")
+                try:
+                    feature_type = int(type_text)
+                    feature_index = int(index_text)
+                except ValueError:
+                    continue
+                if count >= 64:
+                    break
+                feature_types[count] = feature_type
+                feature_indices[count] = feature_index
+                count += 1
+            body = struct.pack("<QII64I64I", node, count, 0, *feature_types, *feature_indices)
+            return 200029, struct.pack("<I", len(body)) + body
         return None
 
     def call(self, name, arguments):

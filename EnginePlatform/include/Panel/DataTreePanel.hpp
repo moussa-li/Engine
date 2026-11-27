@@ -2,6 +2,7 @@
 
 #include "Common/DynamicArray.hpp"
 #include "DataBase/DataNode.hpp"
+#include "Panel/GeometryFeatureBrowser.hpp"
 #include "Panel/IPanel.hpp"
 
 namespace EgLab::Platform
@@ -52,5 +53,8 @@ namespace EgLab::Platform
 
     private:
         Common::DynamicArray<DataNodeId> _selectedDataNodeIds;
+
+        // Feature browser opened by double-clicking a GeometryData node.
+        GeometryFeatureBrowser _featureBrowser;
     };
 } // namespace EgLab::Platform

@@ -58,6 +58,11 @@ namespace EgLab::RE
 
     void RenderLine::draw(Common::SharedPtr<Shader> shader)
     {
+        const GLboolean depthTestWasEnabled = glIsEnabled(GL_DEPTH_TEST);
+        if (!_depthTestEnabled)
+        {
+            glDisable(GL_DEPTH_TEST);
+        }
         shader->bind();
         shader->setUniform4f("u_Color", _color);
         if (_hasColor)
@@ -78,6 +83,14 @@ namespace EgLab::RE
         _vertexArray->unBind();
         _indexBuffer->unBind();
         shader->unBind();
+        if (depthTestWasEnabled)
+        {
+            glEnable(GL_DEPTH_TEST);
+        }
+        else
+        {
+            glDisable(GL_DEPTH_TEST);
+        }
     }
 
     void RenderLine::drawHighlight(Common::SharedPtr<Shader> shader, IdxType lineIndex)

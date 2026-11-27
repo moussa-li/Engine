@@ -314,4 +314,107 @@ namespace EgLab::Platform
         return findByMeshIn(Context::instance().getDataTree().getChildren(), meshId);
     }
 
+    GeometryFeatureInfo GeometryData::getFeatureInfo(GE::TopologyType type,
+                                                     GE::IdxType index) const
+    {
+        return getFeatureInfo(GeometryFeatureRef(type, index));
+    }
+
+    std::size_t GeometryData::getFeatureCount(GE::TopologyType type) const
+    {
+        std::lock_guard<std::mutex> lock(_geometryMutex);
+        if (!_document)
+        {
+            return 0;
+        }
+        return _document->getFeatureCount(type);
+    }
+
+    void GeometryData::getFeatureRelations(
+        const GeometryFeatureRef& ref, Common::DynamicArray<GeometryFeatureRef>& parents,
+        Common::DynamicArray<GeometryFeatureRef>& children) const
+    {
+        parents.clear();
+        children.clear();
+        if (!ref.isValid())
+        {
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(_geometryMutex);
+        if (!_document)
+        {
+            return;
+        }
+
+        const GE::TopologyType type = ref.getType();
+        const GE::GeometryFeature feature = _document->getFeature(type, ref.featureIndex);
+        if (!feature.isValid())
+        {
+            return;
+        }
+
+        // Parents live in the array of the next higher dimension, children one dimension below.
+        const uint32_t typeValue = static_cast<uint32_t>(type);
+        const uint32_t parentTypeValue = typeValue + 1;
+        if (parentTypeValue < GE::TOPOLOGY_TYPE_COUNT)
+        {
+            const auto parentType = static_cast<GE::TopologyType>(parentTypeValue);
+            for (const GE::IdxType parentIndex : feature.getParents())
+            {
+                parents.pushBack(GeometryFeatureRef(parentType, parentIndex));
+            }
+        }
+        if (typeValue > 0)
+        {
+            const auto childType = static_cast<GE::TopologyType>(typeValue - 1);
+            for (const GE::IdxType childIndex : feature.getChildren())
+            {
+                children.pushBack(GeometryFeatureRef(childType, childIndex));
+            }
+        }
+    }
+
+    void GeometryData::collectFeatureRenderIds(const GeometryFeatureRef& ref,
+                                               GeometryFeatureRenderIds& out) const
+    {
+        out.elementIds.clear();
+        out.edgeSegmentIndices.clear();
+        out.nodeIndices.clear();
+        if (!ref.isValid())
+        {
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(_geometryMutex);
+
+        // Solids are expanded to their faces by the element map, so face and solid share a path.
+        if (ref.getType() == GE::TopologyType::Face ||
+            ref.getType() == GE::TopologyType::Solid)
+        {
+            _elementMap.collectElements(ref, out.elementIds);
+            return;
+        }
+
+        if (ref.getType() == GE::TopologyType::Edge)
+        {
+            for (std::size_t segment = 0; segment < _edgeSegmentFeatures.size(); ++segment)
+            {
+                if (_edgeSegmentFeatures[segment] == ref)
+                {
+                    out.edgeSegmentIndices.pushBack(static_cast<uint32_t>(segment));
+                }
+            }
+            return;
+        }
+
+        for (std::size_t nodeIndex = 0; nodeIndex < _nodeFeatures.size(); ++nodeIndex)
+        {
+            if (_nodeFeatures[nodeIndex] == ref)
+            {
+                out.nodeIndices.pushBack(static_cast<uint32_t>(nodeIndex));
+            }
+        }
+    }
+
 } // namespace EgLab::Platform

@@ -477,6 +477,36 @@ namespace EgLab::Platform
         RenderDataManager& _data;
     };
 
+    class GeometryFeatureHighlightHandler : public IRenderEventHandler
+    {
+    public:
+        explicit GeometryFeatureHighlightHandler(RenderDataManager& data) : _data(data)
+        {
+        }
+
+        static Common::SharedPtr<IRenderEventHandler> create(RenderDataManager& data)
+        {
+            return Common::makeShared<GeometryFeatureHighlightHandler>(data);
+        }
+
+        Common::Return record(const RenderEvent& event) override
+        {
+            const auto& e = static_cast<const GeometryFeatureHighlightEvent&>(event);
+            _data.setGeometryFeatureHighlightState(e.mesh, e.elementIds, e.edgeSegmentNodeIndices,
+                                                   e.nodeIndices);
+            return Common::Return::Succeed;
+        }
+
+        Common::Return apply(const RenderEvent&) override
+        {
+            _data.applyGeometryFeatureHighlight();
+            return Common::Return::Succeed;
+        }
+
+    private:
+        RenderDataManager& _data;
+    };
+
     class ElementsVisibilityHandler : public IRenderEventHandler
     {
     public:
@@ -678,6 +708,7 @@ namespace EgLab::Platform
         {RenderEventType::ReferencePlaneSettings, &ReferencePlaneSettingsHandler::create},
         {RenderEventType::HEMeshHighlight, &HEMeshHighlightHandler::create},
         {RenderEventType::Locate, &LocateHandler::create},
+        {RenderEventType::GeometryFeatureHighlight, &GeometryFeatureHighlightHandler::create},
         {RenderEventType::ElementsVisibility, &ElementsVisibilityHandler::create},
         {RenderEventType::NodeVisibility, &NodeVisibilityHandler::create},
         {RenderEventType::BoxSelection, &BoxSelectionHandler::create},

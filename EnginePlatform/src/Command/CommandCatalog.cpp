@@ -125,6 +125,14 @@ namespace EgLab::Platform
              "0 = serial, 1 = parallel tessellation"},
         };
 
+        // ===== GeometryFeatureHighlightParam =====
+        const ParamFieldDesc kHighlightGeometryFeatureFields[] = {
+            {"dataNodeId", "Data Node Id", ParamFieldType::UInt64, 0,
+             "GeometryData data node id"},
+            {"features", "Features", ParamFieldType::String, 512,
+             "type:index, type:index (0=Vertex 1=Edge 2=Face 3=Solid); empty clears"},
+        };
+
         // ===== DeleteMeshParam =====
         const ParamFieldDesc kDeleteMeshFields[] = {
             {"dataNodeId", "Data Node Id", ParamFieldType::UInt64, 0,
@@ -240,6 +248,11 @@ namespace EgLab::Platform
              "Set Geometry Tessellation", "Geometry", true, sizeof(GeometryTessellationParam),
              kGeometryTessellationFields,
              sizeof(kGeometryTessellationFields) / sizeof(kGeometryTessellationFields[0])},
+            {EventId::HighlightGeometryFeature, "HighlightGeometryFeature",
+             "Highlight Geometry Feature", "Geometry", true,
+             sizeof(GeometryFeatureHighlightParam), kHighlightGeometryFeatureFields,
+             sizeof(kHighlightGeometryFeatureFields) /
+                 sizeof(kHighlightGeometryFeatureFields[0])},
             {EventId::CameraPan, "CameraPan", "Pan Camera", "Camera", false, 0, nullptr, 0, true,
              true},
             {EventId::CameraRotate, "CameraRotate", "Rotate Camera", "Camera", false, 0, nullptr,

@@ -61,6 +61,7 @@ namespace EgLab::Platform
         GeometryVertexDisplay,
         GeometryZebra,
         GeometryUv,
+        GeometryFeatureHighlight,
     };
 
     /// Polymorphic base for rendering change requests. Each concrete event type carries only
@@ -192,6 +193,22 @@ namespace EgLab::Platform
 
         Common::SharedPtr<ME::Mesh> mesh;
         Common::DynamicArray<uint32_t> elementIds;
+    };
+
+    /// Highlights one B-Rep feature: its face elements, its edge segments (as mesh node index
+    /// pairs) and its vertex nodes (0-based render node indices). All three lists empty clears
+    /// the highlight.
+    class GeometryFeatureHighlightEvent : public RenderEvent
+    {
+    public:
+        GeometryFeatureHighlightEvent() : RenderEvent(RenderEventType::GeometryFeatureHighlight)
+        {
+        }
+
+        Common::SharedPtr<ME::Mesh> mesh;
+        Common::DynamicArray<uint32_t> elementIds;
+        Common::DynamicArray<uint32_t> edgeSegmentNodeIndices;
+        Common::DynamicArray<uint32_t> nodeIndices;
     };
 
     class ElementsVisibilityEvent : public RenderEvent

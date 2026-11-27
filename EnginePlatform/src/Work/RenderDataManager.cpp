@@ -77,6 +77,11 @@ namespace EgLab::Platform
         _locateTargetFace = nullptr;
         _locateTargetMesh = nullptr;
         _locateElementIds.clear();
+        _featureHighlightPrimitives.clear();
+        _featureHighlightMesh = nullptr;
+        _featureHighlightElementIds.clear();
+        _featureHighlightEdgeSegmentNodeIndices.clear();
+        _featureHighlightNodeIndices.clear();
         _highlightShader = nullptr;
         _heMeshHighlightShader = nullptr;
         _meshSelector = nullptr;
@@ -224,6 +229,18 @@ namespace EgLab::Platform
     {
         _locateMesh = mesh;
         _locateElementIds = elementIds;
+    }
+
+    void RenderDataManager::setGeometryFeatureHighlightState(
+        const Common::SharedPtr<ME::Mesh>& mesh,
+        const Common::DynamicArray<uint32_t>& elementIds,
+        const Common::DynamicArray<uint32_t>& edgeSegmentNodeIndices,
+        const Common::DynamicArray<uint32_t>& nodeIndices)
+    {
+        _featureHighlightMesh = mesh;
+        _featureHighlightElementIds = elementIds;
+        _featureHighlightEdgeSegmentNodeIndices = edgeSegmentNodeIndices;
+        _featureHighlightNodeIndices = nodeIndices;
     }
 
     void RenderDataManager::setCamera(const SetCameraEvent& event)
@@ -632,6 +649,21 @@ namespace EgLab::Platform
             _locateTargetFace = nullptr;
             _locateTargetMesh = nullptr;
         }
+
+        if (_featureHighlightMesh && _featureHighlightMesh == mesh)
+        {
+            Common::SharedPtr<RE::Shader> highlightShader;
+            RE::ShaderLib::instance().getHighlightShader(highlightShader);
+            for (const auto& primitive : _featureHighlightPrimitives)
+            {
+                _scene->removePrimitive(highlightShader, primitive);
+            }
+            _featureHighlightPrimitives.clear();
+            _featureHighlightMesh = nullptr;
+            _featureHighlightElementIds.clear();
+            _featureHighlightEdgeSegmentNodeIndices.clear();
+            _featureHighlightNodeIndices.clear();
+        }
         updateMeshHighlight();
         updateSelectionHighlight();
     }
@@ -973,6 +1005,11 @@ namespace EgLab::Platform
     void RenderDataManager::applyLocate()
     {
         updateLocateHighlight();
+    }
+
+    void RenderDataManager::applyGeometryFeatureHighlight()
+    {
+        updateGeometryFeatureHighlight();
     }
 
     void RenderDataManager::applyElementsVisibility(const ElementsVisibilityEvent& event)
@@ -1497,6 +1534,202 @@ namespace EgLab::Platform
         _locateTargetMesh = _locateMesh;
     }
 
+    void RenderDataManager::updateGeometryFeatureHighlight()
+    {
+        if (!_scene)
+        {
+            return;
+        }
+
+        Common::SharedPtr<RE::Shader> highlightShader;
+        RE::ShaderLib::instance().getHighlightShader(highlightShader);
+
+        for (const auto& primitive : _featureHighlightPrimitives)
+        {
+            _scene->removePrimitive(highlightShader, primitive);
+        }
+        _featureHighlightPrimitives.clear();
+
+        if (!_featureHighlightMesh || highlightShader == nullptr)
+        {
+            return;
+        }
+
+        MeshRenderEntry* target = findActiveMeshEntry(_featureHighlightMesh);
+        if (target == nullptr || !target->translator)
+        {
+            return;
+        }
+
+        const auto addHighlightPrimitive =
+            [this, &highlightShader](const Common::SharedPtr<RE::RenderPrimitive>& primitive) {
+                if (!primitive || _scene->addPrimitive(highlightShader, primitive) !=
+                                      Common::Return::Succeed)
+                {
+                    return;
+                }
+                _featureHighlightPrimitives.pushBack(primitive);
+            };
+
+        // Faces: replay the existing tessellated face primitive, so the highlight reuses the
+        // already-uploaded triangles and only contributes an index list.
+        if (!_featureHighlightElementIds.empty() && target->packet.renderFace)
+        {
+            Common::HashSet<ME::IdType> requestedElements;
+            for (const uint32_t elemId : _featureHighlightElementIds)
+            {
+                requestedElements.insert(static_cast<ME::IdType>(elemId));
+            }
+
+            const auto& locations = target->translator->getBoundaryFaceLocations();
+            Common::DynamicArray<RE::IdxType> faceIndices;
+            for (std::size_t triangle = 0; triangle < locations.size(); ++triangle)
+            {
+                if (requestedElements.find(locations[triangle].elemId) != requestedElements.end())
+                {
+                    faceIndices.pushBack(static_cast<RE::IdxType>(triangle));
+                }
+            }
+
+            if (!faceIndices.empty())
+            {
+                // Replaying the cached face primitive with the highlight shader keeps the flat
+                // highlight colour independent of the active face shader (zebra / UV).
+                auto highlight = Common::makeShared<RE::RenderPickHighlight>();
+                highlight->setSource(target->packet.renderFace);
+                highlight->setSourceShader(highlightShader);
+                highlight->setIndices(Common::move(faceIndices));
+                addHighlightPrimitive(highlight);
+            }
+        }
+
+        // Edges: the highlight line only owns the nodes the feature actually uses. Rebuilding
+        // the whole tessellated line primitive per click is what made highlighting slow.
+        if (!_featureHighlightEdgeSegmentNodeIndices.empty())
+        {
+            Common::HashSet<uint32_t> usedNodes;
+            for (const uint32_t nodeIndex : _featureHighlightEdgeSegmentNodeIndices)
+            {
+                usedNodes.insert(nodeIndex);
+            }
+
+            Common::HashMap<uint32_t, RE::IdxType> localIndex;
+            Common::DynamicArray<RE::CoordType> vertices;
+            ME::MeshIterator nodeIterator(*_featureHighlightMesh);
+            uint32_t nodeIndex = 0;
+            for (; nodeIterator.hasMoreNode(); nodeIterator.nextNode(), ++nodeIndex)
+            {
+                if (usedNodes.find(nodeIndex) == usedNodes.end())
+                {
+                    continue;
+                }
+                const ME::Node& node = nodeIterator.currentNode();
+                localIndex[nodeIndex] = static_cast<RE::IdxType>(vertices.size());
+                vertices.pushBack(RE::CoordType(node.x(), node.y(), node.z()));
+            }
+
+            Common::DynamicArray<RE::IdxType> indices;
+            indices.reserve(_featureHighlightEdgeSegmentNodeIndices.size());
+            for (const uint32_t pairNodeIndex : _featureHighlightEdgeSegmentNodeIndices)
+            {
+                auto it = localIndex.find(pairNodeIndex);
+                if (it != localIndex.end())
+                {
+                    indices.pushBack(it.data().second);
+                }
+            }
+
+            if (indices.size() >= 2)
+            {
+                auto highlightLine = Common::makeShared<RE::RenderLine>();
+                highlightLine->setNodes(Common::move(vertices));
+                highlightLine->setIndices(Common::move(indices));
+                highlightLine->setColor(_featureHighlightColor);
+                highlightLine->setLineWidth(4.0f);
+                // The highlight must stay visible even when the global edge switch is off, and
+                // coplanar B-Rep edges are hidden by the surface under GL_LESS depth testing.
+                highlightLine->setKindSwitchBypassed(true);
+                highlightLine->setDepthTestEnabled(false);
+                highlightLine->setup();
+                addHighlightPrimitive(highlightLine);
+            }
+        }
+
+        // Vertices: draw a small 3-axis cross per selected vertex. A line primitive is used
+        // instead of points because GL_LINES reliably rasterises on every driver at any point
+        // size, and the highlight shader has no depth offset for plain point primitives.
+        if (!_featureHighlightNodeIndices.empty())
+        {
+            Common::HashSet<uint32_t> wantedNodes;
+            for (const uint32_t nodeIndex : _featureHighlightNodeIndices)
+            {
+                wantedNodes.insert(nodeIndex);
+            }
+
+            Common::DynamicArray<RE::CoordType> positions;
+            ME::MeshIterator nodeIterator(*_featureHighlightMesh);
+            uint32_t nodeIndex = 0;
+            for (; nodeIterator.hasMoreNode(); nodeIterator.nextNode(), ++nodeIndex)
+            {
+                if (wantedNodes.find(nodeIndex) == wantedNodes.end())
+                {
+                    continue;
+                }
+                const ME::Node& node = nodeIterator.currentNode();
+                positions.pushBack(RE::CoordType(node.x(), node.y(), node.z()));
+            }
+
+            if (!positions.empty())
+            {
+                // Marker size follows the model extent so it stays visible at any unit scale.
+                float markerSize = 0.01f;
+                if (target->packet.renderNode)
+                {
+                    const auto bounds = target->packet.renderNode->getBounds();
+                    if (!bounds.isEmpty())
+                    {
+                        const RE::CoordType extent = bounds.max() - bounds.min();
+                        const float diagonal = extent.length();
+                        if (diagonal > 0.0f)
+                        {
+                            markerSize = diagonal * 0.012f;
+                        }
+                    }
+                }
+
+                Common::DynamicArray<RE::CoordType> vertices;
+                Common::DynamicArray<RE::IdxType> indices;
+                vertices.reserve(positions.size() * 6);
+                indices.reserve(positions.size() * 6);
+                for (const auto& position : positions)
+                {
+                    for (int axis = 0; axis < 3; ++axis)
+                    {
+                        RE::CoordType start = position;
+                        RE::CoordType end = position;
+                        start[static_cast<std::size_t>(axis)] -= markerSize;
+                        end[static_cast<std::size_t>(axis)] += markerSize;
+                        const RE::IdxType first = static_cast<RE::IdxType>(vertices.size());
+                        vertices.pushBack(start);
+                        vertices.pushBack(end);
+                        indices.pushBack(first);
+                        indices.pushBack(first + 1);
+                    }
+                }
+
+                auto highlightCross = Common::makeShared<RE::RenderLine>();
+                highlightCross->setNodes(Common::move(vertices));
+                highlightCross->setIndices(Common::move(indices));
+                highlightCross->setColor(_featureHighlightColor);
+                highlightCross->setLineWidth(3.0f);
+                highlightCross->setKindSwitchBypassed(true);
+                highlightCross->setDepthTestEnabled(false);
+                highlightCross->setup();
+                addHighlightPrimitive(highlightCross);
+            }
+        }
+    }
+
     void RenderDataManager::updateElementsVisibility(const ElementsVisibilityEvent& event)
     {
         if (!event.mesh)
@@ -1952,6 +2185,11 @@ namespace EgLab::Platform
         if (_locateMesh == mesh)
         {
             updateLocateHighlight();
+        }
+
+        if (_featureHighlightMesh == mesh)
+        {
+            updateGeometryFeatureHighlight();
         }
 
         // The face primitive was replaced, so any selection highlight that referenced it must

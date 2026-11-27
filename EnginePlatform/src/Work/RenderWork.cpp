@@ -708,6 +708,27 @@ namespace EgLab::Platform
         locateElements(Common::SharedPtr<ME::Mesh>(), Common::DynamicArray<uint32_t>());
     }
 
+    void RenderWork::setGeometryFeatureHighlight(
+        const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
+        const Common::DynamicArray<uint32_t>& elementIds,
+        const Common::DynamicArray<uint32_t>& edgeSegmentNodeIndices,
+        const Common::DynamicArray<uint32_t>& nodeIndices)
+    {
+        auto event = Common::makeShared<GeometryFeatureHighlightEvent>();
+        event->mesh = mesh;
+        event->elementIds = elementIds;
+        event->edgeSegmentNodeIndices = edgeSegmentNodeIndices;
+        event->nodeIndices = nodeIndices;
+        queueRenderEvent(event);
+    }
+
+    void RenderWork::clearGeometryFeatureHighlight()
+    {
+        setGeometryFeatureHighlight(Common::SharedPtr<ME::Mesh>(), Common::DynamicArray<uint32_t>(),
+                                    Common::DynamicArray<uint32_t>(),
+                                    Common::DynamicArray<uint32_t>());
+    }
+
     void RenderWork::setElementsVisibility(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
                                            uint32_t mode,
                                            const Common::DynamicArray<uint32_t>& elementIds)

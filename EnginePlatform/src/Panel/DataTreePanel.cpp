@@ -32,6 +32,16 @@ namespace EgLab::Platform
         ImGui::TreeNodeEx(&meshData, flags, "%s", meshData.getName().c_str());
         const bool isClicked = ImGui::IsItemClicked(ImGuiMouseButton_Left);
 
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) &&
+            dynamic_cast<GeometryData*>(&meshData) != nullptr)
+        {
+            auto geometryData = GeometryData::findByMesh(reinterpret_cast<uint64_t>(mesh.get()));
+            if (geometryData)
+            {
+                _featureBrowser.open(geometryData);
+            }
+        }
+
         if (isClicked)
         {
             const bool shiftDown = ImGui::GetIO().KeyShift;
@@ -231,6 +241,7 @@ namespace EgLab::Platform
 
     void DataTreePanel::abortClose()
     {
+        _featureBrowser.close();
         clearSelectionAndHighlight();
     }
 
@@ -239,7 +250,12 @@ namespace EgLab::Platform
         // The X button only flips _show, so detect the hidden state after the frame.
         if (!isShow())
         {
+            _featureBrowser.close();
             clearSelectionAndHighlight();
+            return;
         }
+
+        // The browser windows are top-level, so they are drawn after the data tree window ends.
+        _featureBrowser.render();
     }
 } // namespace EgLab::Platform

@@ -25,9 +25,18 @@ namespace EgLab::RE
 
     void RenderNode::setHiddenNodes(const Common::HashSet<IdxType> &hiddenNodeIndices)
     {
+        // The hidden flag attribute is only part of the vertex layout when at least one node
+        // is hidden, so the first transition to a non-empty set has to rebuild the buffers.
+        const bool needsHiddenAttribute = !hiddenNodeIndices.empty() &&
+                                          _hiddenVertexBuffer == nullptr &&
+                                          _vertexArray != nullptr;
         _hiddenNodeIndices = hiddenNodeIndices;
         rebuildHiddenFlags();
         _hiddenFlagsDirty = true;
+        if (needsHiddenAttribute)
+        {
+            setup();
+        }
     }
 
     void RenderNode::rebuildHiddenFlags()
@@ -98,7 +107,11 @@ namespace EgLab::RE
         VertexBufferLayout layout;
         _vertexBuffer = Common::makeShared<VertexBuffer>(_vertices);
         layout.pushBack<float>(3, _vertexBuffer);
-        if (!_hiddenFlags.empty())
+        // The hidden flag attribute is only uploaded when some node is actually hidden. The
+        // node shader treats a missing attribute as "visible", so primitives that never hide
+        // nodes (for example highlight overlays) keep a position-only layout that other point
+        // shaders can consume without a stride mismatch.
+        if (!_hiddenNodeIndices.empty())
         {
             _hiddenVertexBuffer =
                 Common::makeShared<VertexBuffer>(_hiddenFlags.data(),

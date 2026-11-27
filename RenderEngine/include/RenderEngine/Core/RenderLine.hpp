@@ -67,6 +67,13 @@ namespace EgLab::RE
         /// @brief Sets the rendered line width.
         /// @param width Line width in pixels.
         void setLineWidth(float width);
+        /// @brief Enables or disables depth testing for the lines.
+        /// @details Highlight overlays disable it so coplanar edges stay visible: polygon
+        ///          offset does not apply to plain GL_LINES draws.
+        void setDepthTestEnabled(bool enabled)
+        {
+            _depthTestEnabled = enabled;
+        }
 
     private:
         Common::DynamicArray<CoordType> _vertices;
@@ -74,6 +81,7 @@ namespace EgLab::RE
         Common::Vector4f _color{0.18f, 0.24f, 0.30f, 1.0f};
         float _lineWidth{2.0f};
         bool _hasColor{false};
+        bool _depthTestEnabled{true};
 
         Common::SharedPtr<VertexArray> _vertexArray;
         Common::SharedPtr<VertexBuffer> _vertexBuffer;

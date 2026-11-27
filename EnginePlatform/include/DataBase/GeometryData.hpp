@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <mutex>
 
@@ -39,6 +40,15 @@ namespace EgLab::Platform
         float bboxMin[3]{0.0f, 0.0f, 0.0f};
         float bboxMax[3]{0.0f, 0.0f, 0.0f};
         Common::String name;
+    };
+
+    /// 渲染层中用于高亮一个几何特征的 id 集合：
+    /// 面/实体给出 Tri3 单元 id，边给出线段序号，顶点给出渲染节点序号（0 基）。
+    struct GeometryFeatureRenderIds
+    {
+        Common::DynamicArray<uint32_t> elementIds;
+        Common::DynamicArray<uint32_t> edgeSegmentIndices;
+        Common::DynamicArray<uint32_t> nodeIndices;
     };
 
     /// A B-Rep model imported into the data tree.
@@ -122,6 +132,21 @@ namespace EgLab::Platform
 
         /// 便捷重载：先按 elemId 反查特征，再填充信息并把 elemId 回填。
         GeometryFeatureInfo getFeatureInfo(uint32_t elemId) const;
+
+        /// 按类型 + 索引获取特征信息（等价于 getFeatureInfo(FeatureRef(type, index))）。
+        GeometryFeatureInfo getFeatureInfo(GE::TopologyType type, GE::IdxType index) const;
+
+        /// 某一拓扑类型的特征数量；文档缺失时返回 0。
+        std::size_t getFeatureCount(GE::TopologyType type) const;
+
+        /// 获取 ref 的直接父特征与子特征引用（父特征高一个维度，子特征低一个维度）。
+        void getFeatureRelations(const GeometryFeatureRef& ref,
+                                 Common::DynamicArray<GeometryFeatureRef>& parents,
+                                 Common::DynamicArray<GeometryFeatureRef>& children) const;
+
+        /// 收集渲染 ref 所需的 id（面单元 / 边线段 / 顶点渲染节点）。
+        void collectFeatureRenderIds(const GeometryFeatureRef& ref,
+                                     GeometryFeatureRenderIds& out) const;
 
         /// 在 Context 数据树中查找持有 mesh 指针值 == meshId 的 GeometryData；找不到返回 null。
         static Common::SharedPtr<GeometryData> findByMesh(uint64_t meshId);

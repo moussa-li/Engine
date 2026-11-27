@@ -142,6 +142,15 @@ namespace EgLab::Platform
         void locateElements(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
                             const Common::DynamicArray<uint32_t>& elementIds);
         void clearLocate();
+        // Highlights one B-Rep feature of a geometry mesh. elementIds are face element ids,
+        // edgeSegmentNodeIndices are mesh node index pairs of the feature's edge segments and
+        // nodeIndices are the 0-based render indices of its vertex nodes. Passing all three
+        // empty clears the highlight (see clearGeometryFeatureHighlight).
+        void setGeometryFeatureHighlight(const Common::SharedPtr<EgLab::ME::Mesh>& mesh,
+                                         const Common::DynamicArray<uint32_t>& elementIds,
+                                         const Common::DynamicArray<uint32_t>& edgeSegmentNodeIndices,
+                                         const Common::DynamicArray<uint32_t>& nodeIndices);
+        void clearGeometryFeatureHighlight();
         // Changes element visibility of one mesh. mode: 0 = hide ids, 1 = show ids,
         // 2 = show only ids (hide the rest), 3 = hide only ids (show the rest). An empty id
         // list in modes 1/3 restores the full mesh surface.

@@ -730,6 +730,31 @@
         "required": ["linearDeflection", "angularDeflection"],
         "additionalProperties": false
       }
+    },
+    {
+      "name": "HighlightGeometryFeature",
+      "eventId": 200029,
+      "category": "Geometry",
+      "summary": "高亮 GeometryData 中的一组几何特征",
+      "description": "高亮一组 B-Rep 几何特征：面/实体高亮其三角面，边高亮其 B-Rep 线段，顶点高亮其顶点标记。features 为 \"type:index,type:index\" 形式的列表（type: 0=Vertex 1=Edge 2=Face 3=Solid），空串表示清除当前特征高亮。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dataNodeId": {
+            "type": "integer",
+            "description": "GeometryData 数据节点 ID。",
+            "minimum": 0,
+            "maximum": 18446744073709551615
+          },
+          "features": {
+            "type": "string",
+            "description": "特征列表 \"type:index,type:index\"，最多 64 项；空串清除高亮。",
+            "maxLength": 512
+          }
+        },
+        "required": ["dataNodeId"],
+        "additionalProperties": false
+      }
     }
   ],
   "excluded": [

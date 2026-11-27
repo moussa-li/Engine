@@ -160,6 +160,19 @@ namespace EgLab::Platform
         uint32_t parallel;       // off 12; 0=串行 1=并行三角化
     };
 
+    // HighlightGeometryFeature：高亮 GeometryData 中的一组几何特征。
+    // features 为空表示清除高亮；否则每项按 "type:index,type:index,..." 描述
+    // （type 使用 GE::TopologyType 数值：0=V 1=E 2=F 3=S）。
+    constexpr size_t MAX_HIGHLIGHT_GEOMETRY_FEATURE_COUNT = 64;
+    struct GeometryFeatureHighlightParam
+    {
+        uint64_t dataNodeId;  // off 0; GeometryData 数据节点 id
+        uint32_t count;       // off 8; 特征数量，0 = 清除高亮
+        uint32_t reserved;    // off 12; 恒为 0
+        uint32_t featureTypes[MAX_HIGHLIGHT_GEOMETRY_FEATURE_COUNT];   // off 16
+        uint32_t featureIndices[MAX_HIGHLIGHT_GEOMETRY_FEATURE_COUNT]; // off 272
+    };
+
     // ===== SetCamera =====
     enum class CameraMode : uint32_t
     {
@@ -330,5 +343,9 @@ namespace EgLab::Platform
                   "GeometryTessellationParam must be trivially copyable");
     static_assert(sizeof(GeometryTessellationParam) == 16,
                   "GeometryTessellationParam must be exactly 16 bytes");
+    static_assert(std::is_trivially_copyable<GeometryFeatureHighlightParam>::value,
+                  "GeometryFeatureHighlightParam must be trivially copyable");
+    static_assert(sizeof(GeometryFeatureHighlightParam) == 528,
+                  "GeometryFeatureHighlightParam must be exactly 528 bytes");
 
 } // namespace EgLab::Platform

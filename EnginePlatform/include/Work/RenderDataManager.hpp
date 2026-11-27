@@ -70,6 +70,11 @@ namespace EgLab::Platform
         void setFaceShrink(float shrink);
         void setLocateState(const Common::SharedPtr<ME::Mesh>& mesh,
                             const Common::DynamicArray<uint32_t>& elementIds);
+        void setGeometryFeatureHighlightState(
+            const Common::SharedPtr<ME::Mesh>& mesh,
+            const Common::DynamicArray<uint32_t>& elementIds,
+            const Common::DynamicArray<uint32_t>& edgeSegmentNodeIndices,
+            const Common::DynamicArray<uint32_t>& nodeIndices);
         void setCamera(const SetCameraEvent& event);
         void fitView(const Common::SharedPtr<ME::Mesh>& mesh);
 
@@ -93,6 +98,7 @@ namespace EgLab::Platform
         void applyFaceShrink(float shrink);
         void applyReferencePlaneSettings(const SetReferencePlaneParam& param);
         void applyLocate();
+        void applyGeometryFeatureHighlight();
         void applyElementsVisibility(const ElementsVisibilityEvent& event);
         void applyNodeVisibility(const NodeVisibilityEvent& event);
         void applyBoxSelection(const BoxSelectEvent& event);
@@ -163,6 +169,7 @@ namespace EgLab::Platform
         void clearPickHighlight();
         void notifyPickCleared();
         void updateLocateHighlight();
+        void updateGeometryFeatureHighlight();
         void updateElementsVisibility(const ElementsVisibilityEvent& event);
         void updateNodeVisibility(const NodeVisibilityEvent& event);
         void applyNodeVisibilityToPrimitive(const Common::SharedPtr<ME::Mesh>& mesh);
@@ -226,6 +233,14 @@ namespace EgLab::Platform
         Common::SharedPtr<RE::RenderPrimitive> _locateTargetFace;
         Common::SharedPtr<ME::Mesh> _locateTargetMesh;
         Common::Vector4f _locateColor{1.0f, 0.55f, 0.1f, 1.0f};
+
+        Common::SharedPtr<ME::Mesh> _featureHighlightMesh;
+        Common::DynamicArray<uint32_t> _featureHighlightElementIds;
+        Common::DynamicArray<uint32_t> _featureHighlightEdgeSegmentNodeIndices;
+        Common::DynamicArray<uint32_t> _featureHighlightNodeIndices;
+        Common::DynamicArray<Common::SharedPtr<RE::RenderPrimitive>>
+            _featureHighlightPrimitives;
+        Common::Vector4f _featureHighlightColor{1.0f, 0.28f, 0.04f, 1.0f};
 
         float _nodePointSize{3.0f};
         float _lineWidth{2.0f};

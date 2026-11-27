@@ -1,6 +1,7 @@
 #include "Command/CommandManager.hpp"
 
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 #include <functional>
 #include <stdexcept>
@@ -31,6 +32,7 @@
 #include "Command/SetGeometryUvCmd.hpp"
 #include "Command/SetGeometryTessellationCmd.hpp"
 #include "Command/LocateElementsCmd.hpp"
+#include "Command/HighlightGeometryFeatureCmd.hpp"
 #include "Command/ElementsVisibilityCmd.hpp"
 #include "Command/NodeVisibilityCmd.hpp"
 #include "Command/MeshQueryCmd.hpp"
@@ -83,6 +85,40 @@ namespace EgLab::Platform
             uint32_t count;
             uint32_t reserved;
         };
+
+        // Parses "type:index, type:index" into the fixed highlight parameter arrays.
+        void parseGeometryFeatureList(const Common::String& text,
+                                      GeometryFeatureHighlightParam& param)
+        {
+            param.count = 0;
+            const char* cursor = text.c_str();
+            while (cursor != nullptr && *cursor != '\0' &&
+                   param.count < MAX_HIGHLIGHT_GEOMETRY_FEATURE_COUNT)
+            {
+                char* end = nullptr;
+                const unsigned long featureType = std::strtoul(cursor, &end, 10);
+                if (end == cursor || *end != ':')
+                {
+                    break;
+                }
+                cursor = end + 1;
+                const unsigned long featureIndex = std::strtoul(cursor, &end, 10);
+                if (end == cursor)
+                {
+                    break;
+                }
+                cursor = end;
+
+                param.featureTypes[param.count] = static_cast<uint32_t>(featureType);
+                param.featureIndices[param.count] = static_cast<uint32_t>(featureIndex);
+                ++param.count;
+
+                while (*cursor == ',' || *cursor == ' ')
+                {
+                    ++cursor;
+                }
+            }
+        }
     } // namespace
 
     class ShowPanelCommand : public ICommand
@@ -293,6 +329,12 @@ namespace EgLab::Platform
                 LocateElementsParam param{};
                 std::memcpy(&param, pod.data, sizeof(param));
                 return Common::makeShared<LocateElementsCmd>(param);
+            };
+
+            _creator[EventId::HighlightGeometryFeature] = [](const PacketPOD& pod) {
+                GeometryFeatureHighlightParam param{};
+                std::memcpy(&param, pod.data, sizeof(param));
+                return Common::makeShared<HighlightGeometryFeatureCmd>(param);
             };
 
             _packetCreator[EventId::MeshImport] = [](const EventPacket& packet) {
@@ -692,6 +734,23 @@ namespace EgLab::Platform
                 std::memcpy(pod.data, &param, sizeof(param));
                 return pod;
             };
+
+            _packetCreator[EventId::HighlightGeometryFeature] = [](const EventPacket& packet) {
+                PacketPOD pod{};
+                GeometryFeatureHighlightParam param{};
+                if (packet.contains("dataNodeId"))
+                {
+                    param.dataNodeId = packet.getData<uint64_t>("dataNodeId");
+                }
+                // Missing or empty "features" clears the highlight, so callers can always reset.
+                if (packet.contains("features"))
+                {
+                    parseGeometryFeatureList(packet.getData<Common::String>("features"), param);
+                }
+                pod.dataSize = sizeof(param);
+                std::memcpy(pod.data, &param, sizeof(param));
+                return pod;
+            };
         }
 
         void startListen()
@@ -723,6 +782,7 @@ namespace EgLab::Platform
             _subscriber.subscrib((uint32_t)EventId::SetGeometryZebra);
             _subscriber.subscrib((uint32_t)EventId::SetGeometryUv);
             _subscriber.subscrib((uint32_t)EventId::SetGeometryTessellation);
+            _subscriber.subscrib((uint32_t)EventId::HighlightGeometryFeature);
 
             if (_isRunning == true) return;
             _isRunning = true;

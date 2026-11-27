@@ -39,6 +39,7 @@ namespace EgLab::Platform
         SetGeometryZebra = 200026,         // 几何面斑马纹（等照度）分析显示
         SetGeometryUv = 200027,            // 几何面曲面 UV 显示
         SetGeometryTessellation = 200028,  // 几何划分渲染网格参数（并重建已有几何网格）
+        HighlightGeometryFeature = 200029, // 高亮 GeometryData 中的单个几何特征
         CameraPan = 300001, // Camera = 3xxxxx
         CameraRotate = 300002,
         CameraRotateLocal = 300003,
