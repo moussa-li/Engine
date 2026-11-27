@@ -1,9 +1,12 @@
 #include <cstddef>
+#include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <limits>
 
 #include <gtest/gtest.h>
 
+#include "Command/GeometryWire.hpp"
 #include "Common/DynamicArray.hpp"
 #include "Common/Return.hpp"
 #include "DataBase/GeometryMeshConverter.hpp"
@@ -314,6 +317,103 @@ namespace
         EXPECT_FALSE(stored.isParallel());
 
         settings.setOptions(original);
+    }
+
+    namespace
+    {
+        Common::DynamicArray<uint8_t> buildUpdateGeometryPayload(
+            const char* nodeName, uint64_t dataNodeId, const char* topoData, uint32_t topoSize,
+            const Common::DynamicArray<Platform::GeometryFeatureNameEntry>& names)
+        {
+            Platform::UpdateGeometryWireHeader header{};
+            header.magic = Platform::UpdateGeometryWireHeader::WireMagic;
+            header.version = Platform::UpdateGeometryWireHeader::WireVersion;
+            header.topoDataSize = topoSize;
+            header.nameCount = static_cast<uint32_t>(names.size());
+            header.dataNodeId = dataNodeId;
+            std::snprintf(header.nodeName, sizeof(header.nodeName), "%s", nodeName);
+
+            Common::DynamicArray<uint8_t> payload;
+            payload.pushBack(reinterpret_cast<const uint8_t*>(&header), sizeof(header));
+            if (topoSize > 0)
+            {
+                payload.pushBack(reinterpret_cast<const uint8_t*>(topoData), topoSize);
+            }
+            for (std::size_t index = 0; index < names.size(); ++index)
+            {
+                payload.pushBack(reinterpret_cast<const uint8_t*>(&names[index]), sizeof(names[index]));
+            }
+            return payload;
+        }
+
+        Platform::GeometryFeatureNameEntry makeNameEntry(uint32_t featureType,
+                                                         uint32_t featureIndex,
+                                                         const char* name)
+        {
+            Platform::GeometryFeatureNameEntry entry{};
+            entry.featureType = featureType;
+            entry.featureIndex = featureIndex;
+            std::snprintf(entry.name, sizeof(entry.name), "%s", name);
+            return entry;
+        }
+    } // namespace
+
+    TEST(GeometryUpdateWire, parsesHeaderTopologyAndFeatureNames)
+    {
+        const char topoData[] = "BREPBYTES";
+        Common::DynamicArray<Platform::GeometryFeatureNameEntry> names;
+        names.pushBack(makeNameEntry(static_cast<uint32_t>(GE::TopologyType::Face), 3, "TopFace"));
+
+        const Common::DynamicArray<uint8_t> payload = buildUpdateGeometryPayload(
+            "Body", 42, topoData, sizeof(topoData) - 1, names);
+
+        Platform::GeometryUpdateWire wire;
+        ASSERT_TRUE(wire.parse(payload.data(), payload.size()));
+        EXPECT_TRUE(wire.isValid());
+        EXPECT_EQ(wire.getHeader().dataNodeId, 42u);
+        EXPECT_STREQ(wire.getHeader().nodeName, "Body");
+        ASSERT_EQ(wire.getTopoDataSize(), sizeof(topoData) - 1);
+        EXPECT_EQ(std::memcmp(wire.getTopoData(), topoData, sizeof(topoData) - 1), 0);
+
+        ASSERT_EQ(wire.getNameCount(), 1u);
+        Platform::GeometryFeatureNameEntry entry{};
+        ASSERT_TRUE(wire.getNameEntry(0, entry));
+        EXPECT_EQ(entry.featureType, static_cast<uint32_t>(GE::TopologyType::Face));
+        EXPECT_EQ(entry.featureIndex, 3u);
+        EXPECT_STREQ(entry.name, "TopFace");
+        EXPECT_FALSE(wire.getNameEntry(1, entry));
+    }
+
+    TEST(GeometryUpdateWire, rejectsMalformedPayloads)
+    {
+        const char topoData[] = "X";
+        Common::DynamicArray<Platform::GeometryFeatureNameEntry> names;
+        names.pushBack(makeNameEntry(static_cast<uint32_t>(GE::TopologyType::Edge), 0, "E0"));
+        const Common::DynamicArray<uint8_t> payload =
+            buildUpdateGeometryPayload("Body", 0, topoData, sizeof(topoData) - 1, names);
+
+        Platform::GeometryUpdateWire wire;
+        EXPECT_FALSE(wire.parse(nullptr, 0));
+        EXPECT_FALSE(wire.isValid());
+        EXPECT_FALSE(wire.parse(payload.data(), payload.size() - 1));
+
+        Common::DynamicArray<uint8_t> corrupted = payload;
+        corrupted[0] = 0; // breaks the magic
+        EXPECT_FALSE(wire.parse(corrupted.data(), corrupted.size()));
+
+        const Common::DynamicArray<uint8_t> emptyTopology =
+            buildUpdateGeometryPayload("Body", 0, nullptr, 0, names);
+        EXPECT_FALSE(wire.parse(emptyTopology.data(), emptyTopology.size()));
+
+        Common::DynamicArray<Platform::GeometryFeatureNameEntry> unterminated;
+        Platform::GeometryFeatureNameEntry entry{};
+        entry.featureType = static_cast<uint32_t>(GE::TopologyType::Face);
+        entry.featureIndex = 1;
+        std::memset(entry.name, 'A', sizeof(entry.name));
+        unterminated.pushBack(entry);
+        const Common::DynamicArray<uint8_t> badName =
+            buildUpdateGeometryPayload("Body", 0, topoData, sizeof(topoData) - 1, unterminated);
+        EXPECT_FALSE(wire.parse(badName.data(), badName.size()));
     }
 
 } // namespace

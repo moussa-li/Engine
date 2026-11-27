@@ -39,6 +39,7 @@
 #include "Command/SetCameraCmd.hpp"
 #include "Command/SetReferencePlaneCmd.hpp"
 #include "Command/UpdateMeshCmd.hpp"
+#include "Command/UpdateGeometryCmd.hpp"
 #include "Common/HashMap.hpp"
 #include "Common/Publisher.hpp"
 #include "Common/SharedPtr.hpp"
@@ -797,6 +798,7 @@ namespace EgLab::Platform
             _subscriber.subscrib((uint32_t)EventId::ElementsVisibility);
             _subscriber.subscrib((uint32_t)EventId::NodeVisibility);
             _subscriber.subscrib((uint32_t)EventId::UpdateMesh);
+            _subscriber.subscrib((uint32_t)EventId::GeometryUpdate);
             _subscriber.subscrib((uint32_t)EventId::GeometryImport);
             _subscriber.subscrib((uint32_t)EventId::GetGeometryInfo);
             _subscriber.subscrib((uint32_t)EventId::ListGeometryFeatures);
@@ -835,6 +837,16 @@ namespace EgLab::Platform
                             param.data = new uint8_t[dataSize];
                             std::memcpy(param.data, rawPacket.data() + sizeof(dataSize), dataSize);
                             command = Common::makeShared<UpdateMeshCmd>(param);
+                        }
+                        else if (static_cast<EventId>(eventId) == EventId::GeometryUpdate)
+                        {
+                            if (dataSize == 0) continue;
+
+                            UpdateGeometryParam param{};
+                            param.dataSize = dataSize;
+                            param.data = new uint8_t[dataSize];
+                            std::memcpy(param.data, rawPacket.data() + sizeof(dataSize), dataSize);
+                            command = Common::makeShared<UpdateGeometryCmd>(param);
                         }
                         else if (static_cast<EventId>(eventId) == EventId::ElementsVisibility)
                         {
@@ -965,13 +977,13 @@ namespace EgLab::Platform
 
     void CommandManager::call(EventId eventId, EventPacket packet)
     {
-        if (eventId == EventId::UpdateMesh)
+        if (eventId == EventId::UpdateMesh || eventId == EventId::GeometryUpdate)
         {
             const auto& raw = packet.getRawBuffer();
             if (raw.size() > UINT32_MAX - sizeof(uint32_t))
             {
                 throw std::length_error(
-                    "UpdateMesh payload exceeds the shared-memory protocol limit.");
+                    "Command payload exceeds the shared-memory protocol limit.");
             }
 
             const uint32_t dataSize = static_cast<uint32_t>(raw.size());
@@ -985,7 +997,7 @@ namespace EgLab::Platform
             if (!_impl->_memQueue.push(static_cast<uint32_t>(eventId), wirePayload.data(),
                                        static_cast<uint32_t>(wirePayload.size())))
             {
-                throw std::runtime_error("Failed to publish UpdateMesh payload.");
+                throw std::runtime_error("Failed to publish the command payload.");
             }
             return;
         }

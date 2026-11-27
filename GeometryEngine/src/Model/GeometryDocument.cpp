@@ -110,6 +110,16 @@ namespace EgLab::GE
         return _impl->topology.getNodeCount(type);
     }
 
+    Common::Return GeometryDocument::setFeatureName(TopologyType type, IdxType index,
+                                                    const Common::String& name)
+    {
+        TopologyNode* node = _impl->topology.getNode(type, index);
+        if (node == nullptr) return Common::Return::BadInput;
+
+        node->setName(name);
+        return Common::Return::Succeed;
+    }
+
     GeometryFeature GeometryDocument::getFeature(TopologyType type, IdxType index) const
     {
         const TopologyNode* node = _impl->topology.getNode(type, index);

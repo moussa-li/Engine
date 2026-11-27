@@ -26,6 +26,21 @@ namespace EgLab::GE
                     "(configure with -DBUILD_GEOMETRY_KERNEL=OCCT to enable import)."));
                 return report;
             }
+
+            GeometryImportReport importBuffer(const void* data, std::size_t size,
+                                              GeometryDocument& document) const override
+            {
+                (void)data;
+                (void)size;
+                (void)document;
+                GeometryImportReport report;
+                report.setKernelName(getName());
+                report.setStatus(Common::Return::NotImplacementYet);
+                report.setMessage(Common::String(
+                    "GeometryEngine was built without a third-party kernel adapter "
+                    "(configure with -DBUILD_GEOMETRY_KERNEL=OCCT to enable import)."));
+                return report;
+            }
         };
     } // namespace
 

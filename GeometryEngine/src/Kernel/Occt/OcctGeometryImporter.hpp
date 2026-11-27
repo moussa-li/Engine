@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 #include "GeometryEngine/Kernel/GeometryImportOptions.hpp"
 #include "GeometryEngine/Kernel/IGeometryImporter.hpp"
 
@@ -17,6 +19,9 @@ namespace EgLab::GE
 
         GeometryImportReport importFile(const Common::String& filePath,
                                         GeometryDocument& document) const override;
+
+        GeometryImportReport importBuffer(const void* data, std::size_t size,
+                                          GeometryDocument& document) const override;
 
     private:
         GeometryImportOptions _options;

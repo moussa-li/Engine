@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 #include "Common/String.hpp"
 #include "GeometryEngine/Common/GeometryAPI.hpp"
 #include "GeometryEngine/Common/GeometryImportReport.hpp"
@@ -31,6 +33,10 @@ namespace EgLab::GE
         void setOptions(const GeometryImportOptions& options);
 
         GeometryImportReport importFile(const Common::String& filePath, GeometryDocument& document) const;
+
+        /// Imports a shape from a kernel-serialized byte buffer instead of a file.
+        GeometryImportReport importBuffer(const void* data, std::size_t size,
+                                          GeometryDocument& document) const;
 
     private:
         Common::String _kernelName;

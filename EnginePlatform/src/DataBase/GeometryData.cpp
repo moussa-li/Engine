@@ -54,9 +54,16 @@ namespace EgLab::Platform
         _document = document;
     }
 
-    const Common::String& GeometryData::getSourcePath() const
+    const Common::String GeometryData::getSourcePath() const
     {
+        std::lock_guard<std::mutex> lock(_geometryMutex);
         return _sourcePath;
+    }
+
+    void GeometryData::setSourcePath(const Common::String& sourcePath)
+    {
+        std::lock_guard<std::mutex> lock(_geometryMutex);
+        _sourcePath = sourcePath;
     }
 
     void GeometryData::setElementFeatures(const Common::DynamicArray<GeometryFeatureRef>& refs)

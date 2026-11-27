@@ -45,6 +45,7 @@ add_executable(geometry_test
 # platform target (which pulls in the renderer and the data tree).
 add_executable(geometry_platform_test
     test_geometry_platform.cpp
+    ${CMAKE_SOURCE_DIR}/EnginePlatform/src/Command/GeometryWire.cpp
     ${CMAKE_SOURCE_DIR}/EnginePlatform/src/DataBase/GeometryMeshConverter.cpp
     test_main.cpp
 )

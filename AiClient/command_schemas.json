@@ -764,6 +764,11 @@
       "reason": "携带由 MeshEngine 直接发布的原始内存载荷，无固定字段布局，不适合作为 AI 可调用的离散参数命令。"
     },
     {
+      "name": "UpdateGeometry",
+      "eventId": 200031,
+      "reason": "携带由外部建模进程发布的 OCCT 序列化拓扑数据（二进制/ASCII BREP）与特征名表，无固定字段布局，不适合作为 AI 可调用的离散参数命令。"
+    },
+    {
       "name": "MeshPickInfo",
       "eventId": 200004,
       "reason": "拾取信息事件（引擎对外通知），未在 CommandManager 中注册为可调用命令。"

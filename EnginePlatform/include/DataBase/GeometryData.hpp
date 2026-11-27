@@ -72,7 +72,11 @@ namespace EgLab::Platform
         /// 重新划分后替换文档（与 setMesh/特征表同步调用）。发布后可调用。
         void setDocument(const Common::SharedPtr<GE::GeometryDocument>& document);
 
-        const Common::String& getSourcePath() const;
+        const Common::String getSourcePath() const;
+
+        /// 更新几何来源路径。由内存拓扑数据（UpdateGeometry）更新后的模型没有可重读的文件来源，
+        /// 置空即可让重新划分时跳过该模型而不是回退到旧文件。
+        void setSourcePath(const Common::String& sourcePath);
 
         /// refs 必须与渲染 Mesh 的 elemId 严格对齐：refs.size() == mesh->getElemNumber()
         /// 且 refs[elemId - 1] 对应 elemId。须在 addDataNode 发布前调用，发布后只读。
@@ -153,8 +157,8 @@ namespace EgLab::Platform
 
     private:
         mutable std::mutex _geometryMutex;
-        Common::SharedPtr<GE::GeometryDocument> _document;    // 构造后不可变
-        Common::String _sourcePath;                           // 构造后不可变
+        Common::SharedPtr<GE::GeometryDocument> _document;    // 由 _geometryMutex 保护
+        Common::String _sourcePath;                           // 由 _geometryMutex 保护
         Common::DynamicArray<GeometryFeatureRef> _elementFeatures; // 由 _geometryMutex 保护
         GE::GeometryElementMap _elementMap;                        // 由 _geometryMutex 保护
         Common::DynamicArray<GeometryFeatureRef> _nodeFeatures;    // 由 _geometryMutex 保护

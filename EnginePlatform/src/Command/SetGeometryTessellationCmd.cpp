@@ -51,7 +51,7 @@ namespace EgLab::Platform
             {
                 continue;
             }
-            const Common::String& sourcePath = data->getSourcePath();
+            const Common::String sourcePath = data->getSourcePath();
             if (sourcePath.size() == 0)
             {
                 LOG(WARNING) << "SetGeometryTessellationCmd: geometry node has no source path; "

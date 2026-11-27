@@ -70,4 +70,33 @@ namespace EgLab::GE
         return report;
     }
 
+    GeometryImportReport GeometryImporter::importBuffer(const void* data, std::size_t size,
+                                                        GeometryDocument& document) const
+    {
+        document.clear();
+
+        Common::String kernelName = _kernelName;
+        if (kernelName.size() == 0)
+        {
+            kernelName = GeometryKernelRegistry::getDefaultKernelName();
+        }
+
+        Common::UniquePtr<IGeometryImporter> importer =
+            GeometryKernelRegistry::instance().createImporter(kernelName, _options);
+        if (!importer)
+        {
+            GeometryImportReport report;
+            report.setKernelName(kernelName);
+            report.setStatus(Common::Return::Failed);
+            report.setMessage(Common::String("no geometry importer is available"));
+            document.setLastReport(report);
+            return report;
+        }
+
+        GeometryImportReport report = importer->importBuffer(data, size, document);
+        report.setKernelName(importer->getName());
+        document.setLastReport(report);
+        return report;
+    }
+
 } // namespace EgLab::GE

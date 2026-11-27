@@ -2,6 +2,7 @@
 #include <cstdlib>
 
 #include <chrono>
+#include <fstream>
 
 #include <gtest/gtest.h>
 
@@ -211,6 +212,80 @@ namespace
                 EXPECT_FALSE(face.getParents().empty());
             }
         }
+    }
+#endif
+
+    TEST(GeometryDocument, renamesFeature)
+    {
+        GE::GeometryDocument document;
+        const GE::IdxType face =
+            document.createFeature(GE::TopologyType::Face, Common::String("Face_0"));
+        ASSERT_NE(face, GE::INVALID_IDX);
+
+        ASSERT_TRUE(document.setFeatureName(GE::TopologyType::Face, face,
+                                            Common::String("TopFace")) ==
+                    Common::Return::Succeed);
+        EXPECT_EQ(document.getFeature(GE::TopologyType::Face, face).getName(),
+                  Common::String("TopFace"));
+
+        EXPECT_TRUE(document.setFeatureName(GE::TopologyType::Face, face + 1,
+                                            Common::String("Missing")) ==
+                    Common::Return::BadInput);
+    }
+
+    TEST(GeometryImporter, rejectsEmptyBuffer)
+    {
+        GE::GeometryDocument document;
+        GE::GeometryImporter importer;
+
+        const GE::GeometryImportReport report = importer.importBuffer(nullptr, 0, document);
+
+        EXPECT_FALSE(report.isSucceed());
+        EXPECT_EQ(document.getFeatureCount(GE::TopologyType::Face), 0u);
+        EXPECT_TRUE(document.getLastReport().getStatus() == report.getStatus());
+    }
+
+    TEST(GeometryImporter, rejectsGarbageBuffer)
+    {
+        const char garbage[] = "not a serialized brep";
+        GE::GeometryDocument document;
+        GE::GeometryImporter importer;
+
+        const GE::GeometryImportReport report =
+            importer.importBuffer(garbage, sizeof(garbage) - 1, document);
+
+        EXPECT_FALSE(report.isSucceed());
+        EXPECT_EQ(document.getFeatureCount(GE::TopologyType::Face), 0u);
+    }
+
+#ifdef GEOMETRY_KERNEL_OCCT
+    TEST(GeometryImporter, importsSerializedBrepBufferFromEnvironment)
+    {
+        const char* path = std::getenv("EGLAB_GEOMETRY_TEST_BREP");
+        if (path == nullptr || path[0] == '\0')
+        {
+            GTEST_SKIP() << "set EGLAB_GEOMETRY_TEST_BREP to a BREP file to run this test";
+        }
+
+        std::ifstream file(path, std::ios::binary);
+        ASSERT_TRUE(file.good());
+        file.seekg(0, std::ios::end);
+        const std::streamoff fileSize = file.tellg();
+        file.seekg(0, std::ios::beg);
+        ASSERT_GT(fileSize, 0);
+
+        Common::DynamicArray<char> bytes;
+        bytes.resize(static_cast<std::size_t>(fileSize));
+        ASSERT_TRUE(file.read(bytes.data(), static_cast<std::streamsize>(fileSize)).good());
+
+        GE::GeometryDocument document;
+        GE::GeometryImporter importer(Common::String("OCCT"));
+        const GE::GeometryImportReport report =
+            importer.importBuffer(bytes.data(), bytes.size(), document);
+
+        ASSERT_TRUE(report.isSucceed()) << report.getMessage().c_str();
+        EXPECT_GT(document.getFeatureCount(GE::TopologyType::Face), 0u);
+        EXPECT_GT(report.getTriangleCount(), 0u);
     }
 #endif
 

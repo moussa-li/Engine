@@ -216,6 +216,17 @@ namespace stays inside `GeometryEngine/src/Kernel/Occt`; nothing kernel-specific
 `GeometryEngine/include`. Consumers choose the kernel (for example from `EgPlatform.ini`) and pass
 its name to `GeometryImporter`.
 
+#### Updating geometry from an in-memory shape
+
+Besides files, `GeometryImporter::importBuffer` accepts a shape serialized by the kernel's own
+writer (OCCT `BinTools::Write` binary BREP or `BRepTools::Write` ASCII BREP), so a modeling
+process can push a rebuilt B-Rep without writing a file first. `UpdateGeometry` (`EventId::GeometryUpdate`,
+200031) wraps that flow: its payload is an `UpdateGeometryWireHeader` followed by the serialized
+bytes and a table of `GeometryFeatureNameEntry` items that rename the matching features (layout in
+`Command/GeometryWire.hpp`). The command resolves the target `GeometryData` by `dataNodeId` or
+`nodeName` (creating it when absent), applies the feature names, retessellates the model and
+publishes the same `GeometryImportResult` as `GeometryImport`.
+
 #### Geometry display modes
 
 Imported B-Rep models are rendered through `ME::Mesh` (Tri3). Their display can be switched in

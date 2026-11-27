@@ -30,6 +30,15 @@ namespace EgLab::Platform
         uint8_t* data;
     };
 
+    // UpdateGeometry：外部建模进程把内核序列化（OCCT BinTools/BRepTools）的 B-Rep 拓扑数据
+    // 连同对应特征名一起送入；data 指向 Command/GeometryWire.hpp 规定的 wire 载荷，
+    // 由命令持有并释放。
+    struct UpdateGeometryParam
+    {
+        uint32_t dataSize;
+        uint8_t* data;
+    };
+
     struct DeleteMeshParam
     {
         uint64_t dataNodeId;
@@ -289,6 +298,8 @@ namespace EgLab::Platform
                   "ImportMeshParam must be trivially copyable");
     static_assert(std::is_trivially_copyable<UpdateMeshParam>::value,
                   "UpdateMeshParam must be trivially copyable");
+    static_assert(std::is_trivially_copyable<UpdateGeometryParam>::value,
+                  "UpdateGeometryParam must be trivially copyable");
     static_assert(std::is_trivially_copyable<DeleteMeshParam>::value,
                   "DeleteMeshParam must be trivially copyable");
     static_assert(std::is_trivially_copyable<HighlightParam>::value,

@@ -38,6 +38,11 @@ namespace EgLab::GE
 
         std::size_t getFeatureCount(TopologyType type) const;
 
+        /// Renames one topology node, e.g. to apply feature names supplied alongside a
+        /// kernel-serialized shape. Returns INVALID when the node does not exist.
+        Common::Return setFeatureName(TopologyType type, IdxType index,
+                                      const Common::String& name);
+
         GeometryFeature getFeature(TopologyType type, IdxType index) const;
 
         Geometry* getGeometry(TopologyType type, IdxType index);
