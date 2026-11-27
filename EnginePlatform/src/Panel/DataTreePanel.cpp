@@ -66,7 +66,6 @@ namespace EgLab::Platform
                 }
                 _selectedDataNodeIds = Common::move(remainingNodeIds);
             }
-            commitHighlightSelection();
         }
 
         if (ImGui::BeginPopupContextItem())
@@ -74,6 +73,21 @@ namespace EgLab::Platform
             if (ImGui::MenuItem("Create Half-Edge Mesh"))
             {
                 Context::instance().getPanelManager().openHEMeshPanel(mesh, meshData.getName());
+            }
+
+            if (ImGui::MenuItem("Show"))
+            {
+                setMeshVisible(meshData, true);
+            }
+
+            if (ImGui::MenuItem("Hide"))
+            {
+                setMeshVisible(meshData, false);
+            }
+
+            if (ImGui::MenuItem("Locate"))
+            {
+                locateMesh(meshData);
             }
 
             if (ImGui::MenuItem("delete Mesh"))
@@ -92,7 +106,6 @@ namespace EgLab::Platform
                 }
 
                 _selectedDataNodeIds.clear();
-                commitHighlightSelection();
                 for (size_t index = 0; index < nodeIdsToDelete.size(); ++index)
                 {
                     EventPacket packet;
@@ -216,33 +229,54 @@ namespace EgLab::Platform
             ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())
         {
             _selectedDataNodeIds.clear();
-            commitHighlightSelection();
         }
     }
 
-    void DataTreePanel::commitHighlightSelection()
+    void DataTreePanel::setMeshVisible(MeshData& meshData, bool visible)
     {
-        EventPacket packet;
-        packet.setData("ids",
-                       formatIdList(_selectedDataNodeIds.data(), _selectedDataNodeIds.size()));
-        CommandManager::instance().call(EventId::Highlight, Common::move(packet));
+        const uint32_t mode = visible ? 1u : 2u;
+        EventPacket elementsPacket;
+        elementsPacket.setData("nodeId", meshData.getId());
+        elementsPacket.setData("mode", mode);
+        elementsPacket.setData("ids", Common::String());
+        CommandManager::instance().call(EventId::ElementsVisibility, Common::move(elementsPacket));
+
+        EventPacket nodesPacket;
+        nodesPacket.setData("nodeId", meshData.getId());
+        nodesPacket.setData("mode", mode);
+        nodesPacket.setData("ids", Common::String());
+        CommandManager::instance().call(EventId::NodeVisibility, Common::move(nodesPacket));
     }
 
-    void DataTreePanel::clearSelectionAndHighlight()
+    void DataTreePanel::locateMesh(MeshData& meshData)
     {
-        if (_selectedDataNodeIds.empty())
+        const DataNodeId nodeId = meshData.getId();
+        EventPacket packet;
+        packet.setData("ids", formatIdList(&nodeId, 1));
+        CommandManager::instance().call(EventId::Highlight, Common::move(packet));
+        _highlightActive = true;
+
+        RenderWork::instance().fitView(meshData.getMesh());
+    }
+
+    void DataTreePanel::clearLocateHighlight()
+    {
+        if (!_highlightActive)
         {
             return;
         }
 
-        _selectedDataNodeIds.clear();
-        commitHighlightSelection();
+        _highlightActive = false;
+        EventPacket packet;
+        packet.setData("ids", Common::String());
+        CommandManager::instance().call(EventId::Highlight, Common::move(packet));
     }
 
     void DataTreePanel::abortClose()
     {
         _featureBrowser.close();
-        clearSelectionAndHighlight();
+        _selectedDataNodeIds.clear();
+        clearLocateHighlight();
     }
 
     void DataTreePanel::afterRenderFrame()
@@ -251,7 +285,8 @@ namespace EgLab::Platform
         if (!isShow())
         {
             _featureBrowser.close();
-            clearSelectionAndHighlight();
+            _selectedDataNodeIds.clear();
+            clearLocateHighlight();
             return;
         }
 

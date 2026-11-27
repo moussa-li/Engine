@@ -45,14 +45,20 @@ namespace EgLab::Platform
 
         bool renderMeshNode(MeshData& meshData);
 
-        // Sends the current selection to CommandManager as a Highlight command.
-        void commitHighlightSelection();
+        // Shows or hides every element/node of one mesh through the visibility commands.
+        void setMeshVisible(MeshData& meshData, bool visible);
 
-        // Clears the selection and removes the highlight when the panel is closed.
-        void clearSelectionAndHighlight();
+        // Highlights the mesh in the viewport and moves the camera to it.
+        void locateMesh(MeshData& meshData);
+
+        // Clears the highlight requested by locateMesh when the panel is hidden.
+        void clearLocateHighlight();
 
     private:
         Common::DynamicArray<DataNodeId> _selectedDataNodeIds;
+
+        // True while a Locate highlight is active, so it can be cleared when the panel closes.
+        bool _highlightActive{false};
 
         // Feature browser opened by double-clicking a GeometryData node.
         GeometryFeatureBrowser _featureBrowser;
